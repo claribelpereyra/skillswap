@@ -95,7 +95,7 @@ Wallet: el usuario consulta saldo y movimientos de SkillCoins. Notificaciones: b
 
 La Mock UI además necesita: wallet (saldo y movimientos) y marcar notificación como leída. Login simulado: la UI pasa el `userId` activo en cada operación.
 
-Recorrido que se demuestra en vivo: publicar → solicitar → aceptar → pagar → completar → calificar.
+Recorrido principal, cubierto por un test de integración: publicar → solicitar → aceptar → pagar → completar → calificar. No hacemos demos en vivo.
 
 **Fuera de alcance**: autenticación real (registro, contraseñas, OAuth/JWT), dinero real, chat/videollamadas, despliegue productivo, diseño visual.
 
@@ -110,7 +110,7 @@ Mínimo cuatro, cada uno resolviendo una variación concreta y con tests que lo 
 - Límites transaccionales explícitos en aceptación, reserva, pago y cancelación.
 - Modelar bien cardinalidades, claves, unicidad e índices.
 - Evitar N+1 en las consultas principales (fetch joins, entity graphs o proyecciones) y dejar comentado por qué.
-- Datos de demo reproducibles en su propia migración (por ejemplo `V100__datos_demo.sql`).
+- Datos de ejemplo reproducibles para el entorno local en su propia migración (por ejemplo `V100__datos_ejemplo.sql`).
 
 ## Tests
 
@@ -122,7 +122,7 @@ Mínimo cuatro, cada uno resolviendo una variación concreta y con tests que lo 
 - Cobertura objetivo: 80 % en dominio y aplicación.
 - Nombres de test descriptivos en español (por ejemplo `noPermiteRestarMasQueElSaldo`).
 
-Casos de aceptación del enunciado, que tienen que poder demostrarse:
+Casos de aceptación del enunciado; cada uno tiene que quedar cubierto por tests:
 
 1. Publicar una mentoría válida y encontrarla con búsqueda filtrada.
 2. Rechazar la publicación de una oferta incompleta.

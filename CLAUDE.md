@@ -135,20 +135,13 @@ Casos de aceptación del enunciado; cada uno tiene que quedar cubierto por tests
 9. Promociones acumulables sin precio negativo.
 10. Completar, calificar una sola vez y recalcular reputación.
 
-## Hitos
+## Entrega
 
-1. **Diseño**: alcance, historias, modelo de dominio, diagrama de clases (StarUML), decisiones de arquitectura y patrones candidatos.
-2. **Núcleo**: dominio y casos de uso principales con puertos y tests unitarios.
-3. **Infraestructura**: JPA/MySQL, repositorios y adaptadores mock; flujo transaccional real.
-4. **Producto**: UI conectada a controllers, documentación, tests y versión final.
-
-Cada entrega incluye código, UML en StarUML (`docs/uml/`) e informe PDF de decisiones (`docs/informe/`).
-
-**Se entrega todo junto el martes 17 de noviembre de 2026.** Los hitos son etapas internas con fecha objetivo: Hito 1 dom 25/10, Hito 2 dom 1/11, Hito 3 dom 8/11, Hito 4 vie 13/11; del 14 al 16/11 informe, UML final y ensayo de defensa.
+**Se entrega todo junto el martes 17 de noviembre de 2026**: código, UML en StarUML (`docs/uml/`) e informe PDF de decisiones (`docs/informe/`). No trabajamos por hitos ni con fechas internas: cada uno avanza su área a medida que puede. Lo único que conviene respetar es el orden de dependencias (la base común primero).
 
 ## Flujo de Git
 
-- `develop` es la rama default y de integración. `main` solo recibe un PR desde `develop` al cerrar cada hito (merge commit, nunca squash), y después se taggea `hito-N` sobre `main`.
+- `develop` es la rama default y de integración. `main` solo recibe un PR desde `develop` para la entrega (merge commit, nunca squash).
 - Las ramas de trabajo salen de `develop` y vuelven por PR con squash: `feature/`, `fix/`, `test/`, `refactor/`, `docs/`.
 - Commits: `tipo(capa): descripción en imperativo`, en inglés (tipos `feat`, `fix`, `test`, `refactor`, `docs`, `chore`).
 - PRs: **título en inglés** con el formato de los commits (con squash queda como commit en `develop`) y **descripción en español** siguiendo `.github/pull_request_template.md`.
@@ -181,4 +174,4 @@ Revisión cruzada fija: Clari revisa a Luqui, Luqui a Andy, Andy a Ian, Ian a To
 - [x] Alinear `CONTRIBUTING.md` y `.github/workflows/ci.yml` con el flujo `develop`/`main` (PR #1).
 - [x] Rulesets en GitHub sobre `main` y `develop` con el check `build` requerido.
 - [ ] Integrar el Mock UI Kit cuando lo entregue la cátedra (ver si es Swing o JavaFX; JavaFX requiere dependencias de OpenJFX).
-- [ ] Hito 1: modelo de dominio y diagrama de clases.
+- [ ] Modelo de dominio y diagrama de clases.

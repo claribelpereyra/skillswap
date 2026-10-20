@@ -44,7 +44,8 @@ git rebase origin/develop     # o git merge origin/develop si preferís
 
 ## Pull Requests a `develop`
 
-- Completar la plantilla del PR.
+- **Título en inglés**, con el formato de los commits (por ejemplo `feat(dominio): add Publicacion state transitions`). Con squash, el título del PR queda como el commit en `develop`.
+- **Descripción en español**, completando la plantilla del PR.
 - Necesita **1 aprobación** de otro integrante y el **CI en verde**.
 - Se mergea con **Squash and merge**: un commit por PR en `develop`.
 - Quien abre el PR es quien lo mergea, una vez aprobado.
@@ -55,36 +56,19 @@ git rebase origin/develop     # o git merge origin/develop si preferís
 Cuando el equipo da por terminado un hito:
 
 1. Verificar que `develop` tiene todo lo del hito y que el CI está en verde.
-2. Abrir un PR con base `main` y compare `develop`, titulado por ejemplo `Hito 1 - Diseño`.
+2. Abrir un PR con base `main` y compare `develop`
 3. Aprobarlo y mergearlo con **Create a merge commit**. Nunca con squash: si se aplasta, `main` y `develop` quedan con historiales distintos y el próximo cierre de hito trae conflictos.
 4. Marcar la entrega con un tag sobre `main`:
 
-```bash
-git switch main
-git pull
-git tag -a hito-1 -m "Hito 1 - Diseño"
-git push origin hito-1
-```
-
-Tags: `hito-1` (Diseño), `hito-2` (Núcleo), `hito-3` (Infraestructura), `hito-4` (Producto).
-
-Si después de la entrega hay que corregir algo urgente, el fix va igual por una rama desde `develop` y entra a `main` en el próximo cierre.
-
 ## Commits
 
-Formato: `tipo(capa): descripción en imperativo`
+Formato: `tipo(capa): descripción en imperativo`, en inglés. Los commits de `develop` salen de los títulos de los PRs, así que siguen la misma regla.
 
 ```
-feat(dominio): agregar transiciones de estado de Publicacion
-fix(aplicacion): evitar doble cobro al confirmar pago
-test(infraestructura): probar optimistic locking del cupo
-docs(uml): actualizar diagrama de contratación
+feat(dominio): add Publicacion state transitions
+fix(aplicacion): prevent double charge when confirming payment
+test(infraestructura): cover optimistic locking on cupo
+docs(uml): update contratacion diagram
 ```
 
 Tipos: `feat`, `fix`, `test`, `refactor`, `docs`, `chore`.
-
-## Archivos delicados
-
-- **UML de StarUML (`docs/uml/*.mdj`)**: Git no lo puede mergear. Una sola persona lo edita a la vez; avisen en el grupo antes de tocarlo.
-- **Migraciones de Flyway**: nunca editar una ya mergeada. Si dos PRs crean la misma versión (por ejemplo dos `V3__...`), el segundo en mergear renumera la suya.
-- **POMs**: agregar dependencias entre módulos se habla con el equipo antes.

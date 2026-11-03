@@ -1,0 +1,139 @@
+@startuml SkillSwap_Dominio_Limpio
+skinparam classAttributeIconSize false
+skinparam packageStyle rectangle
+skinparam roundcorner 5
+skinparam dpi 200
+
+package "Dominio - Perfiles y Billetera" {
+    class Perfil {
+        - id: Long
+        - userId: String
+        - nombreVisible: String
+        - reputacion: double
+        + agregarHabilidad(h: Habilidad): void
+        + actualizarReputacion(puntaje: int): void
+    }
+    class Wallet {
+        - id: Long
+        - saldo: SkillCoins
+        + debitar(monto: SkillCoins, motivo: String): MovimientoWallet
+        + acreditar(monto: SkillCoins, motivo: String): MovimientoWallet
+    }
+    class MovimientoWallet {
+        - tipo: String
+        - monto: SkillCoins
+        - fecha: LocalDateTime
+    }
+    class SkillCoins <<ValueObject>> {
+        - cantidad: int
+        + sumar(otro: SkillCoins): SkillCoins
+        + restar(otro: SkillCoins): SkillCoins
+    }
+    class Habilidad {
+        - nombre: String
+    }
+}
+
+package "Dominio - Publicaciones y Catalogo" {
+    class Categoria {
+        - nombre: String
+        + agregarSubcategoria(c: Categoria): void
+    }
+    abstract class Publicacion {
+        - id: Long
+        - version: Long
+        - precioBase: SkillCoins
+        + reservarCupo(): void
+        + liberarCupo(): void
+    }
+    class OfertaServicio extends Publicacion {
+        - especialidad: String
+    }
+    class DesafioOrganizacion extends Publicacion {
+        - empresa: String
+    }
+    class FranjaHoraria {
+        - reservada: boolean
+    }
+}
+
+package "Dominio - Contrataciones y Estado (GoF State)" {
+    class Contratacion {
+        - id: Long
+        - montoEnCustodia: SkillCoins
+        + aceptar(actorId: String): void
+        + pagar(actorId: String): void
+        + reprogramar(actorId: String, franja: FranjaHoraria): void
+        + cancelar(actorId: String, motivo: String): void
+        + completar(actorId: String): void
+    }
+    interface EstadoContratacion {
+        + aceptar(c: Contratacion, actorId: String): void
+        + pagar(c: Contratacion, actorId: String): void
+        + reprogramar(c: Contratacion, actorId: String, f: FranjaHoraria): void
+        + cancelar(c: Contratacion, actorId: String, motivo: String): void
+        + completar(c: Contratacion, actorId: String): void
+    }
+    class EstadoPendiente implements EstadoContratacion
+    class EstadoAceptada implements EstadoContratacion
+    class EstadoConfirmada implements EstadoContratacion
+    class EstadoEnCurso implements EstadoContratacion
+    class EstadoCompletada implements EstadoContratacion
+    class EstadoCancelada implements EstadoContratacion
+
+    interface PoliticaCancelacionStrategy {
+        + calcularPorcentajeReintegro(horas: long): double
+    }
+}
+
+package "Patron Decorator (Promociones)" {
+    interface CalculadorPrecio {
+        + calcularPrecio(precioBase: SkillCoins): SkillCoins
+    }
+    abstract class PromocionDecorator implements CalculadorPrecio {
+        # envoltorio: CalculadorPrecio
+    }
+    class DescuentoPorcentajeDecorator extends PromocionDecorator
+    class CuponFijoDecorator extends PromocionDecorator
+}
+
+package "Patron Strategy (Recomendaciones)" {
+    class RecomendacionService {
+        - estrategia: RecomendacionStrategy
+        + setEstrategia(e: RecomendacionStrategy): void
+        + recomendarPara(u: Perfil): List<Publicacion>
+    }
+    interface RecomendacionStrategy {
+        + recomendar(usuario: Perfil, catalogo: List<Publicacion>): List<Publicacion>
+    }
+    class AfinidadHabilidadesStrategy implements RecomendacionStrategy
+    class PopularidadRecienteStrategy implements RecomendacionStrategy
+}
+
+' Relaciones de dominio
+Perfil "1" *-- "1" Wallet : posee
+Wallet "1" *-- "0..*" MovimientoWallet : audita
+Wallet --> SkillCoins : saldo
+Perfil "1" o-- "0..*" Habilidad : sabe
+
+Categoria "0..1" <-- "0..*" Categoria : subcategorias (Composite)
+Publicacion "1" --> "1" Perfil : autor
+Publicacion "1" --> "1" Categoria : rubro
+Publicacion "1" o-- "0..*" Habilidad : requiere
+Publicacion "1" *-- "1..*" FranjaHoraria : horarios
+Publicacion --> SkillCoins : precioBase
+
+Contratacion "1" --> "1" Perfil : cliente
+Contratacion "1" --> "1" Publicacion : servicio
+Contratacion "1" --> "1" FranjaHoraria : horarioElegido
+Contratacion "1" *-- "1" EstadoContratacion : estadoActual
+Contratacion "1" --> "1" PoliticaCancelacionStrategy : politicaCancelacion
+Contratacion --> SkillCoins : montoEnCustodia
+
+' Conexiones de los Patrones con el Dominio
+Contratacion ..> CalculadorPrecio : calcula costo con
+RecomendacionService --> RecomendacionStrategy : delega en
+RecomendacionService ..> Perfil : perfil usuario
+RecomendacionService ..> Publicacion : filtra y rankea
+
+@enduml

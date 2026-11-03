@@ -39,7 +39,6 @@ class PerfilControllerTest {
     @Test
     @DisplayName("Crea perfil delegando en el caso de uso tras validar permisos")
     void crearPerfilValidaPermisosYDelega() {
-        Perfil.class.getName();
         Perfil mockPerfil = new Perfil("usr-1", "Carlos", "Bio", ZoneId.systemDefault(), TipoCuenta.PROFESIONAL);
         when(crearPerfilUseCase.ejecutar(any())).thenReturn(mockPerfil);
 
@@ -68,6 +67,43 @@ class PerfilControllerTest {
                 .isInstanceOf(AccesoDenegadoException.class);
 
         verify(crearPerfilUseCase, never()).ejecutar(any());
+    }
+
+    @Test
+    @DisplayName("Edita perfil validando permisos y delegando en caso de uso")
+    void editarPerfilDelega() {
+        Perfil mockPerfil = new Perfil("usr-1", "Nuevo", "Bio", ZoneId.systemDefault(), TipoCuenta.PROFESIONAL);
+        when(editarPerfilUseCase.ejecutar(any())).thenReturn(mockPerfil);
+
+        PerfilController.EditarPerfilRequest req = new PerfilController.EditarPerfilRequest(
+                "usr-1", "Nuevo", "Bio", ZoneId.systemDefault()
+        );
+
+        Perfil resultado = controller.editarPerfil(req);
+
+        assertThat(resultado.getNombreVisible()).isEqualTo("Nuevo");
+        verify(validadorPermisos).validarEsPropietario("usr-1");
+        verify(editarPerfilUseCase).ejecutar(any());
+    }
+
+    @Test
+    @DisplayName("Da de baja perfil validando permisos y delegando en caso de uso")
+    void darDeBajaPerfilDelega() {
+        controller.darDeBajaPerfil("usr-1");
+
+        verify(validadorPermisos).validarEsPropietario("usr-1");
+        verify(darDeBajaPerfilUseCase).ejecutar("usr-1");
+    }
+
+    @Test
+    @DisplayName("Agrega y quita habilidad validando permisos")
+    void agregarYQuitarHabilidadDelega() {
+        controller.agregarHabilidad("usr-1", "Java");
+        verify(validadorPermisos).validarEsPropietario("usr-1");
+        verify(gestionarHabilidadesUseCase).agregarHabilidad("usr-1", "Java");
+
+        controller.quitarHabilidad("usr-1", "Java");
+        verify(gestionarHabilidadesUseCase).quitarHabilidad("usr-1", "Java");
     }
 
     @Test

@@ -12,11 +12,11 @@
 
     <!-- Orden = regla de dependencias de Clean Architecture (de adentro hacia afuera) -->
     <modules>
-        <module>skillswap-dominio</module>
-        <module>skillswap-aplicacion</module>
-        <module>skillswap-infraestructura</module>
-        <module>skillswap-controllers</module>
-        <module>skillswap-app</module>
+        <module>domain</module>
+        <module>application</module>
+        <module>infrastructure</module>
+        <module>controllers</module>
+        <module>app</module>
     </modules>
 
     <properties>
@@ -40,22 +40,22 @@
         <dependencies>
             <dependency>
                 <groupId>com.uade.skillswap</groupId>
-                <artifactId>skillswap-dominio</artifactId>
+                <artifactId>domain</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.uade.skillswap</groupId>
-                <artifactId>skillswap-aplicacion</artifactId>
+                <artifactId>application</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.uade.skillswap</groupId>
-                <artifactId>skillswap-infraestructura</artifactId>
+                <artifactId>infrastructure</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
                 <groupId>com.uade.skillswap</groupId>
-                <artifactId>skillswap-controllers</artifactId>
+                <artifactId>controllers</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

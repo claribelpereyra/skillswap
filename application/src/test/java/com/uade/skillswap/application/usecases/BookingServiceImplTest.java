@@ -172,7 +172,7 @@ class BookingServiceImplTest {
     }
 
     @Test
-    void acceptRescheduleReservesTheNewSlotAndReleasesThePreviousOne() {
+    void acceptRescheduleReleasesThePreviousSlotBeforeReservingTheNewOne() {
         Booking booking = accepted();
         booking.proposeReschedule(PROVIDER, OTHER_SLOT);
         stored(booking);
@@ -181,8 +181,8 @@ class BookingServiceImplTest {
 
         assertThat(view.slotId()).isEqualTo(2L);
         InOrder order = inOrder(availability);
-        order.verify(availability).reserve(PUBLICATION_ID, 2L);
         order.verify(availability).release(PUBLICATION_ID, 1L);
+        order.verify(availability).reserve(PUBLICATION_ID, 2L);
     }
 
     @Test

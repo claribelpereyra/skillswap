@@ -11,6 +11,7 @@ import com.uade.skillswap.domain.publication.Publication;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Objects;
 
 public class ChangePublicationStatusService implements ChangePublicationStatusUseCase {
 
@@ -19,9 +20,9 @@ public class ChangePublicationStatusService implements ChangePublicationStatusUs
     private final Clock clock;
 
     public ChangePublicationStatusService(PublicationRepository publications, UnitOfWork unitOfWork, Clock clock) {
-        this.publications = publications;
-        this.unitOfWork = unitOfWork;
-        this.clock = clock;
+        this.publications = Objects.requireNonNull(publications);
+        this.unitOfWork = Objects.requireNonNull(unitOfWork);
+        this.clock = Objects.requireNonNull(clock);
     }
 
     // Solo traduce la acción pedida al método del agregado. Si la transición es válida o no,

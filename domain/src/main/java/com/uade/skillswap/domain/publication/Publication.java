@@ -1,6 +1,7 @@
 package com.uade.skillswap.domain.publication;
 
 import com.uade.skillswap.domain.common.BusinessRuleException;
+import com.uade.skillswap.domain.common.PermissionDeniedException;
 import com.uade.skillswap.domain.common.StateHistory;
 import com.uade.skillswap.domain.common.StateTransition;
 import com.uade.skillswap.domain.common.UserId;
@@ -172,6 +173,7 @@ public class Publication {
     }
 
     // Libera la franja y el lugar. Lo usan la cancelación y la reprogramación de una contratación.
+    // Se puede en cualquier estado: si se cancela una contratación de una publicación ya cerrada, el lugar vuelve.
     public void release(TimeSlot slot) {
         TimeSlot own = findSlot(slot)
                 .orElseThrow(() -> new BusinessRuleException("The slot does not belong to the publication"));
@@ -187,7 +189,8 @@ public class Publication {
         if (own.isOccupied()) {
             throw new BusinessRuleException("The slot is already taken");
         }
-        if (availableSpots() == 0) {
+        // <= 0 y no == 0: si la base trae más franjas ocupadas que cupo, igual se bloquea.
+        if (availableSpots() <= 0) {
             throw new BusinessRuleException("The publication has no capacity left");
         }
         return own;
@@ -203,7 +206,7 @@ public class Publication {
 
     private void requireAuthor(UserId actor, String action) {
         if (!authorId.equals(actor)) {
-            throw new BusinessRuleException("Only the author can " + action + " a publication");
+            throw new PermissionDeniedException("Only the author can " + action + " a publication");
         }
     }
 

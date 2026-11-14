@@ -61,7 +61,9 @@ class PublicationQueriesTest {
 
     private long savePublished(UserId author, String title) {
         long id = saveDraft(author, title);
-        repository.findById(id).orElseThrow().publish(author, NOW);
+        Publication publication = repository.findById(id).orElseThrow();
+        publication.publish(author, NOW);
+        repository.save(publication);
         return id;
     }
 
@@ -145,7 +147,7 @@ class PublicationQueriesTest {
     }
 
     @Test
-    void withoutFiltersItSearchesEverythingByRelevanceOnTheFirstPage() {
+    void withOnlyATextItSearchesByRelevanceOnTheFirstPage() {
         SearchCriteria criteria = searchAndCapture(new SearchFilters("mentoring", null, null, null, null, null,
                 null, null, null));
 
@@ -183,7 +185,7 @@ class PublicationQueriesTest {
     }
 
     @Test
-    void theSearchReturnsWhatTheQueryFoundPage() {
+    void theSearchReturnsThePageTheQueryFound() {
         PageRequest page = new PageRequest(0, 1);
         PublicationSummary row = new PublicationSummary(1, "ana", 4.5, PublicationType.MENTORING, "Mock interview",
                 1L, Modality.REMOTE, 100, 1, Set.of("java"), NOW);

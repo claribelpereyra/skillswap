@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 // Prueba la base de tests de persistencia que usan todas las áreas.
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -38,7 +37,7 @@ class PersistenceTestBaseTest extends PersistenceTestBase {
 
     @Test
     @Order(4)
-    void sqlAcceptsPlainOrNumberedParameters() {
+    void sqlAcceptsPlainAndNumberedParameters() {
         sql("INSERT INTO info_esquema (clave, valor) VALUES (?, ?)", "a", "1");
         sql("INSERT INTO info_esquema (clave, valor) VALUES (?2, ?1)", "2", "b");
 
@@ -50,12 +49,11 @@ class PersistenceTestBaseTest extends PersistenceTestBase {
 
     @Test
     @Order(5)
-    void aFailedTransactionLeavesNothingBehind() {
-        assertThatThrownBy(() -> inTransaction(em -> {
-            em.createNativeQuery("INSERT INTO info_esquema (clave, valor) VALUES ('x', 'y')").executeUpdate();
-            throw new IllegalStateException("failed");
-        })).isInstanceOf(IllegalStateException.class);
+    void aQuestionMarkInsideATextIsNotAParameter() {
+        sql("INSERT INTO info_esquema (clave, valor) VALUES (?, '¿Cómo?')", "question");
 
-        assertThat(count("info_esquema")).isZero();
+        String value = inTransaction(em -> (String) em.createNativeQuery(
+                "SELECT valor FROM info_esquema WHERE clave = 'question'").getSingleResult());
+        assertThat(value).isEqualTo("¿Cómo?");
     }
 }

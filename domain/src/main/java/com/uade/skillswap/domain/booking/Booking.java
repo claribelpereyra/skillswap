@@ -12,6 +12,7 @@ import com.uade.skillswap.domain.publication.TimeSlot;
 import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 public class Booking {
 
@@ -25,6 +26,7 @@ public class Booking {
     private final StateHistory<BookingStatus> history;
     private TimeSlot slot;
     private BookingState state;
+    private RescheduleProposal pendingReschedule;
 
     private Booking(long publicationId, UserId clientId, UserId providerId, TimeSlot slot,
                     String message, String goal, SkillCoins price, StateHistory<BookingStatus> history) {
@@ -79,6 +81,18 @@ public class Booking {
         state.cancel(this, actor, reason);
     }
 
+    public void proposeReschedule(UserId actor, TimeSlot newSlot) {
+        state.proposeReschedule(this, actor, newSlot);
+    }
+
+    public void acceptReschedule(UserId actor) {
+        state.acceptReschedule(this, actor);
+    }
+
+    public void rejectReschedule(UserId actor) {
+        state.rejectReschedule(this, actor);
+    }
+
     public void changeState(BookingState next, UserId actor, String reason) {
         history.record(state.getStatus(), next.getStatus(), actor, Instant.now(), reason);
         state = next;
@@ -114,6 +128,53 @@ public class Booking {
     public void prepareCancellation(UserId actor, String reason) {
         requireParticipant(actor, "cancel");
         requireReason(reason, "cancel");
+        discardReschedule();
+    }
+
+    public void registerReschedule(UserId actor, TimeSlot newSlot) {
+        if (newSlot == null) {
+            throw new BusinessRuleException("A new slot is required to reschedule a booking");
+        }
+        if (pendingReschedule != null) {
+            throw new BusinessRuleException("There is already a pending reschedule for this booking");
+        }
+        if (Objects.equals(newSlot.getId(), slot.getId())) {
+            throw new BusinessRuleException("The new slot must be different from the current one");
+        }
+        pendingReschedule = new RescheduleProposal(newSlot, actor);
+    }
+
+    public void acceptPendingReschedule(UserId actor) {
+        RescheduleProposal proposal = requirePendingRescheduleAnsweredBy(actor);
+        slot = proposal.newSlot();
+        recordInCurrentState(actor, "Rescheduled to slot " + slot.getId());
+        pendingReschedule = null;
+    }
+
+    public void rejectPendingReschedule(UserId actor) {
+        RescheduleProposal proposal = requirePendingRescheduleAnsweredBy(actor);
+        recordInCurrentState(actor, "Reschedule to slot " + proposal.newSlot().getId() + " rejected");
+        pendingReschedule = null;
+    }
+
+    public void discardReschedule() {
+        pendingReschedule = null;
+    }
+
+    private RescheduleProposal requirePendingRescheduleAnsweredBy(UserId actor) {
+        if (pendingReschedule == null) {
+            throw new BusinessRuleException("There is no pending reschedule for this booking");
+        }
+        if (pendingReschedule.proposedBy().equals(actor)) {
+            throw new BusinessRuleException("The reschedule must be answered by the other participant");
+        }
+        return pendingReschedule;
+    }
+
+    // La reprogramación no cambia el estado: queda en el historial como transición al mismo estado.
+    private void recordInCurrentState(UserId actor, String reason) {
+        BookingStatus current = state.getStatus();
+        history.record(current, current, actor, Instant.now(), reason);
     }
 
     private static void requireText(String value, String error) {
@@ -160,5 +221,9 @@ public class Booking {
 
     public List<StateTransition<BookingStatus>> getHistory() {
         return history.transitions();
+    }
+
+    public Optional<RescheduleProposal> getPendingReschedule() {
+        return Optional.ofNullable(pendingReschedule);
     }
 }

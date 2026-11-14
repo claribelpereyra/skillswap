@@ -87,6 +87,7 @@ public class BookingControllerImpl implements BookingController {
                 new PageRequest(page, size)));
     }
 
+    private UserId currentUser(String userId, String operation) {
         UserId user = new UserId(userId);
         if (!user.equals(identity.currentUserId())) {
             throw new AccessDeniedException(user, operation);

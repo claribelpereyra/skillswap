@@ -4,13 +4,13 @@ import com.uade.skillswap.application.common.ResourceNotFoundException;
 import com.uade.skillswap.application.ports.in.publication.EditDraftCommand;
 import com.uade.skillswap.application.ports.in.publication.EditDraftUseCase;
 import com.uade.skillswap.application.ports.in.publication.PublicationView;
-import com.uade.skillswap.application.ports.in.publication.SlotInput;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
 import com.uade.skillswap.application.ports.out.publication.PublicationRepository;
 import com.uade.skillswap.domain.publication.Publication;
 import com.uade.skillswap.domain.publication.TimeSlot;
 
 import java.util.List;
+import java.util.Objects;
 
 public class EditDraftService implements EditDraftUseCase {
 
@@ -18,8 +18,8 @@ public class EditDraftService implements EditDraftUseCase {
     private final UnitOfWork unitOfWork;
 
     public EditDraftService(PublicationRepository publications, UnitOfWork unitOfWork) {
-        this.publications = publications;
-        this.unitOfWork = unitOfWork;
+        this.publications = Objects.requireNonNull(publications);
+        this.unitOfWork = Objects.requireNonNull(unitOfWork);
     }
 
     @Override
@@ -45,9 +45,9 @@ public class EditDraftService implements EditDraftUseCase {
             }
         }
         List<TimeSlot> kept = publication.getSlots();
-        for (SlotInput slot : command.slots()) {
-            if (!kept.contains(new TimeSlot(null, slot.startsAt(), slot.endsAt()))) {
-                publication.addSlot(command.actorId(), slot.startsAt(), slot.endsAt());
+        for (TimeSlot slot : wanted) {
+            if (!kept.contains(slot)) {
+                publication.addSlot(command.actorId(), slot.getStartsAt(), slot.getEndsAt());
             }
         }
     }

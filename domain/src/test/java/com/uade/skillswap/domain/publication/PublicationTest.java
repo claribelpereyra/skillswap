@@ -2,6 +2,7 @@ package com.uade.skillswap.domain.publication;
 
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.InvalidTransitionException;
+import com.uade.skillswap.domain.common.PermissionDeniedException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.StateTransition;
 import com.uade.skillswap.domain.common.UserId;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
@@ -66,9 +68,11 @@ class PublicationTest {
         assertThat(PublicationType.CHALLENGE.canBePublishedBy(AccountType.ORGANIZATION)).isTrue();
 
         assertThatThrownBy(() -> Publication.draft(AUTHOR, AccountType.PROFESSIONAL, PublicationType.CHALLENGE,
-                completeDetails(1), NOW)).isInstanceOf(BusinessRuleException.class);
+                completeDetails(1), NOW)).isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("A PROFESSIONAL account cannot publish a CHALLENGE");
         assertThatThrownBy(() -> Publication.draft(AUTHOR, AccountType.ORGANIZATION, PublicationType.MENTORING,
-                completeDetails(1), NOW)).isInstanceOf(BusinessRuleException.class);
+                completeDetails(1), NOW)).isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("A ORGANIZATION account cannot publish a MENTORING");
     }
 
     @Test
@@ -175,8 +179,10 @@ class PublicationTest {
     void cancellingNeedsAReason() {
         Publication publication = published(1, 1);
 
-        assertThatThrownBy(() -> publication.cancel(AUTHOR, " ", NOW)).isInstanceOf(BusinessRuleException.class);
-        assertThatThrownBy(() -> publication.cancel(AUTHOR, null, NOW)).isInstanceOf(BusinessRuleException.class);
+        assertThatThrownBy(() -> publication.cancel(AUTHOR, " ", NOW)).isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("A reason is required to cancel a publication");
+        assertThatThrownBy(() -> publication.cancel(AUTHOR, null, NOW)).isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("A reason is required to cancel a publication");
         assertThat(publication.getStatus()).isEqualTo(PublicationStatus.PUBLISHED);
     }
 
@@ -267,10 +273,14 @@ class PublicationTest {
         Publication publication = draftMentoring(1);
         addSlot(publication, 0);
 
-        assertThatThrownBy(() -> publication.publish(CLIENT, NOW)).isInstanceOf(BusinessRuleException.class);
-        assertThatThrownBy(() -> publication.edit(CLIENT, completeDetails(2))).isInstanceOf(BusinessRuleException.class);
+        assertThatThrownBy(() -> publication.publish(CLIENT, NOW)).isExactlyInstanceOf(PermissionDeniedException.class)
+                .hasMessage("Only the author can publish a publication");
+        assertThatThrownBy(() -> publication.edit(CLIENT, completeDetails(2)))
+                .isExactlyInstanceOf(PermissionDeniedException.class)
+                .hasMessage("Only the author can edit a publication");
         assertThatThrownBy(() -> publication.addSlot(CLIENT, SLOT_START.plusSeconds(86400),
-                SLOT_START.plusSeconds(90000))).isInstanceOf(BusinessRuleException.class);
+                SLOT_START.plusSeconds(90000))).isExactlyInstanceOf(PermissionDeniedException.class)
+                .hasMessage("Only the author can add a slot to a publication");
         assertThat(publication.getStatus()).isEqualTo(PublicationStatus.DRAFT);
     }
 
@@ -295,10 +305,12 @@ class PublicationTest {
         addSlot(publication, 0);
 
         assertThatThrownBy(() -> publication.addSlot(AUTHOR, SLOT_START.plus(Duration.ofMinutes(30)),
-                SLOT_START.plus(Duration.ofMinutes(90)))).isInstanceOf(BusinessRuleException.class);
+                SLOT_START.plus(Duration.ofMinutes(90)))).isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The slot overlaps another slot of the publication");
         TimeSlot foreign = new TimeSlot(null, SLOT_START.plus(Duration.ofDays(5)),
                 SLOT_START.plus(Duration.ofDays(5)).plus(Duration.ofHours(1)));
-        assertThatThrownBy(() -> publication.removeSlot(AUTHOR, foreign)).isInstanceOf(BusinessRuleException.class);
+        assertThatThrownBy(() -> publication.removeSlot(AUTHOR, foreign)).isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The slot does not belong to the publication");
     }
 
     @Test
@@ -329,7 +341,7 @@ class PublicationTest {
         Publication publication = published(1, 1);
         TimeSlot slot = publication.getSlots().get(0);
 
-        publication.checkCanBeRequested(CLIENT, slot);
+        assertThatCode(() -> publication.checkCanBeRequested(CLIENT, slot)).doesNotThrowAnyException();
     }
 
     @Test
@@ -337,19 +349,22 @@ class PublicationTest {
         Publication publication = published(1, 1);
 
         assertThatThrownBy(() -> publication.checkCanBeRequested(AUTHOR, publication.getSlots().get(0)))
-                .isInstanceOf(BusinessRuleException.class);
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The author cannot request their own publication");
     }
 
     @Test
     void aPublicationThatIsNotPublishedDoesNotAcceptRequests() {
         Publication draft = draftMentoring(1);
         TimeSlot slot = addSlot(draft, 0);
-        assertThatThrownBy(() -> draft.checkCanBeRequested(CLIENT, slot)).isInstanceOf(BusinessRuleException.class);
+        assertThatThrownBy(() -> draft.checkCanBeRequested(CLIENT, slot)).isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The publication does not accept requests in state DRAFT");
 
         Publication paused = published(1, 1);
         paused.pause(AUTHOR, NOW);
         assertThatThrownBy(() -> paused.checkCanBeRequested(CLIENT, paused.getSlots().get(0)))
-                .isInstanceOf(BusinessRuleException.class);
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The publication does not accept requests in state PAUSED");
     }
 
     // --- Cupo ---
@@ -372,7 +387,8 @@ class PublicationTest {
         TimeSlot slot = publication.getSlots().get(0);
         publication.reserve(slot);
 
-        assertThatThrownBy(() -> publication.reserve(slot)).isInstanceOf(BusinessRuleException.class);
+        assertThatThrownBy(() -> publication.reserve(slot)).isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The slot is already taken");
         assertThatThrownBy(() -> publication.checkCanBeRequested(CLIENT, slot))
                 .isInstanceOf(BusinessRuleException.class);
     }
@@ -399,7 +415,8 @@ class PublicationTest {
 
         assertThat(slot.isOccupied()).isFalse();
         assertThat(publication.availableSpots()).isEqualTo(1);
-        assertThatThrownBy(() -> publication.release(slot)).isInstanceOf(BusinessRuleException.class);
+        assertThatThrownBy(() -> publication.release(slot)).isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The slot is not occupied");
     }
 
     @Test
@@ -422,7 +439,60 @@ class PublicationTest {
 
         Publication closed = published(1, 1);
         closed.close(AUTHOR, NOW);
-        assertThatThrownBy(() -> closed.reserve(closed.getSlots().get(0))).isInstanceOf(BusinessRuleException.class);
+        assertThatThrownBy(() -> closed.reserve(closed.getSlots().get(0))).isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The publication does not allow reservations in state CLOSED");
+    }
+
+    @Test
+    void aClosedPublicationStillReleasesASpot() {
+        Publication publication = published(1, 1);
+        TimeSlot slot = publication.getSlots().get(0);
+        publication.reserve(slot);
+        publication.close(AUTHOR, NOW);
+
+        publication.release(slot);
+
+        assertThat(slot.isOccupied()).isFalse();
+    }
+
+    @Test
+    void moreOccupiedSlotsThanCapacityStillBlockReservations() {
+        List<StateTransition<PublicationStatus>> history = List.of(
+                new StateTransition<>(null, PublicationStatus.DRAFT, AUTHOR, NOW, null),
+                new StateTransition<>(PublicationStatus.DRAFT, PublicationStatus.PUBLISHED, AUTHOR, NOW, null));
+        Instant day = SLOT_START;
+        Publication inconsistent = Publication.restore(1L, AUTHOR, PublicationType.MENTORING, completeDetails(1),
+                List.of(new TimeSlot(1L, day, day.plusSeconds(3600), true),
+                        new TimeSlot(2L, day.plusSeconds(7200), day.plusSeconds(10800), true),
+                        new TimeSlot(3L, day.plusSeconds(14400), day.plusSeconds(18000))), history);
+
+        assertThat(inconsistent.availableSpots()).isEqualTo(-1);
+        assertThatThrownBy(() -> inconsistent.reserve(inconsistent.getSlots().get(2)))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The publication has no capacity left");
+    }
+
+    // --- Datos de la publicación ---
+
+    @Test
+    void theTagsAreTrimmedLowercasedAndDeduplicated() {
+        PublicationDetails details = new PublicationDetails("t", null, 1L, Modality.REMOTE, null, 1, SkillCoins.ZERO,
+                Set.of(" Java ", "java", "SPRING", " "));
+
+        assertThat(details.tags()).containsExactlyInAnyOrder("java", "spring");
+    }
+
+    @Test
+    void textsLongerThanWhatTheDatabaseStoresAreRejected() {
+        assertThatThrownBy(() -> new PublicationDetails("x".repeat(151), null, 1L, Modality.REMOTE, null, 1,
+                SkillCoins.ZERO, null)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The title cannot be longer than 150 characters");
+        assertThatThrownBy(() -> new PublicationDetails("t", "x".repeat(2001), 1L, Modality.REMOTE, null, 1,
+                SkillCoins.ZERO, null)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The description cannot be longer than 2000 characters");
+        assertThatThrownBy(() -> new PublicationDetails("t", null, 1L, Modality.REMOTE, null, 1, SkillCoins.ZERO,
+                Set.of("x".repeat(51)))).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The tag cannot be longer than 50 characters");
     }
 
     // --- Reconstrucción ---

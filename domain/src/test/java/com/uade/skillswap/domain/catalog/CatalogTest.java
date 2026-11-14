@@ -16,8 +16,6 @@ class CatalogTest {
     // │       └── MySQL
     // └── Frontend
     //     └── React
-    // Diseño
-    // └── Fotografía
     private Category technology;
     private Category backend;
     private Category databases;
@@ -72,22 +70,40 @@ class CatalogTest {
 
     @Test
     void aCategoryCannotContainItselfNorAnAncestor() {
-        assertThatThrownBy(() -> technology.add(technology)).isInstanceOf(BusinessRuleException.class);
-        assertThatThrownBy(() -> databases.add(technology)).isInstanceOf(BusinessRuleException.class);
+        assertThatThrownBy(() -> technology.add(technology)).isInstanceOf(BusinessRuleException.class)
+                .hasMessage("A category cannot contain itself");
+        assertThatThrownBy(() -> databases.add(technology)).isInstanceOf(BusinessRuleException.class)
+                .hasMessage("A category cannot contain itself");
     }
 
     @Test
     void anItemCannotBeAddedTwiceToTheSameTree() {
         assertThatThrownBy(() -> technology.add(new Skill(11, "MySQL 8")))
-                .isInstanceOf(BusinessRuleException.class);
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("already contains");
         assertThatThrownBy(() -> technology.add(new Category(99, "Otra").add(new Skill(10, "Java 17"))))
-                .isInstanceOf(BusinessRuleException.class);
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("already contains");
+    }
+
+    @Test
+    void anItemOfAnotherBranchCannotBeAddedAgain() {
+        assertThatThrownBy(() -> backend.add(react))
+                .isInstanceOf(BusinessRuleException.class).hasMessage("React already belongs to Frontend");
+        assertThatThrownBy(() -> backend.add(new Skill(12, "React JS")))
+                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("already contains");
+        assertThat(technology.skills()).containsExactly(java, mysql, react);
+    }
+
+    @Test
+    void eachItemKnowsItsParent() {
+        assertThat(mysql.getParent()).isEqualTo(databases);
+        assertThat(databases.getParent()).isEqualTo(backend);
+        assertThat(technology.getParent()).isNull();
     }
 
     @Test
     void twoSiblingsCannotHaveTheSameName() {
         assertThatThrownBy(() -> backend.add(new Skill(20, " java ")))
-                .isInstanceOf(BusinessRuleException.class);
+                .isInstanceOf(BusinessRuleException.class).hasMessage("There is already an item named java in Backend");
     }
 
     @Test

@@ -18,12 +18,17 @@ public final class Category extends CatalogItem {
         super(id, name);
     }
 
+    // Las reglas se controlan contra el árbol entero (desde la raíz), no solo contra esta rama:
+    // así no depende de quién arme el catálogo que un ítem no aparezca en dos ramas.
     public Category add(CatalogItem child) {
         if (child == this || child.includes(getId())) {
             throw new BusinessRuleException("A category cannot contain itself");
         }
+        if (child.getParent() != null) {
+            throw new BusinessRuleException(child.getName() + " already belongs to " + child.getParent().getName());
+        }
         Set<Long> repeated = new HashSet<>(child.idsInSubtree());
-        repeated.retainAll(idsInSubtree());
+        repeated.retainAll(root().idsInSubtree());
         if (!repeated.isEmpty()) {
             throw new BusinessRuleException("The catalog already contains the items " + repeated);
         }
@@ -31,7 +36,16 @@ public final class Category extends CatalogItem {
             throw new BusinessRuleException("There is already an item named " + child.getName() + " in " + getName());
         }
         children.add(child);
+        child.attachTo(this);
         return this;
+    }
+
+    private Category root() {
+        Category root = this;
+        while (root.getParent() != null) {
+            root = root.getParent();
+        }
+        return root;
     }
 
     public List<CatalogItem> getChildren() {

@@ -8,6 +8,7 @@ import com.uade.skillswap.application.dto.BookingHistoryEntry;
 import com.uade.skillswap.application.dto.BookingView;
 import com.uade.skillswap.application.dto.RequestBookingCommand;
 import com.uade.skillswap.application.ports.in.BookingService;
+import com.uade.skillswap.application.ports.out.IdentityService;
 import com.uade.skillswap.controllers.ControllerResult;
 import com.uade.skillswap.controllers.ControllerResult.ErrorType;
 import com.uade.skillswap.domain.booking.BookingStatus;
@@ -37,15 +38,18 @@ class BookingControllerImplTest {
 
     private BookingService service;
     private BookingControllerImpl controller;
+    private UserId loggedUser;
 
     @BeforeEach
     void setUp() {
         service = mock(BookingService.class);
-        controller = new BookingControllerImpl(service);
+        IdentityService identity = () -> loggedUser;
+        controller = new BookingControllerImpl(service, identity);
     }
 
     @Test
     void requestConvertsTheInputAndReturnsTheBooking() {
+        loggedAs(ANA);
         when(service.request(new RequestBookingCommand(ANA, 10L, 1L, "Hola", "Entrevista"))).thenReturn(VIEW);
 
         ControllerResult<BookingView> result = controller.request("ana", 10L, 1L, "Hola", "Entrevista");
@@ -65,15 +69,20 @@ class BookingControllerImplTest {
         when(service.acceptReschedule(99L, ANA)).thenReturn(VIEW);
         when(service.rejectReschedule(99L, ANA)).thenReturn(VIEW);
 
-        assertThat(List.of(
+        loggedAs(BRUNO);
+        List<ControllerResult<BookingView>> asProvider = List.of(
                 controller.accept("bruno", 99L),
                 controller.reject("bruno", 99L, "No"),
                 controller.start("bruno", 99L),
+                controller.proposeReschedule("bruno", 99L, 2L));
+        loggedAs(ANA);
+        List<ControllerResult<BookingView>> asClient = List.of(
                 controller.complete("ana", 99L),
-                controller.proposeReschedule("bruno", 99L, 2L),
                 controller.acceptReschedule("ana", 99L),
-                controller.rejectReschedule("ana", 99L)))
-                .allSatisfy(result -> assertThat(result.getData()).isEqualTo(VIEW));
+                controller.rejectReschedule("ana", 99L));
+
+        assertThat(asProvider).allSatisfy(result -> assertThat(result.getData()).isEqualTo(VIEW));
+        assertThat(asClient).allSatisfy(result -> assertThat(result.getData()).isEqualTo(VIEW));
     }
 
     @Test
@@ -81,7 +90,9 @@ class BookingControllerImplTest {
         when(service.accept(99L, ANA)).thenThrow(new BusinessRuleException("Only the provider can accept a booking"));
         when(service.start(99L, BRUNO)).thenThrow(new InvalidTransitionException(BookingStatus.PENDING, "start"));
 
+        loggedAs(ANA);
         ControllerResult<BookingView> notTheProvider = controller.accept("ana", 99L);
+        loggedAs(BRUNO);
         ControllerResult<BookingView> wrongState = controller.start("bruno", 99L);
 
         assertThat(notTheProvider.isSuccess()).isFalse();
@@ -96,12 +107,28 @@ class BookingControllerImplTest {
         when(service.history(99L, ANA)).thenThrow(new AccessDeniedException(ANA, "view the history"));
         when(service.accept(7L, BRUNO)).thenThrow(new ResourceNotFoundException("Booking", 7L));
 
+        loggedAs(ANA);
         assertThat(controller.history("ana", 99L).getErrorType()).isEqualTo(ErrorType.ACCESS_DENIED);
+        loggedAs(BRUNO);
         assertThat(controller.accept("bruno", 7L).getErrorType()).isEqualTo(ErrorType.NOT_FOUND);
     }
 
     @Test
+    void theUserMustBeTheLoggedOneBeforeCallingTheService() {
+        loggedAs(ANA);
+
+        ControllerResult<BookingView> asSomeoneElse = controller.accept("bruno", 99L);
+        ControllerResult<Page<BookingView>> listAsSomeoneElse = controller.listAsClient("bruno", 0, 10);
+
+        assertThat(asSomeoneElse.getErrorType()).isEqualTo(ErrorType.ACCESS_DENIED);
+        assertThat(asSomeoneElse.getMessage()).isEqualTo("User bruno is not allowed to accept a booking");
+        assertThat(listAsSomeoneElse.getErrorType()).isEqualTo(ErrorType.ACCESS_DENIED);
+        verifyNoInteractions(service);
+    }
+
+    @Test
     void invalidInputIsRejectedBeforeCallingTheService() {
+        loggedAs(ANA);
         ControllerResult<BookingView> blankUser = controller.accept(" ", 99L);
         ControllerResult<Page<BookingView>> badPage = controller.listAsClient("ana", -1, 20);
 
@@ -112,6 +139,7 @@ class BookingControllerImplTest {
 
     @Test
     void anUnexpectedErrorDoesNotShowTechnicalDetails() {
+        loggedAs(ANA);
         when(service.complete(99L, ANA)).thenThrow(new IllegalStateException("Connection to localhost:3306 refused"));
 
         ControllerResult<BookingView> result = controller.complete("ana", 99L);
@@ -122,6 +150,7 @@ class BookingControllerImplTest {
 
     @Test
     void historyAndListsReturnTheServiceData() {
+        loggedAs(ANA);
         BookingHistoryEntry created = new BookingHistoryEntry(null, BookingStatus.PENDING, "ana", Instant.now(), null);
         PageRequest page = new PageRequest(0, 10);
         when(service.history(99L, ANA)).thenReturn(List.of(created));
@@ -132,5 +161,9 @@ class BookingControllerImplTest {
         assertThat(controller.listAsClient("ana", 0, 10).getData().items()).containsExactly(VIEW);
         assertThat(controller.listAsProvider("ana", 0, 10).getData().items()).isEmpty();
         verify(service).listAsProvider(ANA, page);
+    }
+
+    private void loggedAs(UserId user) {
+        loggedUser = user;
     }
 }

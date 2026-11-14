@@ -4,6 +4,7 @@ import com.uade.skillswap.application.common.AccessDeniedException;
 import com.uade.skillswap.application.common.ResourceNotFoundException;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.InvalidTransitionException;
+import com.uade.skillswap.domain.common.PermissionDeniedException;
 import com.uade.skillswap.domain.common.UserId;
 
 import java.util.Locale;
@@ -16,15 +17,20 @@ public final class ControllerSupport {
     }
 
     // Corre la operación y traduce cualquier error de aplicación al mismo formato.
-    // El orden importa: InvalidTransitionException es una BusinessRuleException más específica.
+    // El orden importa: PermissionDeniedException e InvalidTransitionException son BusinessRuleException
+    // más específicas, así que van antes.
     public static <T> Result<T> handle(Supplier<T> operation) {
         try {
             return Result.ok(operation.get());
-        } catch (InvalidInputException | IllegalArgumentException | NullPointerException e) {
+        } catch (InvalidInputException | IllegalArgumentException e) {
+            // Los nulos que pueden venir de la UI se validan antes con InvalidInputException. Un
+            // NullPointerException es un bug interno: cae en UNEXPECTED y no se muestra el detalle.
             return Result.fail(ErrorCode.INVALID_INPUT, e.getMessage());
         } catch (ResourceNotFoundException e) {
             return Result.fail(ErrorCode.NOT_FOUND, e.getMessage());
         } catch (AccessDeniedException e) {
+            return Result.fail(ErrorCode.FORBIDDEN, e.getMessage());
+        } catch (PermissionDeniedException e) {
             return Result.fail(ErrorCode.FORBIDDEN, e.getMessage());
         } catch (InvalidTransitionException e) {
             return Result.fail(ErrorCode.INVALID_TRANSITION, e.getMessage());

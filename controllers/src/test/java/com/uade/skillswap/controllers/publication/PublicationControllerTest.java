@@ -19,6 +19,7 @@ import com.uade.skillswap.controllers.common.ErrorCode;
 import com.uade.skillswap.controllers.common.Result;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.InvalidTransitionException;
+import com.uade.skillswap.domain.common.PermissionDeniedException;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.Modality;
 import com.uade.skillswap.domain.publication.PublicationStatus;
@@ -53,8 +54,8 @@ class PublicationControllerTest {
     private final SearchPublicationsUseCase search = mock(SearchPublicationsUseCase.class);
 
     private final PublicationController controller =
-            new PublicationController(createDraft, editDraft, changeStatus, getPublication, listMine);
-    private final SearchController searchController = new SearchController(search);
+            new PublicationControllerImpl(createDraft, editDraft, changeStatus, getPublication, listMine);
+    private final SearchController searchController = new SearchControllerImpl(search);
 
     private static PublicationForm form(String type, String modality) {
         return new PublicationForm(type, "Mock interview", "Practice", 1L, modality, 60, 2, 100L, Set.of("java"),
@@ -100,6 +101,21 @@ class PublicationControllerTest {
     }
 
     @Test
+    void missingFormsOrSlotsAreInvalidInputAndABugIsUnexpected() {
+        assertThat(controller.createDraft("ana", null).error().code()).isEqualTo(ErrorCode.INVALID_INPUT);
+        assertThat(searchController.search(null).error().code()).isEqualTo(ErrorCode.INVALID_INPUT);
+        PublicationForm brokenSlot = new PublicationForm("MENTORING", "t", null, 1L, "REMOTE", null, 1, 10L, null,
+                List.of(new PublicationForm.SlotForm(MONDAY, null)));
+        assertThat(controller.createDraft("ana", brokenSlot).error().code()).isEqualTo(ErrorCode.INVALID_INPUT);
+
+        when(getPublication.get(any(), org.mockito.ArgumentMatchers.anyLong()))
+                .thenThrow(new NullPointerException("Cannot invoke \"String.length()\" because \"title\" is null"));
+        Result<PublicationView> bug = controller.getDetail("ana", 1);
+        assertThat(bug.error().code()).isEqualTo(ErrorCode.UNEXPECTED);
+        assertThat(bug.error().message()).doesNotContain("Cannot invoke");
+    }
+
+    @Test
     void aNegativePriceIsInvalidInput() {
         PublicationForm negative = new PublicationForm("MENTORING", "t", null, 1L, "REMOTE", null, 1, -5L, null, null);
 
@@ -123,12 +139,15 @@ class PublicationControllerTest {
     void everyApplicationErrorIsTranslatedTheSameWay() {
         when(changeStatus.changeStatus(any()))
                 .thenThrow(new InvalidTransitionException(PublicationStatus.CLOSED, "publish"))
-                .thenThrow(new BusinessRuleException("Only the author can publish a publication"))
+                .thenThrow(new PermissionDeniedException("Only the author can publish a publication"))
+                .thenThrow(new BusinessRuleException("The publication cannot be published, missing: title"))
                 .thenThrow(new ResourceNotFoundException("Publication", 7))
                 .thenThrow(new IllegalStateException("database is down"));
 
         assertThat(controller.changeStatus("ana", 7, "PUBLISH", null).error().code())
                 .isEqualTo(ErrorCode.INVALID_TRANSITION);
+        assertThat(controller.changeStatus("ana", 7, "PUBLISH", null).error().code())
+                .isEqualTo(ErrorCode.FORBIDDEN);
         assertThat(controller.changeStatus("ana", 7, "PUBLISH", null).error().code())
                 .isEqualTo(ErrorCode.BUSINESS_RULE);
         assertThat(controller.changeStatus("ana", 7, "PUBLISH", null).error().code())

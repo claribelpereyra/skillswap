@@ -14,15 +14,17 @@ import com.uade.skillswap.application.usecases.publication.SearchPublicationsSer
 import com.uade.skillswap.controllers.common.ErrorCode;
 import com.uade.skillswap.controllers.common.Result;
 import com.uade.skillswap.controllers.publication.PublicationController;
+import com.uade.skillswap.controllers.publication.PublicationControllerImpl;
 import com.uade.skillswap.controllers.publication.PublicationForm;
 import com.uade.skillswap.controllers.publication.SearchController;
+import com.uade.skillswap.controllers.publication.SearchControllerImpl;
 import com.uade.skillswap.controllers.publication.SearchForm;
 import com.uade.skillswap.domain.profile.AccountType;
 import com.uade.skillswap.domain.publication.PublicationStatus;
 import com.uade.skillswap.infrastructure.persistence.EntityManagerContext;
 import com.uade.skillswap.infrastructure.persistence.JpaUnitOfWork;
 import com.uade.skillswap.infrastructure.persistence.PersistenceConfiguration;
-import com.uade.skillswap.infrastructure.persistence.publication.JpaCategoryTree;
+import com.uade.skillswap.infrastructure.persistence.catalog.JpaCategoryTree;
 import com.uade.skillswap.infrastructure.persistence.publication.JpaPublicationRepository;
 import com.uade.skillswap.infrastructure.persistence.publication.JpaPublicationSearchQuery;
 import org.junit.jupiter.api.AfterAll;
@@ -63,7 +65,8 @@ class PublicationIntegrationTest {
             // Tabla de perfiles del área de Andy (ver JpaPublicationSearchQuery); se crea si su migración no está.
             em.createNativeQuery("CREATE TABLE IF NOT EXISTS perfiles (id BIGINT AUTO_INCREMENT PRIMARY KEY,"
                     + " user_id VARCHAR(100) NOT NULL, nombre_visible VARCHAR(150) NOT NULL,"
-                    + " tipo_cuenta VARCHAR(30) NOT NULL, reputacion DECIMAL(3, 2) NOT NULL DEFAULT 0.00)")
+                    + " tipo_cuenta VARCHAR(30) NOT NULL, reputacion DECIMAL(3, 2) NOT NULL DEFAULT 0.00,"
+                    + " activo BOOLEAN NOT NULL DEFAULT TRUE)")
                     .executeUpdate();
             em.createNativeQuery("INSERT INTO perfiles (user_id, nombre_visible, tipo_cuenta, reputacion)"
                     + " VALUES ('ana', 'Ana', 'PROFESIONAL', 4.50)").executeUpdate();
@@ -74,13 +77,13 @@ class PublicationIntegrationTest {
         Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
         JpaPublicationRepository repository = new JpaPublicationRepository();
 
-        publications = new PublicationController(
+        publications = new PublicationControllerImpl(
                 new CreateDraftService(repository, profiles, unitOfWork, clock),
                 new EditDraftService(repository, unitOfWork),
                 new ChangePublicationStatusService(repository, unitOfWork, clock),
                 new GetPublicationService(repository),
                 new ListMyPublicationsService(repository));
-        search = new SearchController(new SearchPublicationsService(new JpaPublicationSearchQuery(),
+        search = new SearchControllerImpl(new SearchPublicationsService(new JpaPublicationSearchQuery(),
                 new JpaCategoryTree()));
     }
 
@@ -145,7 +148,7 @@ class PublicationIntegrationTest {
         assertThat(publications.changeStatus("ana", id, "RESUME", null).error().code())
                 .isEqualTo(ErrorCode.INVALID_TRANSITION);
         assertThat(publications.changeStatus("bruno", id, "PUBLISH", null).error().code())
-                .isEqualTo(ErrorCode.BUSINESS_RULE);
+                .isEqualTo(ErrorCode.FORBIDDEN);
         assertThat(publications.getDetail("bruno", id).error().code()).isEqualTo(ErrorCode.NOT_FOUND);
         assertThat(publications.listMine("ana", "DRAFT", 0, 20).value().items())
                 .extracting(PublicationView::id).contains(id);

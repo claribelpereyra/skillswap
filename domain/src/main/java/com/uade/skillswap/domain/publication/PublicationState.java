@@ -43,7 +43,7 @@ abstract class PublicationState {
         return false;
     }
 
-    // Admite ocupar o liberar lugares de solicitudes ya hechas.
+    // Admite ocupar lugares para solicitudes ya hechas. Liberar se permite siempre (ver Publication#release).
     boolean allowsReservations() {
         return false;
     }

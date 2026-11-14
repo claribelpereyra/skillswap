@@ -15,7 +15,7 @@ public class ListMyPublicationsService implements ListMyPublicationsUseCase {
     private final PublicationRepository publications;
 
     public ListMyPublicationsService(PublicationRepository publications) {
-        this.publications = publications;
+        this.publications = Objects.requireNonNull(publications);
     }
 
     @Override

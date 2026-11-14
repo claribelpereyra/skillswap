@@ -12,6 +12,7 @@ public abstract class CatalogItem {
 
     private final long id;
     private final String name;
+    private Category parent;
 
     protected CatalogItem(long id, String name) {
         if (name == null || name.isBlank()) {
@@ -33,6 +34,15 @@ public abstract class CatalogItem {
 
     public boolean includes(long id) {
         return find(id).isPresent();
+    }
+
+    // Categoría que lo contiene; null si es una raíz. Solo la asigna Category#add.
+    public Category getParent() {
+        return parent;
+    }
+
+    void attachTo(Category newParent) {
+        this.parent = newParent;
     }
 
     public long getId() {

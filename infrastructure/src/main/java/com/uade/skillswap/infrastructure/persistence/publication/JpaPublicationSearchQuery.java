@@ -33,10 +33,12 @@ import java.util.Set;
 // de publicaciones, y porque el puntaje de relevancia es una expresión CASE.
 public class JpaPublicationSearchQuery implements PublicationSearchQuery {
 
-    // Tabla y columnas de reputación del área de perfiles (Andy). Si cambian de nombre, se cambia solo acá.
+    // Tabla y columnas del área de perfiles (Andy, migración V2__perfiles_y_calificaciones). Si cambian de
+    // nombre, se cambia solo acá. Esa migración tiene que estar en develop antes que esta búsqueda.
     static final String PROFILES_TABLE = "perfiles";
     static final String PROFILE_USER_ID = "user_id";
     static final String PROFILE_REPUTATION = "reputacion";
+    static final String PROFILE_ACTIVE = "activo";
 
     private static final String REPUTATION = "COALESCE(prof." + PROFILE_REPUTATION + ", 0)";
     private static final String TAG_MATCHES_TEXT = "EXISTS (SELECT 1 FROM publication_tags tt "
@@ -93,7 +95,9 @@ public class JpaPublicationSearchQuery implements PublicationSearchQuery {
     }
 
     private static String where(SearchCriteria criteria, Map<String, Object> parameters) {
-        StringBuilder where = new StringBuilder(" WHERE pub.status = 'PUBLISHED'");
+        // Baja lógica: las publicaciones de un perfil dado de baja no se muestran (sin perfil, se muestran).
+        StringBuilder where = new StringBuilder(" WHERE pub.status = 'PUBLISHED'"
+                + " AND (prof." + PROFILE_ACTIVE + " IS NULL OR prof." + PROFILE_ACTIVE + " = TRUE)");
         if (criteria.text() != null) {
             where.append(" AND (LOWER(pub.title) LIKE :text ESCAPE '!' OR LOWER(pub.description) LIKE :text ESCAPE '!'"
                     + " OR ").append(TAG_MATCHES_TEXT).append(")");

@@ -11,6 +11,7 @@ import com.uade.skillswap.application.ports.out.publication.PublicationSearchQue
 import com.uade.skillswap.application.ports.out.publication.SearchCriteria;
 
 import java.util.Locale;
+import java.util.Objects;
 import java.util.Set;
 
 public class SearchPublicationsService implements SearchPublicationsUseCase {
@@ -19,8 +20,8 @@ public class SearchPublicationsService implements SearchPublicationsUseCase {
     private final CategoryTree categories;
 
     public SearchPublicationsService(PublicationSearchQuery searchQuery, CategoryTree categories) {
-        this.searchQuery = searchQuery;
-        this.categories = categories;
+        this.searchQuery = Objects.requireNonNull(searchQuery);
+        this.categories = Objects.requireNonNull(categories);
     }
 
     // Normaliza los filtros y delega la consulta. La consulta filtra y ordena en la base

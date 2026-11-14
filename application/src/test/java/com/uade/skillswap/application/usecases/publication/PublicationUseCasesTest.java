@@ -11,6 +11,7 @@ import com.uade.skillswap.application.ports.out.UnitOfWork;
 import com.uade.skillswap.application.ports.out.publication.AuthorProfileQuery;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.InvalidTransitionException;
+import com.uade.skillswap.domain.common.PermissionDeniedException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.profile.AccountType;
@@ -109,7 +110,8 @@ class PublicationUseCasesTest {
         CreateDraftCommand command = new CreateDraftCommand(AUTHOR, PublicationType.CHALLENGE, mentoring(1),
                 List.of());
 
-        assertThatThrownBy(() -> createDraft.createDraft(command)).isInstanceOf(BusinessRuleException.class);
+        assertThatThrownBy(() -> createDraft.createDraft(command)).isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("A PROFESSIONAL account cannot publish a CHALLENGE");
         assertThat(repository.saves).isZero();
     }
 
@@ -117,7 +119,9 @@ class PublicationUseCasesTest {
     void overlappingSlotsAreRejectedAndNothingIsSaved() {
         SlotInput overlapping = new SlotInput(MONDAY.plus(Duration.ofMinutes(30)), MONDAY.plus(Duration.ofHours(2)));
 
-        assertThatThrownBy(() -> draftWithSlots(MONDAY_SLOT, overlapping)).isInstanceOf(BusinessRuleException.class);
+        assertThatThrownBy(() -> draftWithSlots(MONDAY_SLOT, overlapping))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The slot overlaps another slot of the publication");
         assertThat(repository.saves).isZero();
     }
 
@@ -142,8 +146,27 @@ class PublicationUseCasesTest {
         long id = draftWithSlots(MONDAY_SLOT).id();
 
         assertThatThrownBy(() -> editDraft.editDraft(new EditDraftCommand(OTHER, id, mentoring(2), List.of())))
-                .isInstanceOf(BusinessRuleException.class);
+                .isExactlyInstanceOf(PermissionDeniedException.class)
+                .hasMessage("Only the author can edit a publication");
         assertThat(repository.findById(id).orElseThrow().getDetails().capacity()).isEqualTo(1);
+    }
+
+    // Si la edición falla a mitad de camino, no queda nada a medias: ni el cupo nuevo ni franjas sueltas.
+    @Test
+    void anEditWithOverlappingSlotsChangesNothing() {
+        long id = draftWithSlots(MONDAY_SLOT).id();
+        int savesBefore = repository.saves;
+        SlotInput overlapping = new SlotInput(TUESDAY_SLOT.startsAt().plus(Duration.ofMinutes(30)),
+                TUESDAY_SLOT.endsAt().plus(Duration.ofMinutes(30)));
+
+        assertThatThrownBy(() -> editDraft.editDraft(new EditDraftCommand(AUTHOR, id, mentoring(3),
+                List.of(MONDAY_SLOT, TUESDAY_SLOT, overlapping))))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The slot overlaps another slot of the publication");
+
+        assertThat(repository.saves).isEqualTo(savesBefore);
+        assertThat(repository.findById(id).orElseThrow().getDetails().capacity()).isEqualTo(1);
+        assertThat(repository.findById(id).orElseThrow().getSlots()).hasSize(1);
     }
 
     @Test
@@ -217,7 +240,8 @@ class PublicationUseCasesTest {
         long id = draftWithSlots(MONDAY_SLOT).id();
 
         assertThatThrownBy(() -> change(OTHER, id, PublicationAction.PUBLISH, null))
-                .isInstanceOf(BusinessRuleException.class);
+                .isExactlyInstanceOf(PermissionDeniedException.class)
+                .hasMessage("Only the author can publish a publication");
         assertThat(repository.findById(id).orElseThrow().getStatus()).isEqualTo(PublicationStatus.DRAFT);
     }
 

@@ -12,6 +12,7 @@ import com.uade.skillswap.domain.profile.AccountType;
 import com.uade.skillswap.domain.publication.Publication;
 
 import java.time.Clock;
+import java.util.Objects;
 
 public class CreateDraftService implements CreateDraftUseCase {
 
@@ -22,10 +23,10 @@ public class CreateDraftService implements CreateDraftUseCase {
 
     public CreateDraftService(PublicationRepository publications, AuthorProfileQuery profiles,
                               UnitOfWork unitOfWork, Clock clock) {
-        this.publications = publications;
-        this.profiles = profiles;
-        this.unitOfWork = unitOfWork;
-        this.clock = clock;
+        this.publications = Objects.requireNonNull(publications);
+        this.profiles = Objects.requireNonNull(profiles);
+        this.unitOfWork = Objects.requireNonNull(unitOfWork);
+        this.clock = Objects.requireNonNull(clock);
     }
 
     @Override

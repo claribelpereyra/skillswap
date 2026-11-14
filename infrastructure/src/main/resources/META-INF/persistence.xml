@@ -10,6 +10,8 @@
         <!-- Listar acá cada entidad JPA a medida que se creen, por ejemplo:
         <class>com.uade.skillswap.infrastructure.persistence.PublicationJpaEntity</class>
         -->
+        <class>com.uade.skillswap.infrastructure.persistence.booking.BookingJpaEntity</class>
+        <class>com.uade.skillswap.infrastructure.persistence.booking.BookingTransitionJpaEntity</class>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
 
         <properties>

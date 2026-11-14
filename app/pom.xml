@@ -23,5 +23,12 @@
             <groupId>com.uade.skillswap</groupId>
             <artifactId>infrastructure</artifactId>
         </dependency>
+
+        <!-- Tests de integración (controller -> caso de uso -> persistencia) contra H2 -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 </project>

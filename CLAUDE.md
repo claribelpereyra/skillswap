@@ -18,10 +18,10 @@ El enunciado completo está en `docs/enunciado/TP_PDS_SkillSwap.pdf`. Ante cualq
 ```bash
 docker compose up -d                       # MySQL local (localhost:3306, db/user/pass: skillswap)
 mvn verify                                 # compila, tests y reporte de cobertura
-mvn -pl skillswap-dominio test             # tests de un solo módulo
+mvn -pl domain test                        # tests de un solo módulo
 ```
 
-La app se corre con `com.uade.skillswap.app.Main` (módulo `skillswap-app`); al arrancar aplica las migraciones. Conexión por variables `SKILLSWAP_DB_URL`, `SKILLSWAP_DB_USER`, `SKILLSWAP_DB_PASSWORD`.
+La app se corre con `com.uade.skillswap.app.Main` (módulo `app`); al arrancar aplica las migraciones. Conexión por variables `SKILLSWAP_DB_URL`, `SKILLSWAP_DB_USER`, `SKILLSWAP_DB_PASSWORD`.
 
 ## Arquitectura (Clean Architecture, obligatoria)
 
@@ -29,19 +29,19 @@ Cada capa es un módulo Maven. Las dependencias solo apuntan hacia adentro y est
 
 | Módulo | Paquete base | Contiene | Depende de |
 | --- | --- | --- | --- |
-| `skillswap-dominio` | `com.uade.skillswap.dominio` | Entidades, value objects, reglas, políticas, estados, eventos | nada |
-| `skillswap-aplicacion` | `com.uade.skillswap.aplicacion` | Casos de uso, puertos de entrada (`puertos.entrada`) y salida (`puertos.salida`), límites transaccionales | dominio |
-| `skillswap-infraestructura` | `com.uade.skillswap.infraestructura` | Entidades JPA, repositorios, mappers, Flyway, adaptadores mock (identidad, email, push, pasarela de SkillCoins) | aplicación |
-| `skillswap-controllers` | `com.uade.skillswap.controllers` | Controllers delgados que validan entrada y delegan en puertos de entrada | aplicación |
-| `skillswap-app` | `com.uade.skillswap.app` | Mock UI Kit + `Main` (composition root: único lugar donde se instancian implementaciones concretas) | controllers, infraestructura |
+| `domain` | `com.uade.skillswap.domain` | Entidades, value objects, reglas, políticas, estados, eventos | nada |
+| `application` | `com.uade.skillswap.application` | Casos de uso, puertos de entrada (`ports.in`) y salida (`ports.out`), límites transaccionales | domain |
+| `infrastructure` | `com.uade.skillswap.infrastructure` | Entidades JPA, repositorios, mappers, Flyway, adaptadores mock (identidad, email, push, pasarela de SkillCoins) | application |
+| `controllers` | `com.uade.skillswap.controllers` | Controllers delgados que validan entrada y delegan en puertos de entrada | application |
+| `app` | `com.uade.skillswap.app` | Mock UI Kit + `Main` (composition root: único lugar donde se instancian implementaciones concretas) | controllers, infrastructure |
 
 Reglas que no se negocian:
 
-- **El dominio no tiene anotaciones JPA.** Las entidades JPA viven en infraestructura (por ejemplo `PublicacionJpaEntity`) y se mapean a las de dominio. Cada entidad JPA nueva se registra en `skillswap-infraestructura/src/main/resources/META-INF/persistence.xml`.
+- **El dominio no tiene anotaciones JPA.** Las entidades JPA viven en infraestructura (por ejemplo `PublicationJpaEntity`) y se mapean a las de dominio. Cada entidad JPA nueva se registra en `infrastructure/src/main/resources/META-INF/persistence.xml`.
 - Los repositorios son interfaces (puertos de salida) en aplicación; infraestructura los implementa.
 - Los controllers no tienen SQL, ni reglas de negocio, ni conocen repositorios o entidades JPA. Usan command objects para no tener listas largas de parámetros y manejan los errores de aplicación de forma uniforme.
 - La UI conoce interfaces de controllers, nunca repositorios ni entidades JPA.
-- **No agregar dependencias entre módulos** ni librerías nuevas sin consultarme primero.
+- **No agregar dependencias entre módulos** ni librerías nuevas sin hablarlo antes con el equipo.
 
 ## Dominio: reglas clave
 
@@ -105,7 +105,7 @@ Mínimo cuatro, cada uno resolviendo una variación concreta y con tests que lo 
 
 ## Persistencia
 
-- Migraciones en `skillswap-infraestructura/src/main/resources/db/migration`, formato `V<n>__descripcion.sql`. **Nunca editar una migración ya mergeada**: siempre una nueva.
+- Migraciones en `infrastructure/src/main/resources/db/migration`, formato `V<n>__descripcion.sql`. **Nunca editar una migración ya mergeada**: siempre una nueva.
 - Se persisten: perfiles, habilidades, publicaciones, franjas, solicitudes, contrataciones, movimientos de créditos, calificaciones, notificaciones e historial de estados.
 - Límites transaccionales explícitos en aceptación, reserva, pago y cancelación.
 - Modelar bien cardinalidades, claves, unicidad e índices.
@@ -149,11 +149,11 @@ Casos de aceptación del enunciado; cada uno tiene que quedar cubierto por tests
 
 **Reglas para vos (Claude Code):**
 
-- **No hagas commit ni push.** Preparás los cambios, me mostrás `git status` y `git diff --stat`, y yo commiteo.
-- Antes de empezar una tarea, chequeá en qué rama estoy. Si estoy en `develop` o `main`, proponé crear una rama de trabajo con el prefijo que corresponda.
+- **No commitees ni pushees sin que la persona lo pida.** Preparás los cambios, mostrás `git status` y `git diff --stat`, y la persona commitea.
+- Antes de empezar una tarea, chequeá en qué rama está el checkout. Si está en `develop` o `main`, proponé crear una rama de trabajo con el prefijo que corresponda.
 - No edites `docs/uml/*.mdj` (StarUML no se mergea bien; lo maneja una sola persona).
-- Antes de dar algo por terminado, corré `mvn verify` y decime si pasó.
-- Si un cambio implica una decisión de diseño (nuevo patrón, nueva entidad, cambio de capa), explicame la alternativa elegida y por qué en dos o tres líneas: me sirve para el informe y la defensa.
+- Antes de dar algo por terminado, corré `mvn verify` y avisá si pasó.
+- Si un cambio implica una decisión de diseño (nuevo patrón, nueva entidad, cambio de capa), explicá la alternativa elegida y por qué en dos o tres líneas: sirve para el informe y la defensa.
 
 ## Equipo
 
@@ -161,7 +161,7 @@ Cada uno es dueño de un área de punta a punta (dominio, caso de uso, persisten
 
 | Persona | Área |
 | --- | --- |
-| Clari (yo) | Contratación: ciclo completo, reserva y cupo con optimistic locking, historial de estados, núcleo común, unidad de trabajo y configuración de JPA |
+| Clari | Contratación: ciclo completo, reserva y cupo con optimistic locking, historial de estados, núcleo común, unidad de trabajo y configuración de JPA |
 | Luqui | Publicaciones, franjas, catálogo de categorías y búsqueda. Dueño del `.mdj` de StarUML |
 | Tomi | Wallet, pago, políticas de cancelación, promociones y recomendación |
 | Andy | Perfiles, calificaciones, reputación, identidad mock y permisos |

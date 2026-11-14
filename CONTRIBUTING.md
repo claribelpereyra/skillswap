@@ -44,7 +44,7 @@ git rebase origin/develop     # o git merge origin/develop si preferís
 
 ## Pull Requests a `develop`
 
-- **Título en inglés**, con el formato de los commits (por ejemplo `feat(dominio): add Publicacion state transitions`). Con squash, el título del PR queda como el commit en `develop`.
+- **Título en inglés**, con el formato de los commits (por ejemplo `feat(domain): add Publication state transitions`). Con squash, el título del PR queda como el commit en `develop`.
 - **Descripción en español**, completando la plantilla del PR.
 - Necesita **1 aprobación** de otro integrante y el **CI en verde**.
 - Se mergea con **Squash and merge**: un commit por PR en `develop`.
@@ -60,15 +60,30 @@ Cuando el equipo da por terminado un hito:
 3. Aprobarlo y mergearlo con **Create a merge commit**. Nunca con squash: si se aplasta, `main` y `develop` quedan con historiales distintos y el próximo cierre de hito trae conflictos.
 4. Marcar la entrega con un tag sobre `main`:
 
+```bash
+git switch main
+git pull
+git tag -a entrega -m "Entrega final"
+git push origin entrega
+```
+
+Si después de la entrega hay que corregir algo urgente, el fix va igual por una rama desde `develop` y entra a `main` con un nuevo PR desde `develop`.
+
 ## Commits
 
 Formato: `tipo(capa): descripción en imperativo`, en inglés. Los commits de `develop` salen de los títulos de los PRs, así que siguen la misma regla.
 
 ```
-feat(dominio): add Publicacion state transitions
-fix(aplicacion): prevent double charge when confirming payment
-test(infraestructura): cover optimistic locking on cupo
-docs(uml): update contratacion diagram
+feat(domain): add Publication state transitions
+fix(application): prevent double charge when confirming payment
+test(infrastructure): cover optimistic locking on capacity
+docs(uml): update booking diagram
 ```
 
 Tipos: `feat`, `fix`, `test`, `refactor`, `docs`, `chore`.
+
+## Archivos delicados
+
+- **UML de StarUML (`docs/uml/*.mdj`)**: Git no lo puede mergear. Una sola persona lo edita a la vez; avisen en el grupo antes de tocarlo.
+- **Migraciones de Flyway**: nunca editar una ya mergeada. Si dos PRs crean la misma versión (por ejemplo dos `V3__...`), el segundo en mergear renumera la suya.
+- **POMs**: agregar dependencias entre módulos se habla con el equipo antes.

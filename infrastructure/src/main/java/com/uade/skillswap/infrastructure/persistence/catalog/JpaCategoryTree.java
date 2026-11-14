@@ -1,4 +1,4 @@
-package com.uade.skillswap.infrastructure.persistence.publication;
+package com.uade.skillswap.infrastructure.persistence.catalog;
 
 import com.uade.skillswap.application.ports.out.publication.CategoryTree;
 import com.uade.skillswap.domain.catalog.CatalogItem;

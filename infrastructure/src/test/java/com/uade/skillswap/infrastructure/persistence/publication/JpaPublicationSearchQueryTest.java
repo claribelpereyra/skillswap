@@ -15,6 +15,7 @@ import com.uade.skillswap.domain.publication.Publication;
 import com.uade.skillswap.domain.publication.PublicationDetails;
 import com.uade.skillswap.domain.publication.PublicationType;
 import com.uade.skillswap.infrastructure.persistence.PersistenceTestBase;
+import com.uade.skillswap.infrastructure.persistence.catalog.JpaCategoryTree;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -52,7 +53,7 @@ class JpaPublicationSearchQueryTest extends PersistenceTestBase {
         // con las mismas columnas obligatorias; cuando llegue la real, este CREATE no hace nada.
         sql("CREATE TABLE IF NOT EXISTS perfiles (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(100) NOT NULL,"
                 + " nombre_visible VARCHAR(150) NOT NULL, tipo_cuenta VARCHAR(30) NOT NULL,"
-                + " reputacion DECIMAL(3, 2) NOT NULL DEFAULT 0.00)");
+                + " reputacion DECIMAL(3, 2) NOT NULL DEFAULT 0.00, activo BOOLEAN NOT NULL DEFAULT TRUE)");
         insertProfile("ana", 4.8);
         insertProfile("bruno", 3.5);
     }
@@ -174,6 +175,16 @@ class JpaPublicationSearchQueryTest extends PersistenceTestBase {
         assertThat(find(null, null, null, null, null, null, 0.5, null, null).items()).isEmpty();
         assertThat(find(null, null, null, null, null, null, null, null, null).items().get(0).authorReputation())
                 .isZero();
+    }
+
+    @Test
+    void theOffersOfAnInactiveProfileAreNotFound() {
+        long active = publish(ANA, "Active author", null, 1, Modality.REMOTE, 10, DAY_1);
+        publish(BRUNO, "Inactive author", null, 1, Modality.REMOTE, 10, DAY_1);
+        sql("UPDATE perfiles SET activo = FALSE WHERE user_id = ?", "bruno");
+
+        assertThat(find(null, null, null, null, null, null, null, null, null).items())
+                .extracting(PublicationSummary::id).containsExactly(active);
     }
 
     @Test

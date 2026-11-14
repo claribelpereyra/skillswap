@@ -45,6 +45,29 @@ class RepositoriosNotificacionesTest {
         assertThat(preferencias.buscar("ana")).contains(new PreferenciaNotificacion("ana", CanalPreferido.PUSH));
     }
 
+    @Test void mismoEventoEnviaEmailYPushYConservaBandejaSinDuplicar() {
+        var email = new com.uade.skillswap.infraestructura.adaptadores.notificaciones.EmailMock();
+        var push = new com.uade.skillswap.infraestructura.adaptadores.notificaciones.PushMock();
+        var interna = new com.uade.skillswap.infraestructura.adaptadores.notificaciones.InternaMock();
+        var gestion = new com.uade.skillswap.aplicacion.casosdeuso.PreferenciaNotificacionCasoDeUso(preferencias);
+        gestion.cambiar("cliente", CanalPreferido.EMAIL);
+        gestion.cambiar("proveedor", CanalPreferido.PUSH);
+        var procesador = new com.uade.skillswap.aplicacion.casosdeuso.ProcesarEventoNotificableCasoDeUso(
+                gestion, avisos, new com.uade.skillswap.aplicacion.notificaciones.FabricaCanalNotificacion(List.of(email, push, interna)));
+        var bus = new com.uade.skillswap.aplicacion.eventos.PublicadorEventosEnMemoria();
+        bus.suscribir(new com.uade.skillswap.aplicacion.eventos.SuscriptorNotificaciones(procesador));
+        var evento = new EventoNotificable(UUID.randomUUID(), Instant.EPOCH, TipoEventoNotificable.PAGO_CONFIRMADO,
+                "contratacion-1", List.of("cliente", "proveedor", "sin-preferencia"), "Pago confirmado");
+        bus.publicar(evento);
+        bus.publicar(evento);
+        assertThat(email.enviados()).extracting(Aviso::destinatario).containsExactly("cliente");
+        assertThat(push.enviados()).extracting(Aviso::destinatario).containsExactly("proveedor");
+        assertThat(interna.enviados()).extracting(Aviso::destinatario).containsExactly("sin-preferencia");
+        assertThat(avisos.listar("cliente", 0, 10).elementos()).hasSize(1)
+                .allMatch(n -> n.entrega() == EstadoEntrega.ENVIADA && n.aviso().eventoId().equals(evento.id()));
+        assertThatThrownBy(() -> email.enviados().clear()).isInstanceOf(UnsupportedOperationException.class);
+    }
+
     @Test void paginaFiltraOrdenaYConservaPrimeraLectura() {
         var viejo = aviso("ana", Instant.EPOCH);
         var nuevo = aviso("ana", Instant.EPOCH.plusSeconds(60));

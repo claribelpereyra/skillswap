@@ -12,6 +12,7 @@ import com.uade.skillswap.domain.publication.PublicationStatus;
 import com.uade.skillswap.domain.publication.PublicationType;
 import com.uade.skillswap.domain.publication.TimeSlot;
 import com.uade.skillswap.infrastructure.persistence.PersistenceTestBase;
+import jakarta.persistence.OptimisticLockException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -175,6 +176,8 @@ class JpaPublicationRepositoryTest extends PersistenceTestBase {
                     });
                     return true;
                 } catch (RuntimeException conflict) {
+                    // Solo vale perder por optimistic locking: cualquier otro error tiene que hacer fallar el test.
+                    assertThat(causes(conflict)).anyMatch(OptimisticLockException.class::isInstance);
                     return false;
                 }
             }));
@@ -216,6 +219,14 @@ class JpaPublicationRepositoryTest extends PersistenceTestBase {
         Publication publication = draft(AUTHOR, capacity, slots);
         publication.publish(AUTHOR, NOW);
         return publication;
+    }
+
+    private static List<Throwable> causes(Throwable error) {
+        List<Throwable> chain = new ArrayList<>();
+        for (Throwable current = error; current != null && !chain.contains(current); current = current.getCause()) {
+            chain.add(current);
+        }
+        return chain;
     }
 
     private static void await(CountDownLatch latch) {

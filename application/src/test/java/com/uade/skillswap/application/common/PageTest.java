@@ -70,5 +70,17 @@ class PageTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new Page<>(List.of("a"), new PageRequest(3, 2), 2))
                 .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new Page<>(List.of(), new PageRequest(0, 2), -1))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void aPageBeyondTheLastOneIsEmpty() {
+        Page<String> beyond = new Page<>(List.of(), new PageRequest(3, 2), 5);
+
+        assertThat(beyond.items()).isEmpty();
+        assertThat(beyond.totalPages()).isEqualTo(3);
+        assertThat(beyond.hasNext()).isFalse();
+        assertThat(Page.empty(new PageRequest(1, 10)).items()).isEmpty();
     }
 }

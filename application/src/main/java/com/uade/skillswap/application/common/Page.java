@@ -10,7 +10,9 @@ public record Page<T>(List<T> items, PageRequest request, long totalItems) {
         if (items.size() > request.size()) {
             throw new IllegalArgumentException("A page cannot hold more items than its size");
         }
-        if (totalItems < request.offset() + items.size()) {
+        // Una página vacía puede quedar más allá del final si los resultados cambiaron entre consultas.
+        long minimumTotal = items.isEmpty() ? 0 : request.offset() + items.size();
+        if (totalItems < minimumTotal) {
             throw new IllegalArgumentException("Total items cannot be lower than the items already listed");
         }
     }

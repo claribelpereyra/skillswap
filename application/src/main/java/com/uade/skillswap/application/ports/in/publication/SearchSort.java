@@ -17,6 +17,7 @@ public enum SearchSort {
     // Menor precio base primero; a igual precio, la más reciente.
     LOWEST_PRICE,
 
-    // Publicada más recientemente primero.
+    // Publicada más recientemente primero. Cuenta la ÚLTIMA vez que pasó a PUBLISHED: si el autor pausa y
+    // reanuda, vuelve a subir, porque para quien busca es una oferta que se "reactivó".
     MOST_RECENT
 }

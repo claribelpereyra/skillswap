@@ -2,30 +2,31 @@ package com.uade.skillswap.controllers;
 
 import com.uade.skillswap.application.notificaciones.PaginaNotificaciones;
 import com.uade.skillswap.application.ports.in.BandejaNotificacionEntrada;
-import com.uade.skillswap.controllers.comun.*;
+import com.uade.skillswap.application.ports.out.IdentityService;
+import com.uade.skillswap.application.common.AccessDeniedException;
+import com.uade.skillswap.domain.common.UserId;
 import java.util.*;
-import java.util.function.Supplier;
 
 public final class NotificacionController {
     private final BandejaNotificacionEntrada bandeja;
-    private final Supplier<String> usuarioActivo;
+    private final IdentityService identidad;
 
-    /** El supplier debe conectarse a identidad mock, nunca a un campo editable de la UI. */
-    public NotificacionController(BandejaNotificacionEntrada bandeja, Supplier<String> usuarioActivo) {
+    /** La identidad es compartida con los demás controllers; la UI no elige el destinatario. */
+    public NotificacionController(BandejaNotificacionEntrada bandeja, IdentityService identidad) {
         this.bandeja = Objects.requireNonNull(bandeja);
-        this.usuarioActivo = Objects.requireNonNull(usuarioActivo);
+        this.identidad = Objects.requireNonNull(identidad);
     }
 
-    public Resultado<PaginaNotificaciones> listar(int pagina, int tamanio) {
-        return EjecutorController.ejecutar(() -> {
+    public ControllerResult<PaginaNotificaciones> listar(int pagina, int tamanio) {
+        return ControllerResult.of(() -> {
             String actor = actor();
             PaginaNotificaciones.validar(pagina, tamanio);
             return bandeja.listar(actor, pagina, tamanio);
         });
     }
 
-    public Resultado<Boolean> marcarLeida(UUID notificacionId) {
-        return EjecutorController.ejecutar(() -> {
+    public ControllerResult<Boolean> marcarLeida(UUID notificacionId) {
+        return ControllerResult.of(() -> {
             String actor = actor();
             if (notificacionId == null) throw new IllegalArgumentException("Falta id de notificación");
             bandeja.marcarLeida(actor, notificacionId);
@@ -34,8 +35,8 @@ public final class NotificacionController {
     }
 
     private String actor() {
-        String actor = usuarioActivo.get();
-        if (actor == null || actor.isBlank()) throw new AccesoNoAutorizado();
-        return actor;
+        UserId actor = identidad.currentUserId();
+        if (actor == null) throw new AccessDeniedException("No active user");
+        return actor.value();
     }
 }

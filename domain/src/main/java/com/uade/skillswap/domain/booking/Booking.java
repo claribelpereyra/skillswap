@@ -1,5 +1,8 @@
 package com.uade.skillswap.domain.booking;
 
+import com.uade.skillswap.domain.booking.observer.BookingEvent;
+import com.uade.skillswap.domain.booking.observer.BookingObserver;
+import com.uade.skillswap.domain.booking.observer.BookingSubject;
 import com.uade.skillswap.domain.booking.state.BookingState;
 import com.uade.skillswap.domain.booking.state.BookingStateFactory;
 import com.uade.skillswap.domain.common.BusinessRuleException;
@@ -10,11 +13,12 @@ import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.TimeSlot;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-public class Booking {
+public class Booking implements BookingSubject {
 
     private Long id;
     private final long publicationId;
@@ -27,6 +31,9 @@ public class Booking {
     private TimeSlot slot;
     private BookingState state;
     private RescheduleProposal pendingReschedule;
+    private final List<BookingObserver> observers = new ArrayList<>();
+    // Transiciones de esta instancia que todavía no se avisaron; se publican después de guardar.
+    private final List<StateTransition<BookingStatus>> unpublished = new ArrayList<>();
 
     private Booking(long publicationId, UserId clientId, UserId providerId, TimeSlot slot,
                     String message, String goal, SkillCoins price, StateHistory<BookingStatus> history) {
@@ -53,7 +60,9 @@ public class Booking {
         requireText(message, "A message is required to request a publication");
         requireText(goal, "A goal is required to request a publication");
         StateHistory<BookingStatus> history = StateHistory.startingAt(BookingStatus.PENDING, clientId, Instant.now());
-        return new Booking(publicationId, clientId, providerId, slot, message, goal, price, history);
+        Booking booking = new Booking(publicationId, clientId, providerId, slot, message, goal, price, history);
+        booking.unpublished.add(history.last());
+        return booking;
     }
 
     // Reconstruye una reserva guardada; el objeto de estado se arma desde el último estado del historial.
@@ -106,6 +115,7 @@ public class Booking {
 
     public void changeState(BookingState next, UserId actor, String reason) {
         history.record(state.getStatus(), next.getStatus(), actor, Instant.now(), reason);
+        unpublished.add(history.last());
         state = next;
     }
 
@@ -190,6 +200,35 @@ public class Booking {
     private void recordInCurrentState(UserId actor, String reason) {
         BookingStatus current = state.getStatus();
         history.record(current, current, actor, Instant.now(), reason);
+        unpublished.add(history.last());
+    }
+
+    @Override
+    public void addObserver(BookingObserver observer) {
+        if (observer != null && !observers.contains(observer)) {
+            observers.add(observer);
+        }
+    }
+
+    @Override
+    public void removeObserver(BookingObserver observer) {
+        observers.remove(observer);
+    }
+
+    @Override
+    public void notifyObservers(BookingEvent event) {
+        for (BookingObserver observer : observers) {
+            observer.update(event);
+        }
+    }
+
+    // Se llama después de confirmar la transacción; el id lo pasa quien guardó, porque una reserva nueva no lo tiene.
+    public void publishPendingEvents(long bookingId) {
+        List<StateTransition<BookingStatus>> toPublish = List.copyOf(unpublished);
+        unpublished.clear();
+        for (StateTransition<BookingStatus> transition : toPublish) {
+            notifyObservers(BookingEvent.of(bookingId, clientId, providerId, transition));
+        }
     }
 
     private static void requireText(String value, String error) {

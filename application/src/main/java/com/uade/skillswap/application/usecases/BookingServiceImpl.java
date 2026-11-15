@@ -14,10 +14,12 @@ import com.uade.skillswap.application.ports.out.PublicationAvailability;
 import com.uade.skillswap.application.ports.out.PublicationCatalog;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
 import com.uade.skillswap.domain.booking.Booking;
+import com.uade.skillswap.domain.booking.observer.BookingObserver;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.TimeSlot;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -28,6 +30,7 @@ public class BookingServiceImpl implements BookingService {
     private final PublicationCatalog publications;
     private final PublicationAvailability availability;
     private final UnitOfWork unitOfWork;
+    private final List<BookingObserver> observers = new ArrayList<>();
 
     public BookingServiceImpl(BookingRepository bookings, PublicationCatalog publications,
                               PublicationAvailability availability, UnitOfWork unitOfWork) {
@@ -37,9 +40,14 @@ public class BookingServiceImpl implements BookingService {
         this.unitOfWork = Objects.requireNonNull(unitOfWork);
     }
 
+    // Los observers los registra el composition root; se les avisa recién cuando la transacción se confirmó.
+    public void addObserver(BookingObserver observer) {
+        observers.add(Objects.requireNonNull(observer));
+    }
+
     @Override
     public BookingView request(RequestBookingCommand command) {
-        return unitOfWork.execute(() -> {
+        Changed changed = unitOfWork.execute(() -> {
             BookablePublication publication = findPublication(command.publicationId());
             if (!publication.published()) {
                 throw new BusinessRuleException("A publication that is not published does not accept requests");
@@ -47,8 +55,9 @@ public class BookingServiceImpl implements BookingService {
             TimeSlot slot = findSlot(publication, command.slotId());
             Booking booking = Booking.request(publication.id(), command.clientId(), publication.authorId(), slot,
                     command.message(), command.goal(), publication.price());
-            return BookingView.from(bookings.save(booking));
+            return new Changed(booking, bookings.save(booking));
         });
+        return publish(changed);
     }
 
     // Aceptar y reservar el cupo van juntos: si no hay lugar, no queda nada aceptado.
@@ -120,11 +129,19 @@ public class BookingServiceImpl implements BookingService {
 
     // Busca la reserva, aplica el cambio y la guarda, todo en una misma transacción.
     private BookingView change(Long bookingId, Consumer<Booking> action) {
-        return unitOfWork.execute(() -> {
+        Changed changed = unitOfWork.execute(() -> {
             Booking booking = findBooking(bookingId);
             action.accept(booking);
-            return BookingView.from(bookings.save(booking));
+            return new Changed(booking, bookings.save(booking));
         });
+        return publish(changed);
+    }
+
+    // Si la transacción falla no se llega acá, así que nadie se entera de un cambio que no quedó guardado.
+    private BookingView publish(Changed changed) {
+        observers.forEach(changed.changed()::addObserver);
+        changed.changed().publishPendingEvents(changed.saved().getId());
+        return BookingView.from(changed.saved());
     }
 
     private Booking findBooking(Long bookingId) {
@@ -140,5 +157,9 @@ public class BookingServiceImpl implements BookingService {
     private TimeSlot findSlot(BookablePublication publication, long slotId) {
         return publication.findSlot(slotId)
                 .orElseThrow(() -> new BusinessRuleException("The slot does not belong to the publication"));
+    }
+
+    // El repositorio devuelve una copia nueva con id; las transiciones sin avisar quedan en la instancia que se modificó.
+    private record Changed(Booking changed, Booking saved) {
     }
 }

@@ -26,8 +26,9 @@ class SkillCoinsTest {
         SkillCoins balance = new SkillCoins(10);
 
         assertThatThrownBy(() -> balance.subtract(new SkillCoins(11)))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Insufficient balance");
+                .isExactlyInstanceOf(InsufficientBalanceException.class)
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("Insufficient balance: 10 < 11");
         assertThat(balance.isEnoughFor(new SkillCoins(11))).isFalse();
     }
 }

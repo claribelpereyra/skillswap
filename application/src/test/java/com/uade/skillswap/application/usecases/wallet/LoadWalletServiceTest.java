@@ -1,6 +1,5 @@
 package com.uade.skillswap.application.usecases.wallet;
 
-import com.uade.skillswap.application.common.ResourceNotFoundException;
 import com.uade.skillswap.application.dto.wallet.WalletView;
 import com.uade.skillswap.application.ports.in.wallet.LoadWalletCommand;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
@@ -12,6 +11,7 @@ import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.wallet.Wallet;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.time.Clock;
 import java.time.Instant;
@@ -78,14 +78,18 @@ class LoadWalletServiceTest {
     }
 
     @Test
-    void aMissingWalletFailsBeforeCallingTheGateway() {
+    void anApprovedCreditOpensAMissingWallet() {
         when(wallets.findByOwnerId(USER)).thenReturn(Optional.empty());
+        when(gateway.authorizeCredit(USER, AMOUNT)).thenReturn(true);
 
-        assertThatThrownBy(() -> service.loadCredits(new LoadWalletCommand(USER, AMOUNT)))
-                .isInstanceOf(ResourceNotFoundException.class)
-                .hasMessageContaining("Wallet not found");
+        WalletView result = service.loadCredits(new LoadWalletCommand(USER, AMOUNT));
 
-        verify(gateway, never()).authorizeCredit(USER, AMOUNT);
+        assertThat(result.ownerId()).isEqualTo(USER.value());
+        assertThat(result.balance()).isEqualTo(AMOUNT.amount());
+        ArgumentCaptor<Wallet> savedWallet = ArgumentCaptor.forClass(Wallet.class);
+        verify(wallets).save(savedWallet.capture());
+        assertThat(savedWallet.getValue().ownerId()).isEqualTo(USER);
+        assertThat(savedWallet.getValue().balance()).isEqualTo(AMOUNT);
     }
 
     @Test

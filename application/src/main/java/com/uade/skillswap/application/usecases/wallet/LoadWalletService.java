@@ -1,6 +1,5 @@
 package com.uade.skillswap.application.usecases.wallet;
 
-import com.uade.skillswap.application.common.ResourceNotFoundException;
 import com.uade.skillswap.application.dto.wallet.WalletView;
 import com.uade.skillswap.application.ports.in.wallet.LoadWalletCommand;
 import com.uade.skillswap.application.ports.in.wallet.LoadWalletUseCase;
@@ -8,7 +7,6 @@ import com.uade.skillswap.application.ports.out.UnitOfWork;
 import com.uade.skillswap.application.ports.out.wallet.SkillCoinGateway;
 import com.uade.skillswap.application.ports.out.wallet.WalletRepository;
 import com.uade.skillswap.domain.common.BusinessRuleException;
-import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.wallet.Wallet;
 
 import java.time.Clock;
@@ -35,24 +33,15 @@ public final class LoadWalletService implements LoadWalletUseCase {
     @Override
     public WalletView loadCredits(LoadWalletCommand command) {
         Objects.requireNonNull(command, "The wallet load command is required");
-        requireWallet(command.userId());
         if (!gateway.authorizeCredit(command.userId(), command.amount())) {
             throw new BusinessRuleException("The simulated payment was declined");
         }
         return unitOfWork.execute(() -> {
-            Wallet wallet = requireWallet(command.userId());
+            Wallet wallet = wallets.findByOwnerId(command.userId())
+                    .orElseGet(() -> Wallet.open(command.userId()));
             wallet.topUp(command.amount(), clock.instant());
             wallets.save(wallet);
             return WalletView.from(wallet);
         });
-    }
-
-    private Wallet requireWallet(UserId userId) {
-        Wallet wallet = wallets.findByOwnerId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Wallet", userId));
-        if (!wallet.ownerId().equals(userId)) {
-            throw new IllegalStateException("The wallet repository returned a wallet for another owner");
-        }
-        return wallet;
     }
 }

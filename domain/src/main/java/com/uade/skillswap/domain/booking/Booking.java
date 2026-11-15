@@ -56,6 +56,17 @@ public class Booking {
         return new Booking(publicationId, clientId, providerId, slot, message, goal, price, history);
     }
 
+    // Reconstruye una reserva guardada; el objeto de estado se arma desde el último estado del historial.
+    public static Booking rebuild(Long id, long publicationId, UserId clientId, UserId providerId, TimeSlot slot,
+                                  String message, String goal, SkillCoins price,
+                                  List<StateTransition<BookingStatus>> history, RescheduleProposal pendingReschedule) {
+        Booking booking = new Booking(publicationId, clientId, providerId, slot, message, goal, price,
+                StateHistory.rebuild(history));
+        booking.id = Objects.requireNonNull(id, "A stored booking must have an id");
+        booking.pendingReschedule = pendingReschedule;
+        return booking;
+    }
+
     // State Pattern: la reserva delega cada acción en su estado actual.
     public void accept(UserId actor) {
         state.accept(this, actor);

@@ -49,10 +49,6 @@ class JpaPublicationSearchQueryTest extends PersistenceTestBase {
         insertCategory(5, null, "Diseño", "CATEGORY");
         insertCategory(6, 5, "Fotografía", "CATEGORY");
 
-        // Perfiles es del área de Andy (#37); hasta que entre su migración, el test crea una tabla mínima.
-        sql("CREATE TABLE IF NOT EXISTS perfiles (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(100) NOT NULL,"
-                + " nombre_visible VARCHAR(150) NOT NULL, tipo_cuenta VARCHAR(30) NOT NULL,"
-                + " reputacion DECIMAL(3, 2) NOT NULL DEFAULT 0.00, activo BOOLEAN NOT NULL DEFAULT TRUE)");
         insertProfile("ana", 4.8);
         insertProfile("bruno", 3.5);
     }
@@ -62,8 +58,8 @@ class JpaPublicationSearchQueryTest extends PersistenceTestBase {
     }
 
     private void insertProfile(String userId, double reputation) {
-        sql("INSERT INTO perfiles (user_id, nombre_visible, tipo_cuenta, reputacion) VALUES (?, ?, ?, ?)",
-                userId, userId, "PROFESIONAL", reputation);
+        sql("INSERT INTO profile (user_id, display_name, time_zone, account_type, reputation, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                userId, userId, "UTC", "PROFESSIONAL", reputation, DAY_1);
     }
 
     private long publish(UserId author, String title, String description, long category, Modality modality,
@@ -181,7 +177,7 @@ class JpaPublicationSearchQueryTest extends PersistenceTestBase {
     void theOffersOfAnInactiveProfileAreNotFound() {
         long active = publish(ANA, "Active author", null, 1, Modality.REMOTE, 10, DAY_1);
         publish(BRUNO, "Inactive author", null, 1, Modality.REMOTE, 10, DAY_1);
-        sql("UPDATE perfiles SET activo = FALSE WHERE user_id = ?", "bruno");
+        sql("UPDATE profile SET active = FALSE WHERE user_id = ?", "bruno");
 
         assertThat(find(null, null, null, null, null, null, null, null, null).items())
                 .extracting(PublicationSummary::id).containsExactly(active);

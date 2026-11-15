@@ -15,6 +15,9 @@
         <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationJpaEntity</class>
         <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationSlotJpaEntity</class>
         <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationTransitionJpaEntity</class>
+        <class>com.uade.skillswap.infrastructure.persistence.wallet.WalletJpaEntity</class>
+        <class>com.uade.skillswap.infrastructure.persistence.wallet.WalletMovementJpaEntity</class>
+
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
 
         <properties>

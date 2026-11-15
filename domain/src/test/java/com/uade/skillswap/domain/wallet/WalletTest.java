@@ -79,11 +79,21 @@ class WalletTest {
                 new CreditMovement(CreditMovementType.DEBIT, new SkillCoins(5), NOW.plusSeconds(60), BOOKING_ID),
                 new CreditMovement(CreditMovementType.CREDIT, new SkillCoins(10), NOW.plusSeconds(120), BOOKING_ID));
 
-        Wallet restored = Wallet.restore(OWNER, movements);
+        Wallet restored = Wallet.restore(OWNER, new SkillCoins(25), movements);
 
         assertThat(restored.ownerId()).isEqualTo(OWNER);
         assertThat(restored.balance()).isEqualTo(new SkillCoins(25));
         assertThat(restored.movements()).containsExactlyElementsOf(movements);
+    }
+
+    @Test
+    void restoreRejectsABalanceThatDoesNotMatchTheMovementLedger() {
+        List<CreditMovement> movements = List.of(
+                new CreditMovement(CreditMovementType.TOP_UP, new SkillCoins(20), NOW, null));
+
+        assertThatThrownBy(() -> Wallet.restore(OWNER, new SkillCoins(21), movements))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The persisted wallet balance does not match its movements");
     }
 
     @Test

@@ -23,10 +23,13 @@ public final class Wallet {
         return new Wallet(ownerId);
     }
 
-    public static Wallet restore(UserId ownerId, List<CreditMovement> movements) {
+    public static Wallet restore(UserId ownerId, SkillCoins expectedBalance, List<CreditMovement> movements) {
+        Objects.requireNonNull(expectedBalance, "The wallet balance is required");
         Wallet wallet = new Wallet(ownerId);
-        Objects.requireNonNull(movements, "The wallet movements are required")
-                .forEach(wallet::apply);
+        Objects.requireNonNull(movements, "The wallet movements are required").forEach(wallet::apply);
+        if (!wallet.balance.equals(expectedBalance)) {
+            throw new IllegalArgumentException("The persisted wallet balance does not match its movements");
+        }
         return wallet;
     }
 

@@ -14,6 +14,7 @@ import com.uade.skillswap.controllers.ControllerResult;
 import com.uade.skillswap.controllers.ControllerResult.ErrorType;
 import com.uade.skillswap.domain.booking.BookingStatus;
 import com.uade.skillswap.domain.common.BusinessRuleException;
+import com.uade.skillswap.domain.common.InsufficientBalanceException;
 import com.uade.skillswap.domain.common.InvalidTransitionException;
 import com.uade.skillswap.domain.common.PermissionDeniedException;
 import com.uade.skillswap.domain.common.UserId;
@@ -70,6 +71,8 @@ class BookingControllerImplTest {
         when(service.proposeReschedule(99L, BRUNO, 2L)).thenReturn(VIEW);
         when(service.acceptReschedule(99L, ANA)).thenReturn(VIEW);
         when(service.rejectReschedule(99L, ANA)).thenReturn(VIEW);
+        when(service.pay(99L, ANA)).thenReturn(VIEW);
+        when(service.cancel(99L, ANA, "Me surgió un viaje")).thenReturn(VIEW);
 
         loggedAs(BRUNO);
         List<ControllerResult<BookingView>> asProvider = List.of(
@@ -81,7 +84,9 @@ class BookingControllerImplTest {
         List<ControllerResult<BookingView>> asClient = List.of(
                 controller.complete("ana", 99L),
                 controller.acceptReschedule("ana", 99L),
-                controller.rejectReschedule("ana", 99L));
+                controller.rejectReschedule("ana", 99L),
+                controller.pay("ana", 99L),
+                controller.cancel("ana", 99L, "Me surgió un viaje"));
 
         assertThat(asProvider).allSatisfy(result -> assertThat(result.getData()).isEqualTo(VIEW));
         assertThat(asClient).allSatisfy(result -> assertThat(result.getData()).isEqualTo(VIEW));
@@ -102,6 +107,17 @@ class BookingControllerImplTest {
         assertThat(notTheProvider.getMessage()).isEqualTo("Only the provider can accept a booking");
         assertThat(wrongState.getErrorType()).isEqualTo(ErrorType.BUSINESS_RULE);
         assertThat(wrongState.getMessage()).isEqualTo("Cannot start in state PENDING");
+    }
+
+    @Test
+    void anInsufficientBalanceIsReturnedAsABusinessRule() {
+        loggedAs(ANA);
+        when(service.pay(99L, ANA)).thenThrow(new InsufficientBalanceException(10, 100));
+
+        ControllerResult<BookingView> result = controller.pay("ana", 99L);
+
+        assertThat(result.getErrorType()).isEqualTo(ErrorType.BUSINESS_RULE);
+        assertThat(result.getMessage()).isEqualTo("Insufficient balance: 10 < 100");
     }
 
     @Test

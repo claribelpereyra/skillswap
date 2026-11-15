@@ -9,11 +9,13 @@ import com.uade.skillswap.application.dto.BookingView;
 import com.uade.skillswap.application.dto.RequestBookingCommand;
 import com.uade.skillswap.application.ports.in.BookingService;
 import com.uade.skillswap.application.ports.out.BookablePublication;
+import com.uade.skillswap.application.ports.out.BookingPayments;
 import com.uade.skillswap.application.ports.out.BookingRepository;
 import com.uade.skillswap.application.ports.out.PublicationAvailability;
 import com.uade.skillswap.application.ports.out.PublicationCatalog;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
 import com.uade.skillswap.domain.booking.Booking;
+import com.uade.skillswap.domain.booking.BookingStatus;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.TimeSlot;
@@ -27,13 +29,15 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookings;
     private final PublicationCatalog publications;
     private final PublicationAvailability availability;
+    private final BookingPayments payments;
     private final UnitOfWork unitOfWork;
 
     public BookingServiceImpl(BookingRepository bookings, PublicationCatalog publications,
-                              PublicationAvailability availability, UnitOfWork unitOfWork) {
+                              PublicationAvailability availability, BookingPayments payments, UnitOfWork unitOfWork) {
         this.bookings = Objects.requireNonNull(bookings);
         this.publications = Objects.requireNonNull(publications);
         this.availability = Objects.requireNonNull(availability);
+        this.payments = Objects.requireNonNull(payments);
         this.unitOfWork = Objects.requireNonNull(unitOfWork);
     }
 
@@ -73,6 +77,29 @@ public class BookingServiceImpl implements BookingService {
     @Override
     public BookingView complete(Long bookingId, UserId actor) {
         return change(bookingId, booking -> booking.complete(actor));
+    }
+
+    // Primero valida el estado y quién paga; si el saldo no alcanza, se revierte todo y no cambia nada (caso 5).
+    @Override
+    public BookingView pay(Long bookingId, UserId actor) {
+        return change(bookingId, booking -> {
+            booking.confirmPayment(actor);
+            payments.pay(bookingId, booking.getClientId(), booking.getProviderId(), booking.getPrice());
+        });
+    }
+
+    // Cancelar libera el cupo; si ya estaba pagada, además devuelve el reintegro que corresponda.
+    @Override
+    public BookingView cancel(Long bookingId, UserId actor, String reason) {
+        return change(bookingId, booking -> {
+            boolean paid = booking.getStatus() == BookingStatus.CONFIRMED;
+            booking.cancel(actor, reason);
+            availability.release(booking.getPublicationId(), booking.getSlot().getId());
+            if (paid) {
+                payments.refund(bookingId, booking.getClientId(), booking.getProviderId(), booking.getPrice(),
+                        booking.getSlot().getStartsAt());
+            }
+        });
     }
 
     @Override

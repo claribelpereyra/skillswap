@@ -8,6 +8,7 @@ import com.uade.skillswap.application.dto.BookingHistoryEntry;
 import com.uade.skillswap.application.dto.BookingView;
 import com.uade.skillswap.application.dto.RequestBookingCommand;
 import com.uade.skillswap.application.ports.out.BookablePublication;
+import com.uade.skillswap.application.ports.out.BookingPayments;
 import com.uade.skillswap.application.ports.out.BookingRepository;
 import com.uade.skillswap.application.ports.out.PublicationAvailability;
 import com.uade.skillswap.application.ports.out.PublicationCatalog;
@@ -15,6 +16,7 @@ import com.uade.skillswap.application.ports.out.UnitOfWork;
 import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.booking.BookingStatus;
 import com.uade.skillswap.domain.common.BusinessRuleException;
+import com.uade.skillswap.domain.common.InsufficientBalanceException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.TimeSlot;
@@ -55,6 +57,7 @@ class BookingServiceImplTest {
     private BookingRepository bookings;
     private PublicationCatalog publications;
     private PublicationAvailability availability;
+    private BookingPayments payments;
     private BookingServiceImpl service;
 
     @BeforeEach
@@ -62,8 +65,9 @@ class BookingServiceImplTest {
         bookings = mock(BookingRepository.class);
         publications = mock(PublicationCatalog.class);
         availability = mock(PublicationAvailability.class);
+        payments = mock(BookingPayments.class);
         UnitOfWork direct = Supplier::get;
-        service = new BookingServiceImpl(bookings, publications, availability, direct);
+        service = new BookingServiceImpl(bookings, publications, availability, payments, direct);
         when(bookings.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(publications.findBookable(PUBLICATION_ID)).thenReturn(Optional.of(PUBLICATION));
     }
@@ -156,6 +160,73 @@ class BookingServiceImplTest {
         assertThat(service.start(BOOKING_ID, PROVIDER).status()).isEqualTo(BookingStatus.IN_PROGRESS);
 
         assertThat(service.complete(BOOKING_ID, CLIENT).status()).isEqualTo(BookingStatus.COMPLETED);
+    }
+
+    // Pagar y cancelar
+
+    @Test
+    void payConfirmsTheBookingAndChargesThePrice() {
+        stored(accepted());
+
+        BookingView view = service.pay(BOOKING_ID, CLIENT);
+
+        assertThat(view.status()).isEqualTo(BookingStatus.CONFIRMED);
+        verify(payments).pay(BOOKING_ID, CLIENT, PROVIDER, new SkillCoins(100));
+        verify(bookings).save(any(Booking.class));
+    }
+
+    @Test
+    void anInsufficientBalanceLeavesTheBookingUnchanged() {
+        stored(accepted());
+        doThrow(new InsufficientBalanceException(10, 100)).when(payments).pay(BOOKING_ID, CLIENT, PROVIDER,
+                new SkillCoins(100));
+
+        assertThatThrownBy(() -> service.pay(BOOKING_ID, CLIENT))
+                .isExactlyInstanceOf(InsufficientBalanceException.class)
+                .hasMessage("Insufficient balance: 10 < 100");
+        verify(bookings, never()).save(any());
+    }
+
+    @Test
+    void onlyTheClientPays() {
+        stored(accepted());
+
+        assertThatThrownBy(() -> service.pay(BOOKING_ID, PROVIDER))
+                .isInstanceOf(BusinessRuleException.class)
+                .hasMessage("Only the client can pay a booking");
+        verifyNoInteractions(payments);
+    }
+
+    @Test
+    void cancellingAnAcceptedBookingReleasesTheSlotWithoutRefund() {
+        stored(accepted());
+
+        BookingView view = service.cancel(BOOKING_ID, CLIENT, "Me surgió un viaje");
+
+        assertThat(view.status()).isEqualTo(BookingStatus.CANCELLED);
+        verify(availability).release(PUBLICATION_ID, 1L);
+        verifyNoInteractions(payments);
+    }
+
+    @Test
+    void cancellingAPaidBookingAlsoRefunds() {
+        stored(confirmed());
+
+        service.cancel(BOOKING_ID, PROVIDER, "No voy a poder dar la sesión");
+
+        verify(availability).release(PUBLICATION_ID, 1L);
+        verify(payments).refund(BOOKING_ID, CLIENT, PROVIDER, new SkillCoins(100), SLOT.getStartsAt());
+    }
+
+    @Test
+    void cancellingWithoutAReasonChangesNothing() {
+        stored(confirmed());
+
+        assertThatThrownBy(() -> service.cancel(BOOKING_ID, CLIENT, " "))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("A reason is required to cancel a booking");
+        verifyNoInteractions(availability, payments);
+        verify(bookings, never()).save(any());
     }
 
     // Reprogramación

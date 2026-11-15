@@ -20,6 +20,10 @@ public interface BookingController {
 
     ControllerResult<BookingView> complete(String userId, long bookingId);
 
+    ControllerResult<BookingView> pay(String userId, long bookingId);
+
+    ControllerResult<BookingView> cancel(String userId, long bookingId, String reason);
+
     ControllerResult<BookingView> proposeReschedule(String userId, long bookingId, long newSlotId);
 
     ControllerResult<BookingView> acceptReschedule(String userId, long bookingId);

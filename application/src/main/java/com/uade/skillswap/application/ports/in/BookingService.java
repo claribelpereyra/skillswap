@@ -21,6 +21,10 @@ public interface BookingService {
 
     BookingView complete(Long bookingId, UserId actor);
 
+    BookingView pay(Long bookingId, UserId actor);
+
+    BookingView cancel(Long bookingId, UserId actor, String reason);
+
     BookingView proposeReschedule(Long bookingId, UserId actor, long newSlotId);
 
     BookingView acceptReschedule(Long bookingId, UserId actor);

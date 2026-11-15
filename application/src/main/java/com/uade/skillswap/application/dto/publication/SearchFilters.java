@@ -5,7 +5,8 @@ import com.uade.skillswap.domain.publication.Modality;
 
 // Filtros del buscador; todos opcionales (null = sin filtro).
 public record SearchFilters(String text, Long categoryId, Modality modality, Long minPrice, Long maxPrice,
-                            String tag, Double minReputation, SearchSort sort, PageRequest page) {
+                            String tag, Double minReputation, SearchSort sort, PageRequest page,
+                            String activeUserId) {
 
     public SearchFilters {
         if (minPrice != null && minPrice < 0 || maxPrice != null && maxPrice < 0) {
@@ -22,6 +23,11 @@ public record SearchFilters(String text, Long categoryId, Modality modality, Lon
     }
 
     public static SearchFilters none() {
-        return new SearchFilters(null, null, null, null, null, null, null, null, null);
+        return new SearchFilters(null, null, null, null, null, null, null, null, null, null);
+    }
+
+    public SearchFilters withPage(PageRequest page) {
+        return new SearchFilters(text, categoryId, modality, minPrice, maxPrice, tag, minReputation, sort, page,
+                activeUserId);
     }
 }

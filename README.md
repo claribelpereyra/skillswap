@@ -15,7 +15,7 @@ docker compose up -d     # levanta MySQL en localhost:3306
 mvn verify               # compila, corre los tests y genera cobertura
 ```
 
-Para ejecutar la app, corré `com.uade.skillswap.app.Main` desde IntelliJ (módulo `skillswap-app`). Al arrancar aplica las migraciones de Flyway.
+Para ejecutar la app, corré `com.uade.skillswap.app.Main` desde IntelliJ (módulo `app`). Al arrancar aplica las migraciones de Flyway.
 
 La conexión se puede cambiar con variables de entorno (los defaults coinciden con el `docker-compose.yml`):
 
@@ -30,20 +30,23 @@ La cobertura de cada módulo queda en `<modulo>/target/site/jacoco/index.html`.
 ## Estructura y regla de dependencias
 
 ```
-skillswap-dominio          entidades, value objects, reglas, estados, eventos (sin dependencias)
-skillswap-aplicacion       casos de uso + puertos de entrada/salida      -> dominio
-skillswap-infraestructura  JPA, repositorios, Flyway, adaptadores mock   -> aplicacion
-skillswap-controllers      controllers delgados que llaman a casos de uso -> aplicacion
-skillswap-app              Mock UI Kit + Main (arma todo el grafo)       -> controllers, infraestructura
+domain          entidades, value objects, reglas, estados, eventos (sin dependencias)
+application     casos de uso + puertos de entrada/salida        -> domain
+infrastructure  JPA, repositorios, Flyway, adaptadores mock     -> application
+controllers     controllers delgados que llaman a casos de uso  -> application
+app             Mock UI Kit + Main (arma todo el grafo)         -> controllers, infrastructure
 ```
+
+Paquetes: `com.uade.skillswap.domain`, `com.uade.skillswap.application` (`usecases`, `ports.in`, `ports.out`, `common`), `com.uade.skillswap.infrastructure` (`persistence`, `adapters`), `com.uade.skillswap.controllers` y `com.uade.skillswap.app`.
 
 Las dependencias solo apuntan hacia adentro. Como cada capa es un módulo Maven, si el dominio importa algo de JPA o un controller usa un repositorio, **no compila**. No agreguen dependencias entre módulos sin hablarlo con el equipo.
 
 Convenciones:
 
-- Las entidades JPA van en infraestructura (por ejemplo `PublicacionJpaEntity`) y se mapean a las de dominio. El dominio no lleva anotaciones `@Entity`.
+- Código en inglés: paquetes, clases, métodos, atributos, variables, nombres de tests y mensajes de error. Comentarios y documentación en español.
+- Las entidades JPA van en infraestructura (por ejemplo `PublicationJpaEntity`) y se mapean a las de dominio. El dominio no lleva anotaciones `@Entity`.
 - Cada entidad JPA nueva se agrega en `META-INF/persistence.xml`.
-- El esquema lo maneja Flyway (`skillswap-infraestructura/src/main/resources/db/migration`). Hibernate solo valida (`hbm2ddl.auto=validate`).
+- El esquema lo maneja Flyway (`infrastructure/src/main/resources/db/migration`). Hibernate solo valida (`hbm2ddl.auto=validate`).
 - Nunca editar una migración ya mergeada: se crea una nueva `V<n>__descripcion.sql`.
 - Todo caso negativo del enunciado (transición inválida, saldo insuficiente, cupo agotado, doble pago, calificación no autorizada) lleva su test.
 

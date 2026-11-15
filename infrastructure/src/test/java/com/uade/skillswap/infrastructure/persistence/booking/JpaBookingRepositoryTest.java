@@ -9,11 +9,8 @@ import com.uade.skillswap.domain.common.StateTransition;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.TimeSlot;
 import com.uade.skillswap.infrastructure.persistence.EntityManagerContext;
-import com.uade.skillswap.infrastructure.persistence.JpaUnitOfWork;
-import com.uade.skillswap.infrastructure.persistence.PersistenceConfiguration;
+import com.uade.skillswap.infrastructure.persistence.PersistenceTestBase;
 import jakarta.persistence.PersistenceException;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -22,7 +19,7 @@ import java.time.Instant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class JpaBookingRepositoryTest {
+class JpaBookingRepositoryTest extends PersistenceTestBase {
 
     private static final UserId CLIENT = new UserId("ana");
     private static final UserId PROVIDER = new UserId("bruno");
@@ -32,27 +29,16 @@ class JpaBookingRepositoryTest {
             Instant.parse("2026-11-20T13:00:00Z"), Instant.parse("2026-11-20T14:00:00Z"));
 
     private final JpaBookingRepository repository = new JpaBookingRepository();
-    private final JpaUnitOfWork unitOfWork = new JpaUnitOfWork();
 
-    @BeforeAll
-    static void startDatabase() {
-        PersistenceConfiguration h2 = new PersistenceConfiguration(
-                "jdbc:h2:mem:bookings;MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", "");
-        h2.migrate();
-        EntityManagerContext.init(h2.createEntityManagerFactory());
-    }
-
-    @AfterAll
-    static void stopDatabase() {
-        EntityManagerContext.close();
-    }
-
+    // Las claves foráneas exigen que la publicación y sus franjas existan.
     @BeforeEach
-    void cleanTables() {
-        unitOfWork.execute(() -> EntityManagerContext.withEntityManager(em -> {
-            em.createNativeQuery("DELETE FROM booking_transition").executeUpdate();
-            return em.createNativeQuery("DELETE FROM booking").executeUpdate();
-        }));
+    void publicationWithItsSlots() {
+        sql("INSERT INTO publication (id, author_id, type, status, capacity, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                10L, PROVIDER.value(), "MENTORING", "PUBLISHED", 2, SLOT.getStartsAt());
+        sql("INSERT INTO publication_slot (id, publication_id, starts_at, ends_at) VALUES (?, ?, ?, ?)",
+                1L, 10L, SLOT.getStartsAt(), SLOT.getEndsAt());
+        sql("INSERT INTO publication_slot (id, publication_id, starts_at, ends_at) VALUES (?, ?, ?, ?)",
+                2L, 10L, OTHER_SLOT.getStartsAt(), OTHER_SLOT.getEndsAt());
     }
 
     @Test
@@ -145,6 +131,15 @@ class JpaBookingRepositoryTest {
         assertThat(firstPage.items()).allSatisfy(booking -> assertThat(booking.getHistory()).hasSize(1));
         assertThat(asProvider.items()).hasSize(1);
         assertThat(repository.findByClient(PROVIDER, PageRequest.first()).items()).isEmpty();
+    }
+
+    @Test
+    void theDatabaseRejectsABookingOfAnUnknownPublication() {
+        Booking orphan = Booking.request(99L, CLIENT, PROVIDER, SLOT, "Hola", "Entrevista", new SkillCoins(100));
+
+        assertThatThrownBy(() -> unitOfWork.execute(() -> repository.save(orphan)))
+                .isInstanceOf(PersistenceException.class);
+        assertThat(count("booking")).isZero();
     }
 
     @Test

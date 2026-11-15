@@ -43,7 +43,6 @@ public class RecentPopularityRecommendationStrategy implements RecommendationStr
         Comparator<PublicationSummary> comparator = Comparator
                 .comparingLong((PublicationSummary publication) -> counts.getOrDefault(publication.id(), 0L))
                 .reversed()
-                .thenComparing(PublicationSummary::publishedAt, Comparator.nullsLast(Comparator.reverseOrder()))
                 .thenComparing(Comparator.comparingDouble(PublicationSummary::authorReputation).reversed())
                 .thenComparing(Comparator.comparingLong(PublicationSummary::id).reversed());
         return publications.stream().sorted(comparator).toList();

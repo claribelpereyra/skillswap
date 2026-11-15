@@ -24,7 +24,6 @@ import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,7 +46,7 @@ class RecommendPublicationsServiceTest {
         when(search.search(any()))
                 .thenReturn(new Page<>(firstPage, candidatePage, 101))
                 .thenReturn(new Page<>(List.of(last), new PageRequest(1, PageRequest.MAX_SIZE), 101));
-        SearchFilters filters = new SearchFilters(null, null, null, null, null, null, null,
+        SearchFilters filters = new SearchFilters("java", 4L, Modality.REMOTE, 10L, 200L, "backend", 2.5,
                 SearchSort.RELEVANCE, new PageRequest(0, 10), "ana");
 
         Page<PublicationSummary> result = service.recommend(filters, (publications, ignored) ->
@@ -77,8 +76,8 @@ class RecommendPublicationsServiceTest {
 
     @Test
     void recentPopularityUsesBookingCountsWithinItsConfiguredWindow() {
-        PublicationSummary lessPopular = publication(1);
-        PublicationSummary morePopular = publication(2);
+        PublicationSummary lessPopular = publication(1, Set.of(), NOW.plus(Duration.ofDays(10)));
+        PublicationSummary morePopular = publication(2, Set.of(), NOW.minus(Duration.ofDays(10)));
         Set<Long> publicationIds = Set.of(1L, 2L);
         Instant since = NOW.minus(Duration.ofDays(30));
         when(metadata.recentBookingCounts(publicationIds, since)).thenReturn(Map.of(1L, 1L, 2L, 5L));
@@ -99,11 +98,15 @@ class RecommendPublicationsServiceTest {
     }
 
     private PublicationSummary publication(int id) {
-        return publication(id, Set.of());
+        return publication(id, Set.of(), NOW);
     }
 
     private PublicationSummary publication(int id, Set<String> tags) {
+        return publication(id, tags, NOW);
+    }
+
+    private PublicationSummary publication(int id, Set<String> tags, Instant publishedAt) {
         return new PublicationSummary(id, "ana", 4.8, PublicationType.MENTORING, "Publication " + id, 2L,
-                Modality.REMOTE, 120L, 2, tags, NOW);
+                Modality.REMOTE, 120L, 2, tags, publishedAt);
     }
 }

@@ -25,6 +25,8 @@ class BookingTest {
     private static final SkillCoins PRICE = new SkillCoins(100);
     private static final TimeSlot SLOT = new TimeSlot(1L,
             Instant.parse("2026-11-19T21:00:00Z"), Instant.parse("2026-11-19T22:00:00Z"));
+    private static final TimeSlot OTHER_SLOT = new TimeSlot(2L,
+            Instant.parse("2026-11-20T13:00:00Z"), Instant.parse("2026-11-20T14:00:00Z"));
 
     // Solicitar
 
@@ -226,6 +228,144 @@ class BookingTest {
                 .hasMessage("Cannot accept in state CONFIRMED");
     }
 
+    // Reprogramación
+
+    @Test
+    void aParticipantProposesARescheduleWithoutChangingTheState() {
+        Booking booking = accepted();
+
+        booking.proposeReschedule(PROVIDER, OTHER_SLOT);
+
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.ACCEPTED);
+        assertThat(booking.getSlot()).isSameAs(SLOT);
+        assertThat(booking.getPendingReschedule()).hasValueSatisfying(proposal -> {
+            assertThat(proposal.newSlot()).isSameAs(OTHER_SLOT);
+            assertThat(proposal.proposedBy()).isEqualTo(PROVIDER);
+        });
+        assertThat(booking.getHistory()).hasSize(2);
+    }
+
+    @Test
+    void theOtherParticipantAcceptsTheRescheduleAndItIsRecorded() {
+        Booking booking = confirmed();
+        booking.proposeReschedule(PROVIDER, OTHER_SLOT);
+
+        booking.acceptReschedule(CLIENT);
+
+        assertThat(booking.getSlot()).isSameAs(OTHER_SLOT);
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(booking.getPendingReschedule()).isEmpty();
+        assertLastTransition(booking, BookingStatus.CONFIRMED, BookingStatus.CONFIRMED, CLIENT, "Rescheduled to slot 2");
+    }
+
+    @Test
+    void theOtherParticipantRejectsTheRescheduleAndItIsRecorded() {
+        Booking booking = accepted();
+        booking.proposeReschedule(CLIENT, OTHER_SLOT);
+
+        booking.rejectReschedule(PROVIDER);
+
+        assertThat(booking.getSlot()).isSameAs(SLOT);
+        assertThat(booking.getPendingReschedule()).isEmpty();
+        assertLastTransition(booking, BookingStatus.ACCEPTED, BookingStatus.ACCEPTED, PROVIDER,
+                "Reschedule to slot 2 rejected");
+    }
+
+    @Test
+    void whoProposedCannotAnswerTheirOwnReschedule() {
+        Booking booking = accepted();
+        booking.proposeReschedule(PROVIDER, OTHER_SLOT);
+
+        assertThatThrownBy(() -> booking.acceptReschedule(PROVIDER))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The reschedule must be answered by the other participant");
+        assertThatThrownBy(() -> booking.rejectReschedule(PROVIDER))
+                .isExactlyInstanceOf(BusinessRuleException.class);
+        assertThat(booking.getPendingReschedule()).isPresent();
+    }
+
+    @Test
+    void onlyOneRescheduleCanBePendingAtATime() {
+        Booking booking = accepted();
+        booking.proposeReschedule(PROVIDER, OTHER_SLOT);
+        TimeSlot thirdSlot = new TimeSlot(3L,
+                Instant.parse("2026-11-21T18:00:00Z"), Instant.parse("2026-11-21T19:00:00Z"));
+
+        assertThatThrownBy(() -> booking.proposeReschedule(CLIENT, thirdSlot))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("There is already a pending reschedule for this booking");
+    }
+
+    @Test
+    void theNewSlotIsRequiredAndMustBeDifferent() {
+        Booking booking = accepted();
+
+        assertThatThrownBy(() -> booking.proposeReschedule(PROVIDER, null))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("A new slot is required to reschedule a booking");
+        assertThatThrownBy(() -> booking.proposeReschedule(PROVIDER, SLOT))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The new slot must be different from the current one");
+        assertThat(booking.getPendingReschedule()).isEmpty();
+    }
+
+    @Test
+    void theNewSlotMustBeSavedBeforeProposingIt() {
+        Booking booking = accepted();
+        TimeSlot unsaved = new TimeSlot(null, OTHER_SLOT.getStartsAt(), OTHER_SLOT.getEndsAt());
+
+        assertThatThrownBy(() -> booking.proposeReschedule(PROVIDER, unsaved))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The new slot must be saved before proposing it");
+        assertThat(booking.getPendingReschedule()).isEmpty();
+    }
+
+    @Test
+    void someoneOutsideTheBookingCannotReschedule() {
+        Booking booking = accepted();
+
+        assertThatThrownBy(() -> booking.proposeReschedule(OUTSIDER, OTHER_SLOT))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("Only the client or the provider can reschedule a booking");
+    }
+
+    @Test
+    void thereIsNothingToAnswerWithoutAPendingReschedule() {
+        Booking booking = accepted();
+
+        assertThatThrownBy(() -> booking.acceptReschedule(CLIENT))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("There is no pending reschedule for this booking");
+    }
+
+    @Test
+    void aRescheduleIsOnlyPossibleBeforeTheSessionStarts() {
+        Booking pending = newBooking();
+        Booking inProgress = inProgress();
+
+        assertThatThrownBy(() -> pending.proposeReschedule(PROVIDER, OTHER_SLOT))
+                .isInstanceOf(InvalidTransitionException.class)
+                .hasMessage("Cannot reschedule in state PENDING");
+        assertThatThrownBy(() -> inProgress.proposeReschedule(PROVIDER, OTHER_SLOT))
+                .isInstanceOf(InvalidTransitionException.class)
+                .hasMessage("Cannot reschedule in state IN_PROGRESS");
+    }
+
+    @Test
+    void startingOrCancellingDiscardsAPendingReschedule() {
+        Booking started = confirmed();
+        started.proposeReschedule(CLIENT, OTHER_SLOT);
+        Booking cancelled = accepted();
+        cancelled.proposeReschedule(CLIENT, OTHER_SLOT);
+
+        started.start(PROVIDER);
+        cancelled.cancel(PROVIDER, "No puedo");
+
+        assertThat(started.getPendingReschedule()).isEmpty();
+        assertThat(cancelled.getPendingReschedule()).isEmpty();
+        assertThat(started.getSlot()).isSameAs(SLOT);
+    }
+
     // Transiciones inválidas
 
     @Test
@@ -295,7 +435,10 @@ class BookingTest {
                 "pay", b -> b.confirmPayment(CLIENT),
                 "start", b -> b.start(PROVIDER),
                 "complete", b -> b.complete(CLIENT),
-                "cancel", b -> b.cancel(CLIENT, "Motivo"));
+                "cancel", b -> b.cancel(CLIENT, "Motivo"),
+                "propose reschedule", b -> b.proposeReschedule(PROVIDER, OTHER_SLOT),
+                "accept reschedule", b -> b.acceptReschedule(CLIENT),
+                "reject reschedule", b -> b.rejectReschedule(CLIENT));
     }
 
     private static void assertLastTransition(Booking booking, BookingStatus from, BookingStatus to,

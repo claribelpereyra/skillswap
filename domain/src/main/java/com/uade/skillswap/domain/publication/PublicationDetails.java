@@ -7,8 +7,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-// Datos editables de una publicación. En borrador pueden estar incompletos: lo obligatorio
-// se exige recién al publicar (ver Publication#publish). Los largos máximos coinciden con la base.
+// Datos editables de una publicación; lo obligatorio se exige recién al publicar.
 public record PublicationDetails(String title, String description, Long categoryId, Modality modality,
                                  Duration estimatedDuration, int capacity, SkillCoins basePrice,
                                  Set<String> tags) {
@@ -30,8 +29,7 @@ public record PublicationDetails(String title, String description, Long category
         tags.forEach(tag -> requireMaxLength(tag, MAX_TAG, "tag"));
     }
 
-    // Las etiquetas se guardan sin espacios de más y en minúsculas: "Java" y "java" son la misma etiqueta,
-    // así la búsqueda por habilidad no depende de cómo la escribió el autor.
+    // Etiquetas sin espacios y en minúsculas: "Java" y "java" son la misma.
     private static Set<String> normalize(Set<String> tags) {
         if (tags == null) {
             return Set.of();

@@ -2,10 +2,10 @@ package com.uade.skillswap.application.usecases.booking;
 
 import com.uade.skillswap.application.common.AccessDeniedException;
 import com.uade.skillswap.application.common.ResourceNotFoundException;
-import com.uade.skillswap.application.ports.in.booking.BookingReceipt;
-import com.uade.skillswap.application.ports.in.booking.GetBookingReceiptCommand;
+import com.uade.skillswap.application.dto.booking.BookingReceipt;
+import com.uade.skillswap.application.dto.booking.GetBookingReceiptCommand;
 import com.uade.skillswap.application.ports.in.booking.GetBookingReceiptUseCase;
-import com.uade.skillswap.application.ports.out.booking.BookingRepository;
+import com.uade.skillswap.application.ports.out.BookingRepository;
 import com.uade.skillswap.application.ports.out.wallet.WalletRepository;
 import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.booking.BookingStatus;
@@ -41,9 +41,6 @@ public final class GetBookingReceiptService implements GetBookingReceiptUseCase 
 
         Wallet clientWallet = wallets.findByOwnerId(booking.getClientId())
                 .orElseThrow(() -> new ResourceNotFoundException("Wallet", booking.getClientId()));
-        if (!clientWallet.ownerId().equals(booking.getClientId())) {
-            throw new IllegalStateException("The wallet repository returned a wallet for another owner");
-        }
         CreditMovement payment = clientWallet.movements().stream()
                 .filter(movement -> movement.type() == CreditMovementType.DEBIT
                         && Objects.equals(movement.bookingId(), command.bookingId()))
@@ -59,7 +56,7 @@ public final class GetBookingReceiptService implements GetBookingReceiptUseCase 
                 .orElseThrow(() -> new IllegalStateException(
                         "A completed booking must have a completion transition"));
 
-        return new BookingReceipt(command.bookingId(), booking.getClientId(), booking.getProviderId(),
-                payment.amount(), payment.occurredAt(), completedAt);
+        return new BookingReceipt(command.bookingId(), booking.getClientId().value(), booking.getProviderId().value(),
+                payment.amount().amount(), payment.occurredAt(), completedAt);
     }
 }

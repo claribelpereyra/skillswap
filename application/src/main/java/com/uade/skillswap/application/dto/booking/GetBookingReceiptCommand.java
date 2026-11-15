@@ -1,4 +1,4 @@
-package com.uade.skillswap.application.ports.in.booking;
+package com.uade.skillswap.application.dto.booking;
 
 import com.uade.skillswap.domain.common.UserId;
 

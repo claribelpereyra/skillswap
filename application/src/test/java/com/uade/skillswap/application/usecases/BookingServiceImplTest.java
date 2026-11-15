@@ -12,17 +12,23 @@ import com.uade.skillswap.application.ports.out.BookingRepository;
 import com.uade.skillswap.application.ports.out.PublicationAvailability;
 import com.uade.skillswap.application.ports.out.PublicationCatalog;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
+import com.uade.skillswap.application.ports.out.wallet.WalletRepository;
 import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.booking.BookingStatus;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.TimeSlot;
+import com.uade.skillswap.domain.wallet.BookingPaymentService;
+import com.uade.skillswap.domain.wallet.FullRefundStrategy;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 
 import java.time.Instant;
+import java.time.Clock;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -55,6 +61,7 @@ class BookingServiceImplTest {
     private BookingRepository bookings;
     private PublicationCatalog publications;
     private PublicationAvailability availability;
+    private WalletRepository wallets;
     private BookingServiceImpl service;
 
     @BeforeEach
@@ -62,8 +69,11 @@ class BookingServiceImplTest {
         bookings = mock(BookingRepository.class);
         publications = mock(PublicationCatalog.class);
         availability = mock(PublicationAvailability.class);
+        wallets = mock(WalletRepository.class);
         UnitOfWork direct = Supplier::get;
-        service = new BookingServiceImpl(bookings, publications, availability, direct);
+        service = new BookingServiceImpl(bookings, publications, availability, direct, wallets,
+                new BookingPaymentService(new FullRefundStrategy()),
+                Clock.fixed(Instant.parse("2026-11-14T10:00:00Z"), ZoneOffset.UTC));
         when(bookings.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(publications.findBookable(PUBLICATION_ID)).thenReturn(Optional.of(PUBLICATION));
     }

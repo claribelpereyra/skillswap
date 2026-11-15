@@ -24,8 +24,7 @@ public class SearchPublicationsService implements SearchPublicationsUseCase {
         this.categories = Objects.requireNonNull(categories);
     }
 
-    // Normaliza los filtros y delega la consulta. La consulta filtra y ordena en la base
-    // para poder paginar sin traer todo a memoria.
+    // Normaliza los filtros y delega; la consulta filtra y ordena en la base para paginar.
     @Override
     public Page<PublicationSummary> search(SearchFilters filters) {
         String text = normalize(filters.text());
@@ -33,7 +32,7 @@ public class SearchPublicationsService implements SearchPublicationsUseCase {
                 ? SearchSort.BEST_REPUTATION
                 : filters.sort();
         SearchCriteria criteria = new SearchCriteria(text, categoryIdsFor(filters.categoryId()), filters.modality(),
-                filters.minPrice(), filters.maxPrice(), normalize(filters.skill()), filters.minReputation(), sort);
+                filters.minPrice(), filters.maxPrice(), normalize(filters.tag()), filters.minReputation(), sort);
         return searchQuery.search(criteria, filters.page());
     }
 

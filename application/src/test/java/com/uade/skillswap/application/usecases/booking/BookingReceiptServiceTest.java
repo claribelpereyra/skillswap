@@ -12,7 +12,9 @@ import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.TimeSlot;
+import com.uade.skillswap.domain.pricing.PercentagePromotion;
 import com.uade.skillswap.domain.wallet.BookingPaymentService;
+import com.uade.skillswap.domain.wallet.FullRefundStrategy;
 import com.uade.skillswap.domain.wallet.CreditMovementType;
 import com.uade.skillswap.domain.wallet.RefundPolicy;
 import com.uade.skillswap.domain.wallet.TieredRefundStrategy;
@@ -81,6 +83,25 @@ class BookingReceiptServiceTest {
                 .occurredAt());
         assertThat(clientWallet.movements()).filteredOn(m -> m.type() == CreditMovementType.DEBIT)
                 .hasSize(1);
+    }
+
+    @Test
+    void completedBookingReceiptReportsTheDiscountedPayment() {
+        Booking booking = completedBooking();
+        Wallet clientWallet = Wallet.open(CLIENT);
+        clientWallet.topUp(PRICE, PAID_AT.minusSeconds(60));
+        Wallet providerWallet = Wallet.open(PROVIDER);
+        BookingPaymentService discountedPayments = new BookingPaymentService(
+                new FullRefundStrategy(),
+                price -> new PercentagePromotion(price, 10));
+        discountedPayments.pay(BOOKING_ID, clientWallet, providerWallet, PRICE, PAID_AT);
+        when(bookings.findById(BOOKING_ID)).thenReturn(Optional.of(booking));
+        when(wallets.findByOwnerId(CLIENT)).thenReturn(Optional.of(clientWallet));
+
+        BookingReceipt receipt = service.getReceipt(new GetBookingReceiptCommand(CLIENT, BOOKING_ID));
+
+        assertThat(receipt.amount()).isEqualTo(90);
+        assertThat(receipt.paidAt()).isEqualTo(PAID_AT);
     }
 
     @Test

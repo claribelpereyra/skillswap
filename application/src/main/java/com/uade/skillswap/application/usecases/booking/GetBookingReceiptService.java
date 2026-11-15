@@ -46,8 +46,8 @@ public final class GetBookingReceiptService implements GetBookingReceiptUseCase 
                         && Objects.equals(movement.bookingId(), command.bookingId()))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", command.bookingId()));
-        if (!payment.amount().equals(booking.getPrice())) {
-            throw new IllegalStateException("The recorded payment does not match the booking price");
+        if (payment.amount().amount() > booking.getPrice().amount()) {
+            throw new IllegalStateException("The recorded payment exceeds the booking price");
         }
         Instant completedAt = booking.getHistory().stream()
                 .filter(transition -> transition.to() == BookingStatus.COMPLETED)

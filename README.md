@@ -48,8 +48,6 @@ Convenciones:
 - Cada entidad JPA nueva se agrega en `META-INF/persistence.xml`.
 - El esquema lo maneja Flyway (`infrastructure/src/main/resources/db/migration`). Hibernate solo valida (`hbm2ddl.auto=validate`).
 - Nunca editar una migración ya mergeada: se crea una nueva `V<n>__descripcion.sql`.
-- Los casos de uso obtienen la hora actual por el puerto `TimeProvider`; en tests se inyecta una fecha fija. El dominio recibe los `Instant` de creación y transición como argumentos, sin consultar el reloj del sistema.
-- `domain.wallet.Wallet` mantiene un saldo no negativo de `SkillCoins` y un ledger inmutable al consultarlo. Cada movimiento tiene monto positivo y fecha; débitos, créditos y reintegros se vinculan a una contratación, mientras que las cargas no.
 - Todo caso negativo del enunciado (transición inválida, saldo insuficiente, cupo agotado, doble pago, calificación no autorizada) lleva su test.
 
 ## Documentación

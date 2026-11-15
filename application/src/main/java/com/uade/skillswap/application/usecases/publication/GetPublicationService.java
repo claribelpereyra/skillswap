@@ -2,7 +2,7 @@ package com.uade.skillswap.application.usecases.publication;
 
 import com.uade.skillswap.application.common.ResourceNotFoundException;
 import com.uade.skillswap.application.ports.in.publication.GetPublicationUseCase;
-import com.uade.skillswap.application.ports.in.publication.PublicationView;
+import com.uade.skillswap.application.dto.publication.PublicationView;
 import com.uade.skillswap.application.ports.out.publication.PublicationRepository;
 import com.uade.skillswap.domain.common.UserId;
 

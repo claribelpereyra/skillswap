@@ -1,6 +1,6 @@
 package com.uade.skillswap.application.ports.out.publication;
 
-import com.uade.skillswap.application.ports.in.publication.SearchSort;
+import com.uade.skillswap.application.dto.publication.SearchSort;
 import com.uade.skillswap.domain.publication.Modality;
 
 import java.util.Set;

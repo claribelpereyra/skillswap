@@ -83,14 +83,14 @@ public class BookingServiceImpl implements BookingService {
         });
     }
 
-    // Al aceptar la reprogramación se reserva la franja nueva y se libera la anterior.
+    // Primero se libera la franja anterior: con el cupo lleno, reservar antes fallaría aunque solo se mueva de franja.
     @Override
     public BookingView acceptReschedule(Long bookingId, UserId actor) {
         return change(bookingId, booking -> {
             long previousSlotId = booking.getSlot().getId();
             booking.acceptReschedule(actor);
-            availability.reserve(booking.getPublicationId(), booking.getSlot().getId());
             availability.release(booking.getPublicationId(), previousSlotId);
+            availability.reserve(booking.getPublicationId(), booking.getSlot().getId());
         });
     }
 

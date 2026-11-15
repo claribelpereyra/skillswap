@@ -16,7 +16,7 @@ public record SkillCoins(long amount) {
 
     public SkillCoins subtract(SkillCoins other) {
         if (other.amount > amount) {
-            throw new IllegalArgumentException("Insufficient balance: " + amount + " < " + other.amount);
+            throw new InsufficientBalanceException(amount, other.amount);
         }
         return new SkillCoins(amount - other.amount);
     }

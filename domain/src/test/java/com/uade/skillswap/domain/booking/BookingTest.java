@@ -310,6 +310,17 @@ class BookingTest {
     }
 
     @Test
+    void theNewSlotMustBeSavedBeforeProposingIt() {
+        Booking booking = accepted();
+        TimeSlot unsaved = new TimeSlot(null, OTHER_SLOT.getStartsAt(), OTHER_SLOT.getEndsAt());
+
+        assertThatThrownBy(() -> booking.proposeReschedule(PROVIDER, unsaved))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The new slot must be saved before proposing it");
+        assertThat(booking.getPendingReschedule()).isEmpty();
+    }
+
+    @Test
     void someoneOutsideTheBookingCannotReschedule() {
         Booking booking = accepted();
 

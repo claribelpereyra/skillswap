@@ -10,10 +10,11 @@
         <!-- Listar acá cada entidad JPA a medida que se creen, por ejemplo:
         <class>com.uade.skillswap.infrastructure.persistence.PublicationJpaEntity</class>
         -->
+        <class>com.uade.skillswap.infrastructure.persistence.booking.BookingJpaEntity</class>
+        <class>com.uade.skillswap.infrastructure.persistence.booking.BookingTransitionJpaEntity</class>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
 
         <properties>
-            <property name="jakarta.persistence.jdbc.driver" value="com.mysql.cj.jdbc.Driver"/>
             <!-- El esquema lo maneja Flyway. Hibernate solo valida que las entidades coincidan con las tablas. -->
             <property name="hibernate.hbm2ddl.auto" value="validate"/>
             <property name="hibernate.show_sql" value="false"/>

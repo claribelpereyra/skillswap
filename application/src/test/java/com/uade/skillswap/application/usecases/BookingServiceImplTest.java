@@ -87,7 +87,8 @@ class BookingServiceImplTest {
         when(publications.findBookable(PUBLICATION_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.request(new RequestBookingCommand(CLIENT, PUBLICATION_ID, 1L, "Hola", "Entrevista")))
-                .isInstanceOf(ResourceNotFoundException.class);
+                .isExactlyInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Publication not found with id " + PUBLICATION_ID);
         verify(bookings, never()).save(any());
     }
 
@@ -140,7 +141,7 @@ class BookingServiceImplTest {
         when(bookings.findById(BOOKING_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.accept(BOOKING_ID, PROVIDER))
-                .isInstanceOf(ResourceNotFoundException.class)
+                .isExactlyInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Booking not found with id 99");
     }
 
@@ -168,11 +169,12 @@ class BookingServiceImplTest {
         assertThat(view.proposedSlotId()).isEqualTo(2L);
         assertThat(view.rescheduleProposedBy()).isEqualTo("bruno");
         assertThatThrownBy(() -> service.proposeReschedule(BOOKING_ID, PROVIDER, 7L))
+                .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("The slot does not belong to the publication");
     }
 
     @Test
-    void acceptRescheduleReservesTheNewSlotAndReleasesThePreviousOne() {
+    void acceptRescheduleReleasesThePreviousSlotBeforeReservingTheNewOne() {
         Booking booking = accepted();
         booking.proposeReschedule(PROVIDER, OTHER_SLOT);
         stored(booking);
@@ -181,8 +183,8 @@ class BookingServiceImplTest {
 
         assertThat(view.slotId()).isEqualTo(2L);
         InOrder order = inOrder(availability);
-        order.verify(availability).reserve(PUBLICATION_ID, 2L);
         order.verify(availability).release(PUBLICATION_ID, 1L);
+        order.verify(availability).reserve(PUBLICATION_ID, 2L);
     }
 
     @Test
@@ -209,7 +211,8 @@ class BookingServiceImplTest {
         assertThat(history).extracting(BookingHistoryEntry::to)
                 .containsExactly(BookingStatus.PENDING, BookingStatus.ACCEPTED);
         assertThatThrownBy(() -> service.history(BOOKING_ID, OUTSIDER))
-                .isInstanceOf(AccessDeniedException.class);
+                .isExactlyInstanceOf(AccessDeniedException.class)
+                .hasMessage("User carla is not allowed to view the history of booking " + BOOKING_ID);
     }
 
     @Test

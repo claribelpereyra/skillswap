@@ -56,6 +56,17 @@ public class Booking {
         return new Booking(publicationId, clientId, providerId, slot, message, goal, price, history);
     }
 
+    // Reconstruye una reserva guardada; el objeto de estado se arma desde el último estado del historial.
+    public static Booking rebuild(Long id, long publicationId, UserId clientId, UserId providerId, TimeSlot slot,
+                                  String message, String goal, SkillCoins price,
+                                  List<StateTransition<BookingStatus>> history, RescheduleProposal pendingReschedule) {
+        Booking booking = new Booking(publicationId, clientId, providerId, slot, message, goal, price,
+                StateHistory.rebuild(history));
+        booking.id = Objects.requireNonNull(id, "A stored booking must have an id");
+        booking.pendingReschedule = pendingReschedule;
+        return booking;
+    }
+
     // State Pattern: la reserva delega cada acción en su estado actual.
     public void accept(UserId actor) {
         state.accept(this, actor);
@@ -137,6 +148,10 @@ public class Booking {
         }
         if (pendingReschedule != null) {
             throw new BusinessRuleException("There is already a pending reschedule for this booking");
+        }
+        // Sin id no se puede comparar con la franja actual: dos franjas sin guardar parecerían la misma.
+        if (newSlot.getId() == null) {
+            throw new BusinessRuleException("The new slot must be saved before proposing it");
         }
         if (Objects.equals(newSlot.getId(), slot.getId())) {
             throw new BusinessRuleException("The new slot must be different from the current one");

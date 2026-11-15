@@ -3,6 +3,7 @@ package com.uade.skillswap.domain.booking;
 import com.uade.skillswap.domain.booking.state.BookingState;
 import com.uade.skillswap.domain.booking.state.BookingStateFactory;
 import com.uade.skillswap.domain.common.BusinessRuleException;
+import com.uade.skillswap.domain.common.PermissionDeniedException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.StateHistory;
 import com.uade.skillswap.domain.common.StateTransition;
@@ -115,19 +116,19 @@ public class Booking {
 
     public void requireProvider(UserId actor, String action) {
         if (!providerId.equals(actor)) {
-            throw new BusinessRuleException("Only the provider can " + action + " a booking");
+            throw new PermissionDeniedException("Only the provider can " + action + " a booking");
         }
     }
 
     public void requireClient(UserId actor, String action) {
         if (!clientId.equals(actor)) {
-            throw new BusinessRuleException("Only the client can " + action + " a booking");
+            throw new PermissionDeniedException("Only the client can " + action + " a booking");
         }
     }
 
     public void requireParticipant(UserId actor, String action) {
         if (!isParticipant(actor)) {
-            throw new BusinessRuleException("Only the client or the provider can " + action + " a booking");
+            throw new PermissionDeniedException("Only the client or the provider can " + action + " a booking");
         }
     }
 

@@ -1,6 +1,10 @@
 package com.uade.skillswap.application.ports.out.publication;
 
+import com.uade.skillswap.application.common.Page;
+import com.uade.skillswap.application.common.PageRequest;
+import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.Publication;
+import com.uade.skillswap.domain.publication.PublicationStatus;
 
 import java.util.Optional;
 
@@ -11,4 +15,7 @@ public interface PublicationRepository {
 
     // Devuelve la publicación guardada (con id asignado si era nueva).
     Publication save(Publication publication);
+
+    // Publicaciones de un autor, de la más nueva a la más vieja. Con status null, en cualquier estado.
+    Page<Publication> findByAuthor(UserId authorId, PublicationStatus status, PageRequest page);
 }

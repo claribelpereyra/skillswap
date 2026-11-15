@@ -10,7 +10,6 @@ import com.uade.skillswap.application.dto.RequestBookingCommand;
 import com.uade.skillswap.application.ports.in.BookingService;
 import com.uade.skillswap.application.ports.out.BookablePublication;
 import com.uade.skillswap.application.ports.out.BookingRepository;
-import com.uade.skillswap.application.ports.out.IdentityService;
 import com.uade.skillswap.application.ports.out.PublicationAvailability;
 import com.uade.skillswap.application.ports.out.PublicationCatalog;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
@@ -28,22 +27,18 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookings;
     private final PublicationCatalog publications;
     private final PublicationAvailability availability;
-    private final IdentityService identity;
     private final UnitOfWork unitOfWork;
 
     public BookingServiceImpl(BookingRepository bookings, PublicationCatalog publications,
-                              PublicationAvailability availability, IdentityService identity,
-                              UnitOfWork unitOfWork) {
+                              PublicationAvailability availability, UnitOfWork unitOfWork) {
         this.bookings = Objects.requireNonNull(bookings);
         this.publications = Objects.requireNonNull(publications);
         this.availability = Objects.requireNonNull(availability);
-        this.identity = Objects.requireNonNull(identity);
         this.unitOfWork = Objects.requireNonNull(unitOfWork);
     }
 
     @Override
     public BookingView request(RequestBookingCommand command) {
-        requireCurrentUser(command.clientId(), "request a publication");
         return unitOfWork.execute(() -> {
             BookablePublication publication = findPublication(command.publicationId());
             if (!publication.published()) {
@@ -59,7 +54,7 @@ public class BookingServiceImpl implements BookingService {
     // Aceptar y reservar el cupo van juntos: si no hay lugar, no queda nada aceptado.
     @Override
     public BookingView accept(Long bookingId, UserId actor) {
-        return change(bookingId, actor, "accept a booking", booking -> {
+        return change(bookingId, booking -> {
             booking.accept(actor);
             availability.reserve(booking.getPublicationId(), booking.getSlot().getId());
         });
@@ -67,46 +62,45 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingView reject(Long bookingId, UserId actor, String reason) {
-        return change(bookingId, actor, "reject a booking", booking -> booking.reject(actor, reason));
+        return change(bookingId, booking -> booking.reject(actor, reason));
     }
 
     @Override
     public BookingView start(Long bookingId, UserId actor) {
-        return change(bookingId, actor, "start a booking", booking -> booking.start(actor));
+        return change(bookingId, booking -> booking.start(actor));
     }
 
     @Override
     public BookingView complete(Long bookingId, UserId actor) {
-        return change(bookingId, actor, "complete a booking", booking -> booking.complete(actor));
+        return change(bookingId, booking -> booking.complete(actor));
     }
 
     @Override
     public BookingView proposeReschedule(Long bookingId, UserId actor, long newSlotId) {
-        return change(bookingId, actor, "reschedule a booking", booking -> {
+        return change(bookingId, booking -> {
             TimeSlot newSlot = findSlot(findPublication(booking.getPublicationId()), newSlotId);
             booking.proposeReschedule(actor, newSlot);
         });
     }
 
-    // Al aceptar la reprogramación se reserva la franja nueva y se libera la anterior.
+    // Primero se libera la franja anterior: con el cupo lleno, reservar antes fallaría aunque solo se mueva de franja.
     @Override
     public BookingView acceptReschedule(Long bookingId, UserId actor) {
-        return change(bookingId, actor, "accept a reschedule", booking -> {
+        return change(bookingId, booking -> {
             long previousSlotId = booking.getSlot().getId();
             booking.acceptReschedule(actor);
-            availability.reserve(booking.getPublicationId(), booking.getSlot().getId());
             availability.release(booking.getPublicationId(), previousSlotId);
+            availability.reserve(booking.getPublicationId(), booking.getSlot().getId());
         });
     }
 
     @Override
     public BookingView rejectReschedule(Long bookingId, UserId actor) {
-        return change(bookingId, actor, "reject a reschedule", booking -> booking.rejectReschedule(actor));
+        return change(bookingId, booking -> booking.rejectReschedule(actor));
     }
 
     @Override
     public List<BookingHistoryEntry> history(Long bookingId, UserId actor) {
-        requireCurrentUser(actor, "view a booking history");
         Booking booking = findBooking(bookingId);
         if (!booking.isParticipant(actor)) {
             throw new AccessDeniedException(actor, "view the history of booking " + bookingId);
@@ -116,31 +110,21 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public Page<BookingView> listAsClient(UserId actor, PageRequest page) {
-        requireCurrentUser(actor, "list bookings");
         return bookings.findByClient(actor, page).map(BookingView::from);
     }
 
     @Override
     public Page<BookingView> listAsProvider(UserId actor, PageRequest page) {
-        requireCurrentUser(actor, "list bookings");
         return bookings.findByProvider(actor, page).map(BookingView::from);
     }
 
     // Busca la reserva, aplica el cambio y la guarda, todo en una misma transacción.
-    private BookingView change(Long bookingId, UserId actor, String operation, Consumer<Booking> action) {
-        requireCurrentUser(actor, operation);
+    private BookingView change(Long bookingId, Consumer<Booking> action) {
         return unitOfWork.execute(() -> {
             Booking booking = findBooking(bookingId);
             action.accept(booking);
             return BookingView.from(bookings.save(booking));
         });
-    }
-
-    // El userId que llega tiene que ser el del usuario logueado en el servicio de identidad (§5).
-    private void requireCurrentUser(UserId actor, String operation) {
-        if (actor == null || !actor.equals(identity.currentUserId())) {
-            throw new AccessDeniedException(actor, operation);
-        }
     }
 
     private Booking findBooking(Long bookingId) {

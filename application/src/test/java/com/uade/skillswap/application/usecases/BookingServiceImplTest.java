@@ -9,7 +9,6 @@ import com.uade.skillswap.application.dto.BookingView;
 import com.uade.skillswap.application.dto.RequestBookingCommand;
 import com.uade.skillswap.application.ports.out.BookablePublication;
 import com.uade.skillswap.application.ports.out.BookingRepository;
-import com.uade.skillswap.application.ports.out.IdentityService;
 import com.uade.skillswap.application.ports.out.PublicationAvailability;
 import com.uade.skillswap.application.ports.out.PublicationCatalog;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
@@ -56,7 +55,6 @@ class BookingServiceImplTest {
     private BookingRepository bookings;
     private PublicationCatalog publications;
     private PublicationAvailability availability;
-    private IdentityService identity;
     private BookingServiceImpl service;
 
     @BeforeEach
@@ -64,9 +62,8 @@ class BookingServiceImplTest {
         bookings = mock(BookingRepository.class);
         publications = mock(PublicationCatalog.class);
         availability = mock(PublicationAvailability.class);
-        identity = mock(IdentityService.class);
         UnitOfWork direct = Supplier::get;
-        service = new BookingServiceImpl(bookings, publications, availability, identity, direct);
+        service = new BookingServiceImpl(bookings, publications, availability, direct);
         when(bookings.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(publications.findBookable(PUBLICATION_ID)).thenReturn(Optional.of(PUBLICATION));
     }
@@ -75,7 +72,6 @@ class BookingServiceImplTest {
 
     @Test
     void requestCreatesAPendingBookingWithThePublicationData() {
-        loggedAs(CLIENT);
 
         BookingView view = service.request(new RequestBookingCommand(CLIENT, PUBLICATION_ID, 1L, "Hola", "Entrevista"));
 
@@ -88,17 +84,16 @@ class BookingServiceImplTest {
 
     @Test
     void requestFailsWhenThePublicationDoesNotExist() {
-        loggedAs(CLIENT);
         when(publications.findBookable(PUBLICATION_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.request(new RequestBookingCommand(CLIENT, PUBLICATION_ID, 1L, "Hola", "Entrevista")))
-                .isInstanceOf(ResourceNotFoundException.class);
+                .isExactlyInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Publication not found with id " + PUBLICATION_ID);
         verify(bookings, never()).save(any());
     }
 
     @Test
     void requestFailsWhenThePublicationIsNotPublished() {
-        loggedAs(CLIENT);
         when(publications.findBookable(PUBLICATION_ID)).thenReturn(Optional.of(
                 new BookablePublication(PUBLICATION_ID, PROVIDER, false, new SkillCoins(100), List.of(SLOT))));
 
@@ -110,23 +105,10 @@ class BookingServiceImplTest {
 
     @Test
     void requestFailsWhenTheSlotIsNotFromThePublication() {
-        loggedAs(CLIENT);
 
         assertThatThrownBy(() -> service.request(new RequestBookingCommand(CLIENT, PUBLICATION_ID, 7L, "Hola", "Entrevista")))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("The slot does not belong to the publication");
-    }
-
-    @Test
-    void theActorMustBeTheLoggedUser() {
-        loggedAs(OUTSIDER);
-
-        assertThatThrownBy(() -> service.request(new RequestBookingCommand(CLIENT, PUBLICATION_ID, 1L, "Hola", "Entrevista")))
-                .isInstanceOf(AccessDeniedException.class);
-        assertThatThrownBy(() -> service.accept(BOOKING_ID, PROVIDER))
-                .isInstanceOf(AccessDeniedException.class);
-        verifyNoInteractions(availability);
-        verify(bookings, never()).save(any());
     }
 
     // Aceptar y reservar el cupo
@@ -134,7 +116,6 @@ class BookingServiceImplTest {
     @Test
     void acceptReservesTheSpotAndSavesTheBooking() {
         stored(pending());
-        loggedAs(PROVIDER);
 
         BookingView view = service.accept(BOOKING_ID, PROVIDER);
 
@@ -146,7 +127,6 @@ class BookingServiceImplTest {
     @Test
     void acceptFailsWithoutSavingWhenThereIsNoCapacityLeft() {
         stored(pending());
-        loggedAs(PROVIDER);
         doThrow(new BusinessRuleException("No capacity left for this publication"))
                 .when(availability).reserve(PUBLICATION_ID, 1L);
 
@@ -158,11 +138,10 @@ class BookingServiceImplTest {
 
     @Test
     void acceptFailsWhenTheBookingDoesNotExist() {
-        loggedAs(PROVIDER);
         when(bookings.findById(BOOKING_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.accept(BOOKING_ID, PROVIDER))
-                .isInstanceOf(ResourceNotFoundException.class)
+                .isExactlyInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Booking not found with id 99");
     }
 
@@ -171,13 +150,11 @@ class BookingServiceImplTest {
     @Test
     void rejectStartAndCompleteChangeTheStateAndSave() {
         stored(pending());
-        loggedAs(PROVIDER);
         assertThat(service.reject(BOOKING_ID, PROVIDER, "Sin disponibilidad").status()).isEqualTo(BookingStatus.REJECTED);
 
         stored(confirmed());
         assertThat(service.start(BOOKING_ID, PROVIDER).status()).isEqualTo(BookingStatus.IN_PROGRESS);
 
-        loggedAs(CLIENT);
         assertThat(service.complete(BOOKING_ID, CLIENT).status()).isEqualTo(BookingStatus.COMPLETED);
     }
 
@@ -186,29 +163,28 @@ class BookingServiceImplTest {
     @Test
     void proposeRescheduleUsesASlotOfTheSamePublication() {
         stored(accepted());
-        loggedAs(PROVIDER);
 
         BookingView view = service.proposeReschedule(BOOKING_ID, PROVIDER, 2L);
 
         assertThat(view.proposedSlotId()).isEqualTo(2L);
         assertThat(view.rescheduleProposedBy()).isEqualTo("bruno");
         assertThatThrownBy(() -> service.proposeReschedule(BOOKING_ID, PROVIDER, 7L))
+                .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("The slot does not belong to the publication");
     }
 
     @Test
-    void acceptRescheduleReservesTheNewSlotAndReleasesThePreviousOne() {
+    void acceptRescheduleReleasesThePreviousSlotBeforeReservingTheNewOne() {
         Booking booking = accepted();
         booking.proposeReschedule(PROVIDER, OTHER_SLOT);
         stored(booking);
-        loggedAs(CLIENT);
 
         BookingView view = service.acceptReschedule(BOOKING_ID, CLIENT);
 
         assertThat(view.slotId()).isEqualTo(2L);
         InOrder order = inOrder(availability);
-        order.verify(availability).reserve(PUBLICATION_ID, 2L);
         order.verify(availability).release(PUBLICATION_ID, 1L);
+        order.verify(availability).reserve(PUBLICATION_ID, 2L);
     }
 
     @Test
@@ -216,7 +192,6 @@ class BookingServiceImplTest {
         Booking booking = accepted();
         booking.proposeReschedule(PROVIDER, OTHER_SLOT);
         stored(booking);
-        loggedAs(CLIENT);
 
         BookingView view = service.rejectReschedule(BOOKING_ID, CLIENT);
 
@@ -230,20 +205,18 @@ class BookingServiceImplTest {
     @Test
     void onlyParticipantsCanSeeTheHistory() {
         stored(accepted());
-        loggedAs(CLIENT);
 
         List<BookingHistoryEntry> history = service.history(BOOKING_ID, CLIENT);
 
         assertThat(history).extracting(BookingHistoryEntry::to)
                 .containsExactly(BookingStatus.PENDING, BookingStatus.ACCEPTED);
-        loggedAs(OUTSIDER);
         assertThatThrownBy(() -> service.history(BOOKING_ID, OUTSIDER))
-                .isInstanceOf(AccessDeniedException.class);
+                .isExactlyInstanceOf(AccessDeniedException.class)
+                .hasMessage("User carla is not allowed to view the history of booking " + BOOKING_ID);
     }
 
     @Test
     void listsTheBookingsOfTheLoggedUserPaginated() {
-        loggedAs(CLIENT);
         PageRequest page = PageRequest.first();
         when(bookings.findByClient(CLIENT, page)).thenReturn(new Page<>(List.of(pending()), page, 1));
         when(bookings.findByProvider(CLIENT, page)).thenReturn(Page.empty(page));
@@ -251,10 +224,6 @@ class BookingServiceImplTest {
         assertThat(service.listAsClient(CLIENT, page).items()).singleElement()
                 .extracting(BookingView::status).isEqualTo(BookingStatus.PENDING);
         assertThat(service.listAsProvider(CLIENT, page).items()).isEmpty();
-    }
-
-    private void loggedAs(UserId user) {
-        when(identity.currentUserId()).thenReturn(user);
     }
 
     private void stored(Booking booking) {

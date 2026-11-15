@@ -16,8 +16,7 @@ public class GetPublicationService implements GetPublicationUseCase {
         this.publications = Objects.requireNonNull(publications);
     }
 
-    // Un borrador o una pausada ajena responde "no encontrada", igual que una que no existe:
-    // así no se filtra que existe algo que el usuario no debería ver.
+    // Una publicación ajena que no está publicada responde "no encontrada", igual que una inexistente.
     @Override
     public PublicationView get(UserId viewerId, long publicationId) {
         return publications.findById(publicationId)

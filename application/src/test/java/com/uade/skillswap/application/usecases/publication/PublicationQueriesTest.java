@@ -177,11 +177,14 @@ class PublicationQueriesTest {
     @Test
     void invalidFiltersAreRejected() {
         assertThatThrownBy(() -> new SearchFilters(null, null, null, 100L, 10L, null, null, null, null))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The minimum price cannot be higher than the maximum price");
         assertThatThrownBy(() -> new SearchFilters(null, null, null, -1L, null, null, null, null, null))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Prices cannot be negative");
         assertThatThrownBy(() -> new SearchFilters(null, null, null, null, null, null, 6.0, null, null))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("The minimum reputation must be between 0 and 5");
     }
 
     @Test

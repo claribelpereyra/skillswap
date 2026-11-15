@@ -3,10 +3,7 @@ package com.uade.skillswap.application.dto.publication;
 import com.uade.skillswap.application.common.PageRequest;
 import com.uade.skillswap.domain.publication.Modality;
 
-// Lo que el usuario completa en el buscador. Todos los filtros son opcionales (null = sin filtro).
-// - categoryId: incluye sus subcategorías y habilidades.
-// - skill: nombre de una habilidad; matchea contra las etiquetas de la publicación.
-// - minReputation: reputación mínima del autor, de 0 a 5.
+// Filtros del buscador; todos opcionales (null = sin filtro).
 public record SearchFilters(String text, Long categoryId, Modality modality, Long minPrice, Long maxPrice,
                             String skill, Double minReputation, SearchSort sort, PageRequest page) {
 

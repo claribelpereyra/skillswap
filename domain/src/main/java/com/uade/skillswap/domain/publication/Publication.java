@@ -6,6 +6,8 @@ import com.uade.skillswap.domain.common.StateHistory;
 import com.uade.skillswap.domain.common.StateTransition;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.profile.AccountType;
+import com.uade.skillswap.domain.publication.state.PublicationState;
+import com.uade.skillswap.domain.publication.state.PublicationStateFactory;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -13,9 +15,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-// Agregado Publicación: oferta de mentoría o servicio de un profesional, o desafío de una organización.
-// El cupo es por publicación (cantidad de contrataciones activas) y cada franja la toma una sola
-// contratación (decisión D5).
+// Agregado Publicación: el cupo es por publicación y cada franja la toma una sola contratación (D5).
 public class Publication {
 
     private final Long id;
@@ -34,10 +34,10 @@ public class Publication {
         this.details = Objects.requireNonNull(details, "The publication details are required");
         this.slots = new ArrayList<>(slots);
         this.history = history;
-        this.state = PublicationState.of(history.currentState());
+        this.state = PublicationStateFactory.fromStatus(history.currentState());
     }
 
-    // Crea la publicación en borrador. Los datos pueden estar incompletos hasta publicar.
+    // Crea la publicación en borrador; los datos pueden estar incompletos hasta publicar.
     public static Publication draft(UserId authorId, AccountType authorAccountType, PublicationType type,
                                     PublicationDetails details, Instant now) {
         Objects.requireNonNull(type, "The publication type is required");
@@ -82,45 +82,47 @@ public class Publication {
         }
     }
 
-    // --- Transiciones de estado ---
+    // --- Transiciones (patrón State: la publicación delega cada acción en su estado actual) ---
 
     public void publish(UserId actor, Instant now) {
         requireAuthor(actor, "publish");
-        transitionTo(state.publish(this), actor, now, null);
+        state.publish(this, actor, now);
     }
 
     public void pause(UserId actor, Instant now) {
         requireAuthor(actor, "pause");
-        transitionTo(state.pause(), actor, now, null);
+        state.pause(this, actor, now);
     }
 
     public void resume(UserId actor, Instant now) {
         requireAuthor(actor, "resume");
-        transitionTo(state.resume(), actor, now, null);
+        state.resume(this, actor, now);
     }
 
     public void close(UserId actor, Instant now) {
         requireAuthor(actor, "close");
-        transitionTo(state.close(), actor, now, null);
+        state.close(this, actor, now);
     }
 
     public void cancel(UserId actor, String reason, Instant now) {
         requireAuthor(actor, "cancel");
-        PublicationState next = state.cancel();
-        if (reason == null || reason.isBlank()) {
-            throw new BusinessRuleException("A reason is required to cancel a publication");
-        }
-        transitionTo(next, actor, now, reason);
+        state.cancel(this, actor, reason, now);
     }
 
-    private void transitionTo(PublicationState next, UserId actor, Instant now, String reason) {
-        history.record(state.status(), next.status(), actor, now, reason);
+    // Lo llaman solo los estados; los casos de uso usan las acciones de arriba.
+    public void changeState(PublicationState next, UserId actor, Instant now, String reason) {
+        history.record(state.getStatus(), next.getStatus(), actor, now, reason);
         state = next;
     }
 
-    // Publicar requiere título, categoría, precio no negativo y al menos una franja (caso de aceptación 2).
-    // El precio no puede ser negativo porque SkillCoins no lo admite; acá solo falta chequear que esté.
-    void checkCompleteForPublishing() {
+    public void requireReason(String reason, String action) {
+        if (reason == null || reason.isBlank()) {
+            throw new BusinessRuleException("A reason is required to " + action + " a publication");
+        }
+    }
+
+    // Publicar requiere título, categoría, precio y al menos una franja (caso de aceptación 2).
+    public void checkCompleteForPublishing() {
         List<String> missing = new ArrayList<>();
         if (details.title() == null || details.title().isBlank()) {
             missing.add("title");
@@ -139,7 +141,7 @@ public class Publication {
         }
     }
 
-    // --- Visibilidad y solicitudes ---
+    // --- Visibilidad ---
 
     // Publicada la ven todos; en cualquier otro estado, solo su autor.
     public boolean isVisibleTo(UserId viewer) {
@@ -150,54 +152,37 @@ public class Publication {
         return state.acceptsRequests();
     }
 
-    // Reglas para que un cliente pueda solicitar la publicación en una franja.
-    public void checkCanBeRequested(UserId clientId, TimeSlot slot) {
-        if (authorId.equals(clientId)) {
-            throw new BusinessRuleException("The author cannot request their own publication");
-        }
-        if (!state.acceptsRequests()) {
-            throw new BusinessRuleException("The publication does not accept requests in state " + state.status());
-        }
-        checkSlotIsFree(slot);
-    }
-
     // --- Cupo y franjas ---
 
-    // Ocupa la franja y un lugar del cupo. Lo usa la aceptación de una contratación.
+    // Ocupa la franja y un lugar del cupo al aceptar una contratación.
     public void reserve(TimeSlot slot) {
         if (!state.allowsReservations()) {
-            throw new BusinessRuleException("The publication does not allow reservations in state " + state.status());
+            throw new BusinessRuleException(
+                    "The publication does not allow reservations in state " + state.getStatus());
         }
-        TimeSlot own = checkSlotIsFree(slot);
+        TimeSlot own = findOwnSlot(slot);
+        if (own.isOccupied()) {
+            throw new BusinessRuleException("The slot is already taken");
+        }
+        // <= 0 cubre datos inconsistentes con más franjas ocupadas que cupo.
+        if (availableSpots() <= 0) {
+            throw new BusinessRuleException("The publication has no capacity left");
+        }
         own.occupy();
     }
 
-    // Libera la franja y el lugar. Lo usan la cancelación y la reprogramación de una contratación.
-    // Se puede en cualquier estado: si se cancela una contratación de una publicación ya cerrada, el lugar vuelve.
+    // Libera la franja en cualquier estado: si se cancela una contratación de una publicación cerrada, el lugar vuelve.
     public void release(TimeSlot slot) {
-        TimeSlot own = findSlot(slot)
-                .orElseThrow(() -> new BusinessRuleException("The slot does not belong to the publication"));
+        TimeSlot own = findOwnSlot(slot);
         if (!own.isOccupied()) {
             throw new BusinessRuleException("The slot is not occupied");
         }
         own.release();
     }
 
-    private TimeSlot checkSlotIsFree(TimeSlot slot) {
-        TimeSlot own = findSlot(slot)
-                .orElseThrow(() -> new BusinessRuleException("The slot does not belong to the publication"));
-        if (own.isOccupied()) {
-            throw new BusinessRuleException("The slot is already taken");
-        }
-        // <= 0 y no == 0: si la base trae más franjas ocupadas que cupo, igual se bloquea.
-        if (availableSpots() <= 0) {
-            throw new BusinessRuleException("The publication has no capacity left");
-        }
-        return own;
-    }
-
-    private Optional<TimeSlot> findSlot(TimeSlot slot) {
-        return slots.stream().filter(s -> s.equals(slot)).findFirst();
+    private TimeSlot findOwnSlot(TimeSlot slot) {
+        Optional<TimeSlot> own = slots.stream().filter(s -> s.equals(slot)).findFirst();
+        return own.orElseThrow(() -> new BusinessRuleException("The slot does not belong to the publication"));
     }
 
     public int availableSpots() {
@@ -238,7 +223,7 @@ public class Publication {
     }
 
     public PublicationStatus getStatus() {
-        return state.status();
+        return state.getStatus();
     }
 
     public List<StateTransition<PublicationStatus>> getHistory() {

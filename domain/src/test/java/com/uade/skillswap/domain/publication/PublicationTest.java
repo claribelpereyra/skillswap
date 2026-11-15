@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
@@ -336,37 +335,6 @@ class PublicationTest {
         assertThat(publication.isVisibleTo(AUTHOR)).isTrue();
     }
 
-    @Test
-    void aClientRequestsAPublishedPublicationInAFreeSlot() {
-        Publication publication = published(1, 1);
-        TimeSlot slot = publication.getSlots().get(0);
-
-        assertThatCode(() -> publication.checkCanBeRequested(CLIENT, slot)).doesNotThrowAnyException();
-    }
-
-    @Test
-    void theAuthorCannotRequestTheirOwnPublication() {
-        Publication publication = published(1, 1);
-
-        assertThatThrownBy(() -> publication.checkCanBeRequested(AUTHOR, publication.getSlots().get(0)))
-                .isExactlyInstanceOf(BusinessRuleException.class)
-                .hasMessage("The author cannot request their own publication");
-    }
-
-    @Test
-    void aPublicationThatIsNotPublishedDoesNotAcceptRequests() {
-        Publication draft = draftMentoring(1);
-        TimeSlot slot = addSlot(draft, 0);
-        assertThatThrownBy(() -> draft.checkCanBeRequested(CLIENT, slot)).isExactlyInstanceOf(BusinessRuleException.class)
-                .hasMessage("The publication does not accept requests in state DRAFT");
-
-        Publication paused = published(1, 1);
-        paused.pause(AUTHOR, NOW);
-        assertThatThrownBy(() -> paused.checkCanBeRequested(CLIENT, paused.getSlots().get(0)))
-                .isExactlyInstanceOf(BusinessRuleException.class)
-                .hasMessage("The publication does not accept requests in state PAUSED");
-    }
-
     // --- Cupo ---
 
     @Test
@@ -382,15 +350,13 @@ class PublicationTest {
     }
 
     @Test
-    void anOccupiedSlotCannotBeReservedNorRequested() {
+    void anOccupiedSlotCannotBeReservedAgain() {
         Publication publication = published(2, 2);
         TimeSlot slot = publication.getSlots().get(0);
         publication.reserve(slot);
 
         assertThatThrownBy(() -> publication.reserve(slot)).isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("The slot is already taken");
-        assertThatThrownBy(() -> publication.checkCanBeRequested(CLIENT, slot))
-                .isInstanceOf(BusinessRuleException.class);
     }
 
     @Test
@@ -400,8 +366,8 @@ class PublicationTest {
         TimeSlot freeSlot = publication.getSlots().get(1);
 
         assertThatThrownBy(() -> publication.reserve(freeSlot))
-                .isInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("capacity");
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The publication has no capacity left");
         assertThat(freeSlot.isOccupied()).isFalse();
     }
 

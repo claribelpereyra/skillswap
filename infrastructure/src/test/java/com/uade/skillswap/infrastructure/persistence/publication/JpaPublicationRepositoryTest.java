@@ -1,7 +1,9 @@
 package com.uade.skillswap.infrastructure.persistence.publication;
 
+import com.uade.skillswap.application.common.ConcurrentUpdateException;
 import com.uade.skillswap.application.common.Page;
 import com.uade.skillswap.application.common.PageRequest;
+import com.uade.skillswap.application.common.ResourceNotFoundException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.profile.AccountType;
@@ -12,7 +14,7 @@ import com.uade.skillswap.domain.publication.PublicationStatus;
 import com.uade.skillswap.domain.publication.PublicationType;
 import com.uade.skillswap.domain.publication.TimeSlot;
 import com.uade.skillswap.infrastructure.persistence.PersistenceTestBase;
-import jakarta.persistence.OptimisticLockException;
+import jakarta.persistence.PersistenceException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -28,6 +30,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JpaPublicationRepositoryTest extends PersistenceTestBase {
 
@@ -88,6 +91,22 @@ class JpaPublicationRepositoryTest extends PersistenceTestBase {
     @Test
     void anUnknownIdIsEmpty() {
         assertThat(repository.findById(999)).isEmpty();
+    }
+
+    @Test
+    void twoRootCategoriesCannotHaveTheSameName() {
+        assertThatThrownBy(() -> sql("INSERT INTO category (id, parent_id, name, kind) VALUES (?, ?, ?, ?)",
+                2, null, "Tecnología", "CATEGORY")).isInstanceOf(PersistenceException.class);
+    }
+
+    @Test
+    void savingAPublicationThatNoLongerExistsIsNotFound() {
+        Publication saved = save(draft(AUTHOR, 1, 1));
+        sql("DELETE FROM publication_transition WHERE publication_id = ?", saved.getId());
+        sql("DELETE FROM publication WHERE id = ?", saved.getId());
+
+        assertThatThrownBy(() -> save(saved)).isExactlyInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Publication not found with id " + saved.getId());
     }
 
     @Test
@@ -175,9 +194,7 @@ class JpaPublicationRepositoryTest extends PersistenceTestBase {
                         return repository.save(publication);
                     });
                     return true;
-                } catch (RuntimeException conflict) {
-                    // Solo vale perder por optimistic locking: cualquier otro error tiene que hacer fallar el test.
-                    assertThat(causes(conflict)).anyMatch(OptimisticLockException.class::isInstance);
+                } catch (ConcurrentUpdateException conflict) {
                     return false;
                 }
             }));
@@ -219,14 +236,6 @@ class JpaPublicationRepositoryTest extends PersistenceTestBase {
         Publication publication = draft(AUTHOR, capacity, slots);
         publication.publish(AUTHOR, NOW);
         return publication;
-    }
-
-    private static List<Throwable> causes(Throwable error) {
-        List<Throwable> chain = new ArrayList<>();
-        for (Throwable current = error; current != null && !chain.contains(current); current = current.getCause()) {
-            chain.add(current);
-        }
-        return chain;
     }
 
     private static void await(CountDownLatch latch) {

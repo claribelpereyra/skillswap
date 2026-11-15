@@ -2,6 +2,7 @@ package com.uade.skillswap.infrastructure.persistence.publication;
 
 import com.uade.skillswap.application.common.Page;
 import com.uade.skillswap.application.common.PageRequest;
+import com.uade.skillswap.application.common.ResourceNotFoundException;
 import com.uade.skillswap.application.ports.out.publication.PublicationRepository;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.Publication;
@@ -32,7 +33,7 @@ public class JpaPublicationRepository implements PublicationRepository {
             } else {
                 entity = em.find(PublicationJpaEntity.class, publication.getId());
                 if (entity == null) {
-                    throw new IllegalStateException("Publication " + publication.getId() + " does not exist");
+                    throw new ResourceNotFoundException("Publication", publication.getId());
                 }
                 PublicationMapper.copyInto(publication, entity);
                 // Fuerza el incremento de versión aunque solo cambie una franja, para que no se sobrevenda el cupo.

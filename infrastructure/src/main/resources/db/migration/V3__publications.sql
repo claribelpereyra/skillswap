@@ -6,8 +6,10 @@ CREATE TABLE category (
     parent_id BIGINT       NULL,
     name      VARCHAR(100) NOT NULL,
     kind      VARCHAR(20)  NOT NULL,
+    -- 0 para las raíces: un UNIQUE no compara NULL, así dos raíces tampoco pueden llamarse igual.
+    parent_key BIGINT GENERATED ALWAYS AS (COALESCE(parent_id, 0)),
     CONSTRAINT fk_category_parent FOREIGN KEY (parent_id) REFERENCES category (id),
-    CONSTRAINT uq_category_sibling_name UNIQUE (parent_id, name),
+    CONSTRAINT uq_category_sibling_name UNIQUE (parent_key, name),
     CONSTRAINT ck_category_kind CHECK (kind IN ('CATEGORY', 'SKILL'))
 );
 

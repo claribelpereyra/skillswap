@@ -11,6 +11,7 @@ import com.uade.skillswap.domain.publication.TimeSlot;
 import com.uade.skillswap.infrastructure.persistence.EntityManagerContext;
 import com.uade.skillswap.infrastructure.persistence.JpaUnitOfWork;
 import com.uade.skillswap.infrastructure.persistence.PersistenceConfiguration;
+import jakarta.persistence.PersistenceException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JpaBookingRepositoryTest {
 
@@ -143,6 +145,25 @@ class JpaBookingRepositoryTest {
         assertThat(firstPage.items()).allSatisfy(booking -> assertThat(booking.getHistory()).hasSize(1));
         assertThat(asProvider.items()).hasSize(1);
         assertThat(repository.findByClient(PROVIDER, PageRequest.first()).items()).isEmpty();
+    }
+
+    @Test
+    void theDatabaseRejectsAnUnknownStatusOrANegativePrice() {
+        assertThatThrownBy(() -> insertRaw("FINISHED", 100)).isInstanceOf(PersistenceException.class);
+        assertThatThrownBy(() -> insertRaw("PENDING", -1)).isInstanceOf(PersistenceException.class);
+    }
+
+    private void insertRaw(String status, long price) {
+        unitOfWork.execute(() -> EntityManagerContext.withEntityManager(em -> em.createNativeQuery("""
+                        INSERT INTO booking (publication_id, client_id, provider_id, slot_id, slot_starts_at, slot_ends_at,
+                                             message, goal, price, status, version)
+                        VALUES (10, 'ana', 'bruno', 1, ?1, ?2, 'Hola', 'Entrevista', ?3, ?4, 0)
+                        """)
+                .setParameter(1, SLOT.getStartsAt())
+                .setParameter(2, SLOT.getEndsAt())
+                .setParameter(3, price)
+                .setParameter(4, status)
+                .executeUpdate()));
     }
 
     private static Booking newBooking() {

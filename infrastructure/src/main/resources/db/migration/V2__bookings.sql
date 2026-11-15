@@ -17,7 +17,10 @@ CREATE TABLE booking (
     proposed_slot_starts_at TIMESTAMP(6) NULL,
     proposed_slot_ends_at   TIMESTAMP(6) NULL,
     reschedule_proposed_by  VARCHAR(100) NULL,
-    version                 BIGINT       NOT NULL
+    version                 BIGINT       NOT NULL,
+    CONSTRAINT ck_booking_status CHECK (status IN ('PENDING', 'ACCEPTED', 'CONFIRMED', 'IN_PROGRESS', 'COMPLETED',
+                                                   'REJECTED', 'CANCELLED')),
+    CONSTRAINT ck_booking_price CHECK (price >= 0)
 );
 
 CREATE INDEX idx_booking_client ON booking (client_id);

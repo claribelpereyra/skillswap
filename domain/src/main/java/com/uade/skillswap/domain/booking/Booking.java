@@ -56,7 +56,7 @@ public class Booking {
         return new Booking(publicationId, clientId, providerId, slot, message, goal, price, history);
     }
 
-    // Reconstruye una reserva guardada; el estado sale del historial, igual que el EstadoPedidoFactory del profe.
+    // Reconstruye una reserva guardada; el objeto de estado se arma desde el último estado del historial.
     public static Booking rebuild(Long id, long publicationId, UserId clientId, UserId providerId, TimeSlot slot,
                                   String message, String goal, SkillCoins price,
                                   List<StateTransition<BookingStatus>> history, RescheduleProposal pendingReschedule) {

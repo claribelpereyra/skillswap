@@ -70,7 +70,8 @@ public class BookingJpaEntity {
     @Column(nullable = false)
     private long version;
 
-    @OneToMany(mappedBy = "booking", cascade = CascadeType.ALL, orphanRemoval = true)
+    // Solo PERSIST: el historial se agrega, nunca se modifica ni se borra desde acá.
+    @OneToMany(mappedBy = "booking", cascade = CascadeType.PERSIST)
     @OrderBy("position")
     private List<BookingTransitionJpaEntity> transitions = new ArrayList<>();
 

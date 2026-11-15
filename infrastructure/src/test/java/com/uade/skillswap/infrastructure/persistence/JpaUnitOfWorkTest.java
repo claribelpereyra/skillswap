@@ -1,6 +1,10 @@
 package com.uade.skillswap.infrastructure.persistence;
 
+import com.uade.skillswap.application.common.ConcurrentUpdateException;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.EntityManagerFactory;
+import jakarta.persistence.OptimisticLockException;
+import jakarta.persistence.RollbackException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,14 +17,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JpaUnitOfWorkTest {
 
+    private static final PersistenceConfiguration H2 = new PersistenceConfiguration(
+            "jdbc:h2:mem:unit-of-work;MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", "");
+
     private final JpaUnitOfWork unitOfWork = new JpaUnitOfWork();
 
     @BeforeAll
     static void startDatabase() {
-        PersistenceConfiguration h2 = new PersistenceConfiguration(
-                "jdbc:h2:mem:unit-of-work;MODE=MySQL;DB_CLOSE_DELAY=-1", "sa", "");
-        h2.migrate();
-        EntityManagerContext.init(h2.createEntityManagerFactory());
+        H2.migrate();
+        EntityManagerContext.init(H2.createEntityManagerFactory());
     }
 
     @AfterAll
@@ -53,6 +58,28 @@ class JpaUnitOfWorkTest {
         })).isInstanceOf(IllegalStateException.class).hasMessage("failed halfway");
 
         assertThat(countTestRows()).isZero();
+    }
+
+    @Test
+    void translatesAnOptimisticLockConflictAndRollsBack() {
+        assertThatThrownBy(() -> unitOfWork.execute(() -> {
+            insert("test-a");
+            throw new RollbackException(new OptimisticLockException("stale version"));
+        })).isExactlyInstanceOf(ConcurrentUpdateException.class)
+                .hasMessage("The data was updated by someone else at the same time, please try again");
+
+        assertThat(countTestRows()).isZero();
+    }
+
+    @Test
+    void initializingAgainClosesThePreviousFactory() {
+        EntityManagerFactory previous = EntityManagerContext.withEntityManager(EntityManager::getEntityManagerFactory);
+
+        EntityManagerContext.init(H2.createEntityManagerFactory());
+
+        assertThat(previous.isOpen()).isFalse();
+        unitOfWork.execute(() -> insert("test-a"));
+        assertThat(countTestRows()).isEqualTo(1);
     }
 
     @Test

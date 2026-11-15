@@ -6,6 +6,7 @@ import jakarta.persistence.EntityManagerFactory;
 import java.util.Objects;
 import java.util.function.Function;
 
+// Singleton a propósito: una sola EntityManagerFactory por app y el EntityManager de cada hilo en un ThreadLocal.
 public final class EntityManagerContext {
 
     private static EntityManagerFactory factory;
@@ -15,7 +16,11 @@ public final class EntityManagerContext {
     }
 
     public static void init(EntityManagerFactory entityManagerFactory) {
-        factory = Objects.requireNonNull(entityManagerFactory, "The EntityManagerFactory is required");
+        Objects.requireNonNull(entityManagerFactory, "The EntityManagerFactory is required");
+        if (factory != entityManagerFactory) {
+            close();
+        }
+        factory = entityManagerFactory;
     }
 
     public static void close() {

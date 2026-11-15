@@ -3,7 +3,7 @@ package com.uade.skillswap.application.usecases.publication;
 import com.uade.skillswap.application.common.Page;
 import com.uade.skillswap.application.common.PageRequest;
 import com.uade.skillswap.application.ports.in.publication.ListMyPublicationsUseCase;
-import com.uade.skillswap.application.ports.in.publication.PublicationView;
+import com.uade.skillswap.application.dto.publication.PublicationView;
 import com.uade.skillswap.application.ports.out.publication.PublicationRepository;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.PublicationStatus;

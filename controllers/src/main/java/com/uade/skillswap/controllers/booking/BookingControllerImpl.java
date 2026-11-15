@@ -88,6 +88,9 @@ public class BookingControllerImpl implements BookingController {
     }
 
     private UserId currentUser(String userId, String operation) {
+        if (userId == null || userId.isBlank()) {
+            throw new AccessDeniedException("No active user");
+        }
         UserId user = new UserId(userId);
         if (!user.equals(identity.currentUserId())) {
             throw new AccessDeniedException(user, operation);

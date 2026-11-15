@@ -1,6 +1,7 @@
 package com.uade.skillswap.controllers.booking;
 
 import com.uade.skillswap.application.common.AccessDeniedException;
+import com.uade.skillswap.application.common.ConcurrentUpdateException;
 import com.uade.skillswap.application.common.Page;
 import com.uade.skillswap.application.common.PageRequest;
 import com.uade.skillswap.application.common.ResourceNotFoundException;
@@ -14,6 +15,7 @@ import com.uade.skillswap.controllers.ControllerResult.ErrorType;
 import com.uade.skillswap.domain.booking.BookingStatus;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.InvalidTransitionException;
+import com.uade.skillswap.domain.common.PermissionDeniedException;
 import com.uade.skillswap.domain.common.UserId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -114,6 +116,29 @@ class BookingControllerImplTest {
     }
 
     @Test
+    void aDomainPermissionDeniedIsReturnedAsAccessDenied() {
+        loggedAs(ANA);
+        when(service.accept(99L, ANA)).thenThrow(new PermissionDeniedException("Only the provider can accept"));
+
+        ControllerResult<BookingView> result = controller.accept("ana", 99L);
+
+        assertThat(result.getErrorType()).isEqualTo(ErrorType.ACCESS_DENIED);
+        assertThat(result.getMessage()).isEqualTo("Only the provider can accept");
+    }
+
+    @Test
+    void aConcurrentUpdateIsReturnedAsAConflictWithItsMessage() {
+        loggedAs(BRUNO);
+        ConcurrentUpdateException conflict = new ConcurrentUpdateException(new RuntimeException("version mismatch"));
+        when(service.accept(99L, BRUNO)).thenThrow(conflict);
+
+        ControllerResult<BookingView> result = controller.accept("bruno", 99L);
+
+        assertThat(result.getErrorType()).isEqualTo(ErrorType.CONFLICT);
+        assertThat(result.getMessage()).isEqualTo(conflict.getMessage());
+    }
+
+    @Test
     void theUserMustBeTheLoggedOneBeforeCallingTheService() {
         loggedAs(ANA);
 
@@ -127,12 +152,23 @@ class BookingControllerImplTest {
     }
 
     @Test
+    void withoutAnActiveUserTheAccessIsDenied() {
+        loggedAs(ANA);
+
+        ControllerResult<BookingView> nullUser = controller.accept(null, 99L);
+        ControllerResult<BookingView> blankUser = controller.accept(" ", 99L);
+
+        assertThat(nullUser.getErrorType()).isEqualTo(ErrorType.ACCESS_DENIED);
+        assertThat(nullUser.getMessage()).isEqualTo("No active user");
+        assertThat(blankUser.getErrorType()).isEqualTo(ErrorType.ACCESS_DENIED);
+        verifyNoInteractions(service);
+    }
+
+    @Test
     void invalidInputIsRejectedBeforeCallingTheService() {
         loggedAs(ANA);
-        ControllerResult<BookingView> blankUser = controller.accept(" ", 99L);
         ControllerResult<Page<BookingView>> badPage = controller.listAsClient("ana", -1, 20);
 
-        assertThat(blankUser.getErrorType()).isEqualTo(ErrorType.INVALID_INPUT);
         assertThat(badPage.getErrorType()).isEqualTo(ErrorType.INVALID_INPUT);
         verifyNoInteractions(service);
     }

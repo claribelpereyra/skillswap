@@ -1,8 +1,10 @@
 package com.uade.skillswap.controllers;
 
 import com.uade.skillswap.application.common.AccessDeniedException;
+import com.uade.skillswap.application.common.ConcurrentUpdateException;
 import com.uade.skillswap.application.common.ResourceNotFoundException;
 import com.uade.skillswap.domain.common.BusinessRuleException;
+import com.uade.skillswap.domain.common.PermissionDeniedException;
 
 import java.util.function.Supplier;
 
@@ -13,6 +15,7 @@ public final class ControllerResult<T> {
         BUSINESS_RULE,
         ACCESS_DENIED,
         NOT_FOUND,
+        CONFLICT,
         INVALID_INPUT,
         UNEXPECTED
     }
@@ -38,12 +41,16 @@ public final class ControllerResult<T> {
     public static <T> ControllerResult<T> of(Supplier<T> operation) {
         try {
             return success(operation.get());
+        } catch (PermissionDeniedException error) {
+            return failure(ErrorType.ACCESS_DENIED, error.getMessage());
         } catch (BusinessRuleException error) {
             return failure(ErrorType.BUSINESS_RULE, error.getMessage());
         } catch (AccessDeniedException error) {
             return failure(ErrorType.ACCESS_DENIED, error.getMessage());
         } catch (ResourceNotFoundException error) {
             return failure(ErrorType.NOT_FOUND, error.getMessage());
+        } catch (ConcurrentUpdateException error) {
+            return failure(ErrorType.CONFLICT, error.getMessage());
         } catch (IllegalArgumentException error) {
             return failure(ErrorType.INVALID_INPUT, error.getMessage());
         } catch (RuntimeException error) {

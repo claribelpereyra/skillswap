@@ -1,9 +1,9 @@
 package com.uade.skillswap.application.usecases.publication;
 
 import com.uade.skillswap.application.common.ResourceNotFoundException;
-import com.uade.skillswap.application.ports.in.publication.EditDraftCommand;
+import com.uade.skillswap.application.dto.publication.EditDraftCommand;
 import com.uade.skillswap.application.ports.in.publication.EditDraftUseCase;
-import com.uade.skillswap.application.ports.in.publication.PublicationView;
+import com.uade.skillswap.application.dto.publication.PublicationView;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
 import com.uade.skillswap.application.ports.out.publication.PublicationRepository;
 import com.uade.skillswap.domain.publication.Publication;

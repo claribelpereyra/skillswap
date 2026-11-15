@@ -1,4 +1,4 @@
-package com.uade.skillswap.application.ports.in.publication;
+package com.uade.skillswap.application.dto.publication;
 
 import java.time.Instant;
 

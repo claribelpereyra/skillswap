@@ -5,9 +5,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 
-// Patrón Composite: componente común del catálogo. Una categoría (compuesto) y una habilidad (hoja)
-// se recorren igual, así la búsqueda y la recomendación no necesitan saber qué tan profundo es el árbol
-// ni preguntar con instanceof qué tipo de nodo tienen.
+// Composite: categoría (compuesto) y habilidad (hoja) se recorren igual, sin instanceof.
 public abstract class CatalogItem {
 
     private final long id;
@@ -22,21 +20,16 @@ public abstract class CatalogItem {
         this.name = name.strip();
     }
 
-    // Ids de este nodo y de todo lo que cuelga de él. Buscar por una categoría incluye sus subcategorías
-    // y sus habilidades.
     public abstract Set<Long> idsInSubtree();
 
-    // Habilidades de este nodo y de todo lo que cuelga de él.
     public abstract List<Skill> skills();
 
-    // Busca un nodo por id en este subárbol.
     public abstract Optional<CatalogItem> find(long id);
 
     public boolean includes(long id) {
         return find(id).isPresent();
     }
 
-    // Categoría que lo contiene; null si es una raíz. Solo la asigna Category#add.
     public Category getParent() {
         return parent;
     }
@@ -58,8 +51,8 @@ public abstract class CatalogItem {
     }
 
     @Override
-    public boolean equals(Object o) {
-        return o instanceof CatalogItem other && id == other.id;
+    public boolean equals(Object object) {
+        return object instanceof CatalogItem other && id == other.id;
     }
 
     @Override

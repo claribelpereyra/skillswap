@@ -9,13 +9,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CatalogTest {
 
-    // Tecnología
-    // ├── Backend
-    // │   ├── Java
-    // │   └── Bases de datos
-    // │       └── MySQL
-    // └── Frontend
-    //     └── React
     private Category technology;
     private Category backend;
     private Category databases;
@@ -79,9 +72,9 @@ class CatalogTest {
     @Test
     void anItemCannotBeAddedTwiceToTheSameTree() {
         assertThatThrownBy(() -> technology.add(new Skill(11, "MySQL 8")))
-                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("already contains");
+                .isExactlyInstanceOf(BusinessRuleException.class).hasMessage("The catalog already contains the items [11]");
         assertThatThrownBy(() -> technology.add(new Category(99, "Otra").add(new Skill(10, "Java 17"))))
-                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("already contains");
+                .isExactlyInstanceOf(BusinessRuleException.class).hasMessage("The catalog already contains the items [10]");
     }
 
     @Test
@@ -89,7 +82,7 @@ class CatalogTest {
         assertThatThrownBy(() -> backend.add(react))
                 .isInstanceOf(BusinessRuleException.class).hasMessage("React already belongs to Frontend");
         assertThatThrownBy(() -> backend.add(new Skill(12, "React JS")))
-                .isInstanceOf(BusinessRuleException.class).hasMessageContaining("already contains");
+                .isExactlyInstanceOf(BusinessRuleException.class).hasMessage("The catalog already contains the items [12]");
         assertThat(technology.skills()).containsExactly(java, mysql, react);
     }
 

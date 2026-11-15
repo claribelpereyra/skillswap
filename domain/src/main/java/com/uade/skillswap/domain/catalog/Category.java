@@ -8,8 +8,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-// Compuesto del Composite: una categoría agrupa subcategorías y habilidades, y delega en ellas
-// las operaciones del catálogo. Agregar un nivel nuevo no cambia a quien lo recorre.
+// Compuesto del Composite: agrupa subcategorías y habilidades y les delega las operaciones.
 public final class Category extends CatalogItem {
 
     private final List<CatalogItem> children = new ArrayList<>();
@@ -18,8 +17,7 @@ public final class Category extends CatalogItem {
         super(id, name);
     }
 
-    // Las reglas se controlan contra el árbol entero (desde la raíz), no solo contra esta rama:
-    // así no depende de quién arme el catálogo que un ítem no aparezca en dos ramas.
+    // Valida contra el árbol entero (desde la raíz), no solo contra esta rama.
     public Category add(CatalogItem child) {
         if (child == this || child.includes(getId())) {
             throw new BusinessRuleException("A category cannot contain itself");

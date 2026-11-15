@@ -40,7 +40,7 @@ class JpaPublicationRepositoryTest extends PersistenceTestBase {
 
     @BeforeEach
     void catalog() {
-        sql("INSERT INTO categories (id, parent_id, name, kind) VALUES (?, ?, ?, ?)", 1, null, "Tecnología", "CATEGORY");
+        sql("INSERT INTO category (id, parent_id, name, kind) VALUES (?, ?, ?, ?)", 1, null, "Tecnología", "CATEGORY");
     }
 
     private static PublicationDetails details(int capacity, String... tags) {
@@ -112,9 +112,9 @@ class JpaPublicationRepositoryTest extends PersistenceTestBase {
         assertThat(loaded.getHistory()).extracting(t -> t.to()).containsExactly(PublicationStatus.DRAFT,
                 PublicationStatus.PUBLISHED, PublicationStatus.PAUSED, PublicationStatus.CANCELLED);
         assertThat(loaded.getHistory().get(3).reason()).isEqualTo("Moving abroad");
-        assertThat(count("publication_status_history")).isEqualTo(4);
+        assertThat(count("publication_transition")).isEqualTo(4);
         String storedStatus = inTransaction(em -> (String) em.createNativeQuery(
-                "SELECT status FROM publications WHERE id = " + id).getSingleResult());
+                "SELECT status FROM publication WHERE id = " + id).getSingleResult());
         assertThat(storedStatus).isEqualTo("CANCELLED");
     }
 
@@ -137,7 +137,7 @@ class JpaPublicationRepositoryTest extends PersistenceTestBase {
         assertThat(loaded.getDetails().tags()).containsExactlyInAnyOrder("java", "spring");
         assertThat(loaded.getSlots()).extracting(TimeSlot::getStartsAt)
                 .containsExactly(MONDAY.plus(Duration.ofHours(2)), friday);
-        assertThat(count("publication_slots")).isEqualTo(2);
+        assertThat(count("publication_slot")).isEqualTo(2);
     }
 
     @Test

@@ -35,9 +35,7 @@ public class JpaPublicationRepository implements PublicationRepository {
                     throw new IllegalStateException("Publication " + publication.getId() + " does not exist");
                 }
                 PublicationMapper.copyInto(publication, entity);
-                // Optimistic locking: se incrementa la versión aunque solo cambie una franja (reservar un lugar
-                // no toca la fila de la publicación). Si otra transacción guardó la misma publicación en el
-                // medio, el commit falla con OptimisticLockException en vez de sobrevender el cupo.
+                // Fuerza el incremento de versión aunque solo cambie una franja, para que no se sobrevenda el cupo.
                 em.lock(entity, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
             }
             em.flush();

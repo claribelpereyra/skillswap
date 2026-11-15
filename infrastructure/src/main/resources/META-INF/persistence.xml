@@ -14,7 +14,7 @@
         <class>com.uade.skillswap.infrastructure.persistence.booking.BookingTransitionJpaEntity</class>
         <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationJpaEntity</class>
         <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationSlotJpaEntity</class>
-        <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationHistoryJpaEntity</class>
+        <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationTransitionJpaEntity</class>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
 
         <properties>

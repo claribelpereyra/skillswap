@@ -26,15 +26,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-// Entidad JPA de la publicación. Solo vive en infraestructura: el dominio no conoce JPA,
-// PublicationMapper traduce entre esta clase y Publication.
-//
-// Las colecciones se cargan en lote (@BatchSize): al listar una página de N publicaciones, Hibernate trae
-// las franjas, etiquetas e historial de las N con un IN (...) por colección, en vez de una consulta por
-// publicación (evita N+1). No se usa fetch join de las tres a la vez porque multiplicaría las filas
-// (producto cartesiano) y rompería la paginación.
+// Colecciones en lote (@BatchSize) para evitar N+1 sin el producto cartesiano de tres fetch join.
 @Entity
-@Table(name = "publications")
+@Table(name = "publication")
 public class PublicationJpaEntity {
 
     @Id
@@ -86,15 +80,15 @@ public class PublicationJpaEntity {
     private List<PublicationSlotJpaEntity> slots = new ArrayList<>();
 
     @ElementCollection
-    @CollectionTable(name = "publication_tags", joinColumns = @JoinColumn(name = "publication_id"))
+    @CollectionTable(name = "publication_tag", joinColumns = @JoinColumn(name = "publication_id"))
     @Column(name = "tag")
     @BatchSize(size = 50)
     private Set<String> tags = new HashSet<>();
 
     @OneToMany(mappedBy = "publication", cascade = CascadeType.PERSIST)
-    @OrderBy("seq")
+    @OrderBy("position")
     @BatchSize(size = 50)
-    private List<PublicationHistoryJpaEntity> history = new ArrayList<>();
+    private List<PublicationTransitionJpaEntity> history = new ArrayList<>();
 
     protected PublicationJpaEntity() {
     }
@@ -201,7 +195,7 @@ public class PublicationJpaEntity {
         return tags;
     }
 
-    List<PublicationHistoryJpaEntity> getHistory() {
+    List<PublicationTransitionJpaEntity> getHistory() {
         return history;
     }
 }

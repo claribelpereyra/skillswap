@@ -98,9 +98,9 @@ final class PublicationMapper {
     // El historial es inmutable: solo se agregan las transiciones nuevas, nunca se tocan las guardadas.
     private static void appendNewTransitions(Publication publication, PublicationJpaEntity entity) {
         List<StateTransition<PublicationStatus>> transitions = publication.getHistory();
-        for (int seq = entity.getHistory().size(); seq < transitions.size(); seq++) {
-            StateTransition<PublicationStatus> t = transitions.get(seq);
-            entity.getHistory().add(new PublicationHistoryJpaEntity(entity, seq, t.from(), t.to(), t.actor().value(),
+        for (int position = entity.getHistory().size(); position < transitions.size(); position++) {
+            StateTransition<PublicationStatus> t = transitions.get(position);
+            entity.getHistory().add(new PublicationTransitionJpaEntity(entity, position, t.from(), t.to(), t.actor().value(),
                     t.occurredAt(), t.reason()));
         }
     }

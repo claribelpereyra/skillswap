@@ -13,7 +13,7 @@ import jakarta.persistence.Table;
 import java.time.Instant;
 
 @Entity
-@Table(name = "publication_slots")
+@Table(name = "publication_slot")
 public class PublicationSlotJpaEntity {
 
     @Id

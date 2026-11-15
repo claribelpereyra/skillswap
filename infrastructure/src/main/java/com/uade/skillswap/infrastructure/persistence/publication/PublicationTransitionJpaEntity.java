@@ -19,8 +19,8 @@ import java.time.Instant;
 // Una transición del historial. @Immutable: Hibernate nunca genera UPDATE sobre estas filas.
 @Entity
 @Immutable
-@Table(name = "publication_status_history")
-public class PublicationHistoryJpaEntity {
+@Table(name = "publication_transition")
+public class PublicationTransitionJpaEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -31,7 +31,7 @@ public class PublicationHistoryJpaEntity {
     private PublicationJpaEntity publication;
 
     @Column(nullable = false)
-    private int seq;
+    private int position;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "from_status")
@@ -49,13 +49,13 @@ public class PublicationHistoryJpaEntity {
 
     private String reason;
 
-    protected PublicationHistoryJpaEntity() {
+    protected PublicationTransitionJpaEntity() {
     }
 
-    PublicationHistoryJpaEntity(PublicationJpaEntity publication, int seq, PublicationStatus fromStatus,
+    PublicationTransitionJpaEntity(PublicationJpaEntity publication, int position, PublicationStatus fromStatus,
                                 PublicationStatus toStatus, String actorId, Instant occurredAt, String reason) {
         this.publication = publication;
-        this.seq = seq;
+        this.position = position;
         this.fromStatus = fromStatus;
         this.toStatus = toStatus;
         this.actorId = actorId;

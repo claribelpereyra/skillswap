@@ -7,5 +7,5 @@ import java.util.Set;
 
 // Filtros ya normalizados por el caso de uso; la consulta busca solo publicaciones PUBLISHED.
 public record SearchCriteria(String text, Set<Long> categoryIds, Modality modality, Long minPrice, Long maxPrice,
-                             String skill, Double minReputation, SearchSort sort) {
+                             String tag, Double minReputation, SearchSort sort) {
 }

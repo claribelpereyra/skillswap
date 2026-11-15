@@ -32,7 +32,7 @@ public class SearchPublicationsService implements SearchPublicationsUseCase {
                 ? SearchSort.BEST_REPUTATION
                 : filters.sort();
         SearchCriteria criteria = new SearchCriteria(text, categoryIdsFor(filters.categoryId()), filters.modality(),
-                filters.minPrice(), filters.maxPrice(), normalize(filters.skill()), filters.minReputation(), sort);
+                filters.minPrice(), filters.maxPrice(), normalize(filters.tag()), filters.minReputation(), sort);
         return searchQuery.search(criteria, filters.page());
     }
 

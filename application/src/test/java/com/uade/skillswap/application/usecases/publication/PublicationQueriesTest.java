@@ -153,7 +153,7 @@ class PublicationQueriesTest {
 
         assertThat(criteria.sort()).isEqualTo(SearchSort.RELEVANCE);
         assertThat(criteria.categoryIds()).isNull();
-        assertThat(criteria.skill()).isNull();
+        assertThat(criteria.tag()).isNull();
         verifyNoInteractions(categories);
     }
 

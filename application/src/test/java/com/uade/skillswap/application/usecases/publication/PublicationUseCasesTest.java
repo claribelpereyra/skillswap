@@ -1,12 +1,12 @@
 package com.uade.skillswap.application.usecases.publication;
 
 import com.uade.skillswap.application.common.ResourceNotFoundException;
-import com.uade.skillswap.application.ports.in.publication.ChangePublicationStatusCommand;
-import com.uade.skillswap.application.ports.in.publication.CreateDraftCommand;
-import com.uade.skillswap.application.ports.in.publication.EditDraftCommand;
-import com.uade.skillswap.application.ports.in.publication.PublicationAction;
-import com.uade.skillswap.application.ports.in.publication.PublicationView;
-import com.uade.skillswap.application.ports.in.publication.SlotInput;
+import com.uade.skillswap.application.dto.publication.ChangePublicationStatusCommand;
+import com.uade.skillswap.application.dto.publication.CreateDraftCommand;
+import com.uade.skillswap.application.dto.publication.EditDraftCommand;
+import com.uade.skillswap.application.dto.publication.PublicationAction;
+import com.uade.skillswap.application.dto.publication.PublicationView;
+import com.uade.skillswap.application.dto.publication.SlotInput;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
 import com.uade.skillswap.application.ports.out.publication.AuthorProfileQuery;
 import com.uade.skillswap.domain.common.BusinessRuleException;

@@ -2,10 +2,10 @@ package com.uade.skillswap.application.usecases.publication;
 
 import com.uade.skillswap.application.common.Page;
 import com.uade.skillswap.application.common.ResourceNotFoundException;
-import com.uade.skillswap.application.ports.in.publication.PublicationSummary;
-import com.uade.skillswap.application.ports.in.publication.SearchFilters;
+import com.uade.skillswap.application.dto.publication.PublicationSummary;
+import com.uade.skillswap.application.dto.publication.SearchFilters;
 import com.uade.skillswap.application.ports.in.publication.SearchPublicationsUseCase;
-import com.uade.skillswap.application.ports.in.publication.SearchSort;
+import com.uade.skillswap.application.dto.publication.SearchSort;
 import com.uade.skillswap.application.ports.out.publication.CategoryTree;
 import com.uade.skillswap.application.ports.out.publication.PublicationSearchQuery;
 import com.uade.skillswap.application.ports.out.publication.SearchCriteria;

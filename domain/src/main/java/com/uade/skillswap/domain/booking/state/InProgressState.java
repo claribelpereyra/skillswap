@@ -4,6 +4,8 @@ import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.booking.BookingStatus;
 import com.uade.skillswap.domain.common.UserId;
 
+import java.time.Instant;
+
 public class InProgressState extends BookingStateBase {
 
     @Override
@@ -12,8 +14,8 @@ public class InProgressState extends BookingStateBase {
     }
 
     @Override
-    public void complete(Booking booking, UserId actor) {
+    public void complete(Booking booking, UserId actor, Instant occurredAt) {
         booking.requireParticipant(actor, "complete");
-        booking.changeState(new CompletedState(), actor, null);
+        booking.changeState(new CompletedState(), actor, null, occurredAt);
     }
 }

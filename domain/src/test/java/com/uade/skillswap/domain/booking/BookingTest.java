@@ -23,6 +23,7 @@ class BookingTest {
     private static final UserId OUTSIDER = new UserId("carla");
     private static final long PUBLICATION_ID = 10L;
     private static final SkillCoins PRICE = new SkillCoins(100);
+    private static final Instant NOW = Instant.parse("2026-11-14T10:00:00Z");
     private static final TimeSlot SLOT = new TimeSlot(1L,
             Instant.parse("2026-11-19T21:00:00Z"), Instant.parse("2026-11-19T22:00:00Z"));
 
@@ -39,25 +40,28 @@ class BookingTest {
             assertThat(creation.from()).isNull();
             assertThat(creation.to()).isEqualTo(BookingStatus.PENDING);
             assertThat(creation.actor()).isEqualTo(CLIENT);
+            assertThat(creation.occurredAt()).isEqualTo(NOW);
         });
     }
 
     @Test
     void theAuthorCannotRequestTheirOwnPublication() {
-        assertThatThrownBy(() -> Booking.request(PUBLICATION_ID, PROVIDER, PROVIDER, SLOT, "Hola", "Aprender", PRICE))
+        assertThatThrownBy(() -> Booking.request(PUBLICATION_ID, PROVIDER, PROVIDER, SLOT, "Hola", "Aprender", PRICE,
+                NOW))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("The author cannot request their own publication");
     }
 
     @Test
     void aRequestNeedsASlotAMessageAndAGoal() {
-        assertThatThrownBy(() -> Booking.request(PUBLICATION_ID, CLIENT, PROVIDER, null, "Hola", "Aprender", PRICE))
+        assertThatThrownBy(() -> Booking.request(PUBLICATION_ID, CLIENT, PROVIDER, null, "Hola", "Aprender", PRICE,
+                NOW))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("A slot is required to request a publication");
-        assertThatThrownBy(() -> Booking.request(PUBLICATION_ID, CLIENT, PROVIDER, SLOT, " ", "Aprender", PRICE))
+        assertThatThrownBy(() -> Booking.request(PUBLICATION_ID, CLIENT, PROVIDER, SLOT, " ", "Aprender", PRICE, NOW))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("A message is required to request a publication");
-        assertThatThrownBy(() -> Booking.request(PUBLICATION_ID, CLIENT, PROVIDER, SLOT, "Hola", null, PRICE))
+        assertThatThrownBy(() -> Booking.request(PUBLICATION_ID, CLIENT, PROVIDER, SLOT, "Hola", null, PRICE, NOW))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("A goal is required to request a publication");
     }
@@ -68,7 +72,7 @@ class BookingTest {
     void theProviderAcceptsAPendingBooking() {
         Booking booking = newBooking();
 
-        booking.accept(PROVIDER);
+        booking.accept(PROVIDER, NOW);
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.ACCEPTED);
         assertLastTransition(booking, BookingStatus.PENDING, BookingStatus.ACCEPTED, PROVIDER, null);
@@ -78,7 +82,7 @@ class BookingTest {
     void theProviderRejectsAPendingBookingWithAReason() {
         Booking booking = newBooking();
 
-        booking.reject(PROVIDER, "No tengo disponibilidad");
+        booking.reject(PROVIDER, "No tengo disponibilidad", NOW);
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.REJECTED);
         assertLastTransition(booking, BookingStatus.PENDING, BookingStatus.REJECTED, PROVIDER, "No tengo disponibilidad");
@@ -88,7 +92,7 @@ class BookingTest {
     void theClientPaysAnAcceptedBooking() {
         Booking booking = accepted();
 
-        booking.confirmPayment(CLIENT);
+        booking.confirmPayment(CLIENT, NOW);
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
         assertLastTransition(booking, BookingStatus.ACCEPTED, BookingStatus.CONFIRMED, CLIENT, null);
@@ -98,7 +102,7 @@ class BookingTest {
     void theProviderStartsAConfirmedBooking() {
         Booking booking = confirmed();
 
-        booking.start(PROVIDER);
+        booking.start(PROVIDER, NOW);
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.IN_PROGRESS);
         assertLastTransition(booking, BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS, PROVIDER, null);
@@ -109,8 +113,8 @@ class BookingTest {
         Booking completedByClient = inProgress();
         Booking completedByProvider = inProgress();
 
-        completedByClient.complete(CLIENT);
-        completedByProvider.complete(PROVIDER);
+        completedByClient.complete(CLIENT, NOW);
+        completedByProvider.complete(PROVIDER, NOW);
 
         assertThat(completedByClient.getStatus()).isEqualTo(BookingStatus.COMPLETED);
         assertThat(completedByProvider.getStatus()).isEqualTo(BookingStatus.COMPLETED);
@@ -121,7 +125,7 @@ class BookingTest {
     void eitherParticipantCancelsAnAcceptedBookingWithAReason() {
         Booking booking = accepted();
 
-        booking.cancel(CLIENT, "Me surgió un viaje");
+        booking.cancel(CLIENT, "Me surgió un viaje", NOW);
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
         assertLastTransition(booking, BookingStatus.ACCEPTED, BookingStatus.CANCELLED, CLIENT, "Me surgió un viaje");
@@ -131,17 +135,27 @@ class BookingTest {
     void eitherParticipantCancelsAConfirmedBookingWithAReason() {
         Booking booking = confirmed();
 
-        booking.cancel(PROVIDER, "Estoy enfermo");
+        booking.cancel(PROVIDER, "Estoy enfermo", NOW);
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
         assertLastTransition(booking, BookingStatus.CONFIRMED, BookingStatus.CANCELLED, PROVIDER, "Estoy enfermo");
     }
 
     @Test
+    void cancellationRecordsTheInjectedDate() {
+        Booking booking = accepted();
+        Instant cancelledAt = NOW.plusSeconds(3600);
+
+        booking.cancel(CLIENT, "Me surgió un viaje", cancelledAt);
+
+        assertThat(booking.getHistory().get(2).occurredAt()).isEqualTo(cancelledAt);
+    }
+
+    @Test
     void theHistoryKeepsEveryTransitionInOrder() {
         Booking booking = inProgress();
 
-        booking.complete(CLIENT);
+        booking.complete(CLIENT, NOW);
 
         assertThat(booking.getHistory()).extracting(StateTransition::to).containsExactly(
                 BookingStatus.PENDING, BookingStatus.ACCEPTED, BookingStatus.CONFIRMED,
@@ -156,10 +170,10 @@ class BookingTest {
     void onlyTheProviderCanAcceptOrReject() {
         Booking booking = newBooking();
 
-        assertThatThrownBy(() -> booking.accept(CLIENT))
+        assertThatThrownBy(() -> booking.accept(CLIENT, NOW))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("Only the provider can accept a booking");
-        assertThatThrownBy(() -> booking.reject(CLIENT, "No"))
+        assertThatThrownBy(() -> booking.reject(CLIENT, "No", NOW))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("Only the provider can reject a booking");
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.PENDING);
@@ -169,7 +183,7 @@ class BookingTest {
     void onlyTheClientCanPay() {
         Booking booking = accepted();
 
-        assertThatThrownBy(() -> booking.confirmPayment(PROVIDER))
+        assertThatThrownBy(() -> booking.confirmPayment(PROVIDER, NOW))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("Only the client can pay a booking");
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.ACCEPTED);
@@ -179,7 +193,7 @@ class BookingTest {
     void onlyTheProviderCanStart() {
         Booking booking = confirmed();
 
-        assertThatThrownBy(() -> booking.start(CLIENT))
+        assertThatThrownBy(() -> booking.start(CLIENT, NOW))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("Only the provider can start a booking");
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
@@ -190,10 +204,10 @@ class BookingTest {
         Booking inProgress = inProgress();
         Booking accepted = accepted();
 
-        assertThatThrownBy(() -> inProgress.complete(OUTSIDER))
+        assertThatThrownBy(() -> inProgress.complete(OUTSIDER, NOW))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("Only the client or the provider can complete a booking");
-        assertThatThrownBy(() -> accepted.cancel(OUTSIDER, "Porque sí"))
+        assertThatThrownBy(() -> accepted.cancel(OUTSIDER, "Porque sí", NOW))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("Only the client or the provider can cancel a booking");
     }
@@ -205,10 +219,10 @@ class BookingTest {
         Booking pending = newBooking();
         Booking accepted = accepted();
 
-        assertThatThrownBy(() -> pending.reject(PROVIDER, " "))
+        assertThatThrownBy(() -> pending.reject(PROVIDER, " ", NOW))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("A reason is required to reject a booking");
-        assertThatThrownBy(() -> accepted.cancel(CLIENT, null))
+        assertThatThrownBy(() -> accepted.cancel(CLIENT, null, NOW))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("A reason is required to cancel a booking");
         assertThat(pending.getStatus()).isEqualTo(BookingStatus.PENDING);
@@ -221,7 +235,7 @@ class BookingTest {
     void theStateIsCheckedBeforeTheRole() {
         Booking booking = confirmed();
 
-        assertThatThrownBy(() -> booking.accept(CLIENT))
+        assertThatThrownBy(() -> booking.accept(CLIENT, NOW))
                 .isInstanceOf(InvalidTransitionException.class)
                 .hasMessage("Cannot accept in state CONFIRMED");
     }
@@ -232,12 +246,12 @@ class BookingTest {
     void aPendingBookingCannotBePaidStartedOrCancelled() {
         Booking booking = newBooking();
 
-        assertThatThrownBy(() -> booking.confirmPayment(CLIENT))
+        assertThatThrownBy(() -> booking.confirmPayment(CLIENT, NOW))
                 .isInstanceOf(InvalidTransitionException.class)
                 .hasMessage("Cannot pay in state PENDING");
-        assertThatThrownBy(() -> booking.start(PROVIDER))
+        assertThatThrownBy(() -> booking.start(PROVIDER, NOW))
                 .isInstanceOf(InvalidTransitionException.class);
-        assertThatThrownBy(() -> booking.cancel(CLIENT, "Me arrepentí"))
+        assertThatThrownBy(() -> booking.cancel(CLIENT, "Me arrepentí", NOW))
                 .isInstanceOf(InvalidTransitionException.class)
                 .hasMessage("Cannot cancel in state PENDING");
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.PENDING);
@@ -248,7 +262,7 @@ class BookingTest {
     void aBookingCannotBePaidTwice() {
         Booking booking = confirmed();
 
-        assertThatThrownBy(() -> booking.confirmPayment(CLIENT))
+        assertThatThrownBy(() -> booking.confirmPayment(CLIENT, NOW))
                 .isInstanceOf(InvalidTransitionException.class)
                 .hasMessage("Cannot pay in state CONFIRMED");
     }
@@ -257,15 +271,15 @@ class BookingTest {
     void anAcceptedBookingCannotBeAcceptedAgainNorStarted() {
         Booking booking = accepted();
 
-        assertThatThrownBy(() -> booking.accept(PROVIDER)).isInstanceOf(InvalidTransitionException.class);
-        assertThatThrownBy(() -> booking.start(PROVIDER)).isInstanceOf(InvalidTransitionException.class);
+        assertThatThrownBy(() -> booking.accept(PROVIDER, NOW)).isInstanceOf(InvalidTransitionException.class);
+        assertThatThrownBy(() -> booking.start(PROVIDER, NOW)).isInstanceOf(InvalidTransitionException.class);
     }
 
     @Test
     void aBookingInProgressCannotBeCancelled() {
         Booking booking = inProgress();
 
-        assertThatThrownBy(() -> booking.cancel(CLIENT, "Ya no quiero"))
+        assertThatThrownBy(() -> booking.cancel(CLIENT, "Ya no quiero", NOW))
                 .isInstanceOf(InvalidTransitionException.class)
                 .hasMessage("Cannot cancel in state IN_PROGRESS");
     }
@@ -274,9 +288,9 @@ class BookingTest {
     void finalStatesRejectEveryAction() {
         Booking completed = completed();
         Booking rejected = newBooking();
-        rejected.reject(PROVIDER, "No puedo");
+        rejected.reject(PROVIDER, "No puedo", NOW);
         Booking cancelled = accepted();
-        cancelled.cancel(CLIENT, "No puedo");
+        cancelled.cancel(CLIENT, "No puedo", NOW);
 
         for (Booking finished : List.of(completed, rejected, cancelled)) {
             BookingStatus status = finished.getStatus();
@@ -290,12 +304,12 @@ class BookingTest {
 
     private static Map<String, Consumer<Booking>> everyAction() {
         return Map.of(
-                "accept", b -> b.accept(PROVIDER),
-                "reject", b -> b.reject(PROVIDER, "Motivo"),
-                "pay", b -> b.confirmPayment(CLIENT),
-                "start", b -> b.start(PROVIDER),
-                "complete", b -> b.complete(CLIENT),
-                "cancel", b -> b.cancel(CLIENT, "Motivo"));
+                "accept", b -> b.accept(PROVIDER, NOW),
+                "reject", b -> b.reject(PROVIDER, "Motivo", NOW),
+                "pay", b -> b.confirmPayment(CLIENT, NOW),
+                "start", b -> b.start(PROVIDER, NOW),
+                "complete", b -> b.complete(CLIENT, NOW),
+                "cancel", b -> b.cancel(CLIENT, "Motivo", NOW));
     }
 
     private static void assertLastTransition(Booking booking, BookingStatus from, BookingStatus to,
@@ -305,34 +319,35 @@ class BookingTest {
         assertThat(last.to()).isEqualTo(to);
         assertThat(last.actor()).isEqualTo(actor);
         assertThat(last.reason()).isEqualTo(reason);
-        assertThat(last.occurredAt()).isNotNull();
+        assertThat(last.occurredAt()).isEqualTo(NOW);
     }
 
     private static Booking newBooking() {
-        return Booking.request(PUBLICATION_ID, CLIENT, PROVIDER, SLOT, "Hola Bruno", "Preparar una entrevista", PRICE);
+        return Booking.request(PUBLICATION_ID, CLIENT, PROVIDER, SLOT, "Hola Bruno", "Preparar una entrevista", PRICE,
+                NOW);
     }
 
     private static Booking accepted() {
         Booking booking = newBooking();
-        booking.accept(PROVIDER);
+        booking.accept(PROVIDER, NOW);
         return booking;
     }
 
     private static Booking confirmed() {
         Booking booking = accepted();
-        booking.confirmPayment(CLIENT);
+        booking.confirmPayment(CLIENT, NOW);
         return booking;
     }
 
     private static Booking inProgress() {
         Booking booking = confirmed();
-        booking.start(PROVIDER);
+        booking.start(PROVIDER, NOW);
         return booking;
     }
 
     private static Booking completed() {
         Booking booking = inProgress();
-        booking.complete(CLIENT);
+        booking.complete(CLIENT, NOW);
         return booking;
     }
 }

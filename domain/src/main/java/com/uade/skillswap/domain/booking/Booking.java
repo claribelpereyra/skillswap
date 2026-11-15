@@ -40,8 +40,9 @@ public class Booking {
     }
 
     public static Booking request(long publicationId, UserId clientId, UserId providerId, TimeSlot slot,
-                                  String message, String goal, SkillCoins price) {
+                                  String message, String goal, SkillCoins price, Instant createdAt) {
         Objects.requireNonNull(clientId, "The client is required");
+        Objects.requireNonNull(createdAt, "The creation date is required");
         if (clientId.equals(providerId)) {
             throw new BusinessRuleException("The author cannot request their own publication");
         }
@@ -50,37 +51,37 @@ public class Booking {
         }
         requireText(message, "A message is required to request a publication");
         requireText(goal, "A goal is required to request a publication");
-        StateHistory<BookingStatus> history = StateHistory.startingAt(BookingStatus.PENDING, clientId, Instant.now());
+        StateHistory<BookingStatus> history = StateHistory.startingAt(BookingStatus.PENDING, clientId, createdAt);
         return new Booking(publicationId, clientId, providerId, slot, message, goal, price, history);
     }
 
     // State Pattern: la reserva delega cada acción en su estado actual.
-    public void accept(UserId actor) {
-        state.accept(this, actor);
+    public void accept(UserId actor, Instant occurredAt) {
+        state.accept(this, actor, occurredAt);
     }
 
-    public void reject(UserId actor, String reason) {
-        state.reject(this, actor, reason);
+    public void reject(UserId actor, String reason, Instant occurredAt) {
+        state.reject(this, actor, reason, occurredAt);
     }
 
-    public void confirmPayment(UserId actor) {
-        state.confirmPayment(this, actor);
+    public void confirmPayment(UserId actor, Instant occurredAt) {
+        state.confirmPayment(this, actor, occurredAt);
     }
 
-    public void start(UserId actor) {
-        state.start(this, actor);
+    public void start(UserId actor, Instant occurredAt) {
+        state.start(this, actor, occurredAt);
     }
 
-    public void complete(UserId actor) {
-        state.complete(this, actor);
+    public void complete(UserId actor, Instant occurredAt) {
+        state.complete(this, actor, occurredAt);
     }
 
-    public void cancel(UserId actor, String reason) {
-        state.cancel(this, actor, reason);
+    public void cancel(UserId actor, String reason, Instant occurredAt) {
+        state.cancel(this, actor, reason, occurredAt);
     }
 
-    public void changeState(BookingState next, UserId actor, String reason) {
-        history.record(state.getStatus(), next.getStatus(), actor, Instant.now(), reason);
+    public void changeState(BookingState next, UserId actor, String reason, Instant occurredAt) {
+        history.record(state.getStatus(), next.getStatus(), actor, occurredAt, reason);
         state = next;
     }
 

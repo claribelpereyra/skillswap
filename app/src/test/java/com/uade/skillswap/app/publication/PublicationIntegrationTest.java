@@ -3,6 +3,7 @@ package com.uade.skillswap.app.publication;
 import com.uade.skillswap.application.common.Page;
 import com.uade.skillswap.application.ports.in.publication.PublicationSummary;
 import com.uade.skillswap.application.ports.in.publication.PublicationView;
+import com.uade.skillswap.application.ports.out.TimeProvider;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
 import com.uade.skillswap.application.ports.out.publication.AuthorProfileQuery;
 import com.uade.skillswap.application.usecases.publication.ChangePublicationStatusService;
@@ -31,10 +32,8 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -74,13 +73,13 @@ class PublicationIntegrationTest {
         }));
 
         AuthorProfileQuery profiles = userId -> Optional.of(AccountType.PROFESSIONAL);
-        Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
+        TimeProvider timeProvider = () -> NOW;
         JpaPublicationRepository repository = new JpaPublicationRepository();
 
         publications = new PublicationControllerImpl(
-                new CreateDraftService(repository, profiles, unitOfWork, clock),
+                new CreateDraftService(repository, profiles, unitOfWork, timeProvider),
                 new EditDraftService(repository, unitOfWork),
-                new ChangePublicationStatusService(repository, unitOfWork, clock),
+                new ChangePublicationStatusService(repository, unitOfWork, timeProvider),
                 new GetPublicationService(repository),
                 new ListMyPublicationsService(repository));
         search = new SearchControllerImpl(new SearchPublicationsService(new JpaPublicationSearchQuery(),

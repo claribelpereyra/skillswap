@@ -7,6 +7,7 @@ import com.uade.skillswap.application.ports.in.publication.EditDraftCommand;
 import com.uade.skillswap.application.ports.in.publication.PublicationAction;
 import com.uade.skillswap.application.ports.in.publication.PublicationView;
 import com.uade.skillswap.application.ports.in.publication.SlotInput;
+import com.uade.skillswap.application.ports.out.TimeProvider;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
 import com.uade.skillswap.application.ports.out.publication.AuthorProfileQuery;
 import com.uade.skillswap.domain.common.BusinessRuleException;
@@ -23,10 +24,8 @@ import com.uade.skillswap.domain.publication.PublicationType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -51,12 +50,12 @@ class PublicationUseCasesTest {
     private final InMemoryPublicationRepository repository = new InMemoryPublicationRepository();
     private final AuthorProfileQuery profiles = mock(AuthorProfileQuery.class);
     private final UnitOfWork unitOfWork = Supplier::get;
-    private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
+    private final TimeProvider timeProvider = () -> NOW;
 
-    private final CreateDraftService createDraft = new CreateDraftService(repository, profiles, unitOfWork, clock);
+    private final CreateDraftService createDraft = new CreateDraftService(repository, profiles, unitOfWork, timeProvider);
     private final EditDraftService editDraft = new EditDraftService(repository, unitOfWork);
     private final ChangePublicationStatusService changeStatus =
-            new ChangePublicationStatusService(repository, unitOfWork, clock);
+            new ChangePublicationStatusService(repository, unitOfWork, timeProvider);
 
     @BeforeEach
     void profilesOfTheAuthors() {

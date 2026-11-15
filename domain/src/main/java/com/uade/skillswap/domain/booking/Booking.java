@@ -138,6 +138,10 @@ public class Booking {
         if (pendingReschedule != null) {
             throw new BusinessRuleException("There is already a pending reschedule for this booking");
         }
+        // Sin id no se puede comparar con la franja actual: dos franjas sin guardar parecerían la misma.
+        if (newSlot.getId() == null) {
+            throw new BusinessRuleException("The new slot must be saved before proposing it");
+        }
         if (Objects.equals(newSlot.getId(), slot.getId())) {
             throw new BusinessRuleException("The new slot must be different from the current one");
         }

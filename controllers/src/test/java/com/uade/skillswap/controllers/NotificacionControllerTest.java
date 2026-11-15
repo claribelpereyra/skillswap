@@ -16,7 +16,10 @@ class NotificacionControllerTest {
         var controller = new NotificacionController(entrada, usuario::get);
         var pagina = new PaginaNotificaciones(List.of(), 0, 10, 0);
         when(entrada.listar("ana", 0, 10)).thenReturn(pagina);
-        assertThat(controller.listar(0, 10).getData()).isEqualTo(pagina);
+        var result = controller.listar(0, 10).getData();
+        assertThat(result.items()).isEmpty();
+        assertThat(result.request().size()).isEqualTo(10);
+        assertThat(result.totalItems()).isZero();
         usuario.set(new UserId("bea"));
         var id = UUID.randomUUID();
         assertThat(controller.marcarLeida(id).isSuccess()).isTrue();

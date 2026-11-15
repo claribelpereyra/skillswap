@@ -4,6 +4,8 @@ import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.InsufficientBalanceException;
+import com.uade.skillswap.domain.pricing.FixedPromotion;
+import com.uade.skillswap.domain.pricing.PercentagePromotion;
 
 import org.junit.jupiter.api.Test;
 
@@ -17,8 +19,9 @@ class BookingPaymentServiceTest {
 
     private static final Instant NOW = Instant.parse("2026-11-14T10:00:00Z");
     private static final long BOOKING_ID = 42L;
-    private static final BookingPaymentService SERVICE = new BookingPaymentService(
-            new TieredRefundStrategy(new RefundPolicy(Duration.ofDays(2), Duration.ofDays(1))));
+    private static final RefundStrategy REFUND_STRATEGY =
+            new TieredRefundStrategy(new RefundPolicy(Duration.ofDays(2), Duration.ofDays(1)));
+    private static final BookingPaymentService SERVICE = new BookingPaymentService(REFUND_STRATEGY);
 
     @Test
     void paymentDebitsClientAndCreditsProviderOnce() {
@@ -43,6 +46,43 @@ class BookingPaymentServiceTest {
         assertThat(provider.balance()).isEqualTo(new SkillCoins(55));
         assertThat(client.movements()).hasSize(2);
         assertThat(provider.movements()).hasSize(2);
+    }
+
+    @Test
+    void paymentAppliesAccumulatedPromotionsToTheChargedAmount() {
+        BookingPaymentService service = new BookingPaymentService(
+                REFUND_STRATEGY,
+                price -> new FixedPromotion(new PercentagePromotion(price, 10), new SkillCoins(5)));
+        Wallet client = wallet("client", 100);
+        Wallet provider = wallet("provider", 0);
+
+        service.pay(BOOKING_ID, client, provider, new SkillCoins(100), NOW.plusSeconds(60));
+
+        assertThat(client.balance()).isEqualTo(new SkillCoins(15));
+        assertThat(provider.balance()).isEqualTo(new SkillCoins(85));
+        assertThat(client.movements()).last().extracting(CreditMovement::amount)
+                .isEqualTo(new SkillCoins(85));
+        assertThat(provider.movements()).last().extracting(CreditMovement::amount)
+                .isEqualTo(new SkillCoins(85));
+    }
+
+    @Test
+    void aPromotionThatMakesThePaymentFreeIsRejectedWithoutChangingWallets() {
+        BookingPaymentService service = new BookingPaymentService(
+                REFUND_STRATEGY,
+                price -> new PercentagePromotion(price, 100));
+        Wallet client = wallet("client", 100);
+        Wallet provider = wallet("provider", 0);
+
+        assertThatThrownBy(() ->
+                service.pay(BOOKING_ID, client, provider, new SkillCoins(100), NOW.plusSeconds(60)))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The booking payment must remain positive after promotions");
+
+        assertThat(client.balance()).isEqualTo(new SkillCoins(100));
+        assertThat(provider.balance()).isEqualTo(SkillCoins.ZERO);
+        assertThat(client.movements()).hasSize(1);
+        assertThat(provider.movements()).isEmpty();
     }
 
     @Test

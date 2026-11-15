@@ -12,6 +12,7 @@ import com.uade.skillswap.domain.common.InsufficientBalanceException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.TimeSlot;
+import com.uade.skillswap.domain.pricing.PercentagePromotion;
 import com.uade.skillswap.domain.wallet.BookingPaymentService;
 import com.uade.skillswap.domain.wallet.FullRefundStrategy;
 import com.uade.skillswap.domain.wallet.Wallet;
@@ -78,6 +79,34 @@ class BookingPaymentUseCasesTest {
         verify(bookings).save(booking);
         verify(wallets).save(clientWallet);
         verify(wallets).save(providerWallet);
+    }
+
+    @Test
+    void payingAppliesPromotionsAndCancellationRefundsTheDiscountedAmount() {
+        Booking booking = acceptedBooking();
+        Wallet clientWallet = wallet(CLIENT, 100, NOW.minusSeconds(120));
+        Wallet providerWallet = Wallet.open(PROVIDER);
+        BookingPaymentService discountedPayments = new BookingPaymentService(
+                new FullRefundStrategy(),
+                price -> new PercentagePromotion(price, 10));
+        BookingServiceImpl discountedService = new BookingServiceImpl(bookings, publications, availability, unitOfWork,
+                wallets, discountedPayments, Clock.fixed(NOW, ZoneOffset.UTC));
+        when(bookings.findById(BOOKING_ID)).thenReturn(Optional.of(booking));
+        when(wallets.findByOwnerId(CLIENT)).thenReturn(Optional.of(clientWallet));
+        when(wallets.findByOwnerId(PROVIDER)).thenReturn(Optional.of(providerWallet));
+
+        var paid = discountedService.pay(BOOKING_ID, CLIENT);
+
+        assertThat(paid.status()).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(clientWallet.balance()).isEqualTo(new SkillCoins(10));
+        assertThat(providerWallet.balance()).isEqualTo(new SkillCoins(90));
+        assertThat(providerWallet.paymentAmountFor(BOOKING_ID)).isEqualTo(new SkillCoins(90));
+
+        var cancelled = discountedService.cancel(BOOKING_ID, CLIENT, "No puedo asistir");
+
+        assertThat(cancelled.status()).isEqualTo(BookingStatus.CANCELLED);
+        assertThat(clientWallet.balance()).isEqualTo(new SkillCoins(100));
+        assertThat(providerWallet.balance()).isEqualTo(SkillCoins.ZERO);
     }
 
     @Test

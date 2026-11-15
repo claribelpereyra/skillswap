@@ -1,4 +1,4 @@
-package com.uade.skillswap.application.ports.in.wallet;
+package com.uade.skillswap.application.dto.wallet;
 
 import com.uade.skillswap.domain.common.UserId;
 

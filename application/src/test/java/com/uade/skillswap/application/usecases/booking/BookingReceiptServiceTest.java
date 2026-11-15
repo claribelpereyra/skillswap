@@ -2,9 +2,9 @@ package com.uade.skillswap.application.usecases.booking;
 
 import com.uade.skillswap.application.common.AccessDeniedException;
 import com.uade.skillswap.application.common.ResourceNotFoundException;
-import com.uade.skillswap.application.ports.in.booking.BookingReceipt;
-import com.uade.skillswap.application.ports.in.booking.GetBookingReceiptCommand;
-import com.uade.skillswap.application.ports.out.booking.BookingRepository;
+import com.uade.skillswap.application.dto.booking.BookingReceipt;
+import com.uade.skillswap.application.dto.booking.GetBookingReceiptCommand;
+import com.uade.skillswap.application.ports.out.BookingRepository;
 import com.uade.skillswap.application.ports.out.wallet.WalletRepository;
 import com.uade.skillswap.application.usecases.booking.GetBookingReceiptService;
 import com.uade.skillswap.domain.booking.Booking;
@@ -37,12 +37,10 @@ class BookingReceiptServiceTest {
     private static final UserId PROVIDER = new UserId("bruno");
     private static final UserId OUTSIDER = new UserId("carla");
     private static final long BOOKING_ID = 42L;
-    private static final Instant CREATED_AT = Instant.parse("2026-11-14T09:00:00Z");
     private static final Instant PAID_AT = Instant.parse("2026-11-14T10:00:00Z");
-    private static final Instant COMPLETED_AT = Instant.parse("2026-11-14T11:00:00Z");
     private static final SkillCoins PRICE = new SkillCoins(100);
-    private static final TimeSlot SLOT = new TimeSlot(1L, PAID_AT.plus(Duration.ofDays(4)),
-            PAID_AT.plus(Duration.ofDays(4)).plus(Duration.ofHours(1)));
+    private static final TimeSlot SLOT = new TimeSlot(1L, Instant.parse("2026-11-19T21:00:00Z"),
+            Instant.parse("2026-11-19T22:00:00Z"));
 
     private final BookingRepository bookings = mock(BookingRepository.class);
     private final WalletRepository wallets = mock(WalletRepository.class);
@@ -75,11 +73,12 @@ class BookingReceiptServiceTest {
         BookingReceipt receipt = service.getReceipt(new GetBookingReceiptCommand(CLIENT, BOOKING_ID));
 
         assertThat(receipt.bookingId()).isEqualTo(BOOKING_ID);
-        assertThat(receipt.clientId()).isEqualTo(CLIENT);
-        assertThat(receipt.providerId()).isEqualTo(PROVIDER);
-        assertThat(receipt.amount()).isEqualTo(PRICE);
+        assertThat(receipt.clientId()).isEqualTo("ana");
+        assertThat(receipt.providerId()).isEqualTo("bruno");
+        assertThat(receipt.amount()).isEqualTo(PRICE.amount());
         assertThat(receipt.paidAt()).isEqualTo(PAID_AT);
-        assertThat(receipt.completedAt()).isEqualTo(COMPLETED_AT);
+        assertThat(receipt.completedAt()).isEqualTo(booking.getHistory().get(booking.getHistory().size() - 1)
+                .occurredAt());
         assertThat(clientWallet.movements()).filteredOn(m -> m.type() == CreditMovementType.DEBIT)
                 .hasSize(1);
     }
@@ -106,19 +105,19 @@ class BookingReceiptServiceTest {
 
     private static Booking confirmedBooking() {
         Booking booking = requestedBooking();
-        booking.accept(PROVIDER, CREATED_AT.plusSeconds(60));
-        booking.confirmPayment(CLIENT, PAID_AT);
+        booking.accept(PROVIDER);
+        booking.confirmPayment(CLIENT);
         return booking;
     }
 
     private static Booking completedBooking() {
         Booking booking = confirmedBooking();
-        booking.start(PROVIDER, PAID_AT.plusSeconds(60));
-        booking.complete(CLIENT, COMPLETED_AT);
+        booking.start(PROVIDER);
+        booking.complete(PROVIDER);
         return booking;
     }
 
     private static Booking requestedBooking() {
-        return Booking.request(10L, CLIENT, PROVIDER, SLOT, "Hola", "Aprender", PRICE, CREATED_AT);
+        return Booking.request(10L, CLIENT, PROVIDER, SLOT, "Hola", "Aprender", PRICE);
     }
 }

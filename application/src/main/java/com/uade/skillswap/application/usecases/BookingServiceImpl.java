@@ -13,11 +13,17 @@ import com.uade.skillswap.application.ports.out.BookingRepository;
 import com.uade.skillswap.application.ports.out.PublicationAvailability;
 import com.uade.skillswap.application.ports.out.PublicationCatalog;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
+import com.uade.skillswap.application.ports.out.wallet.WalletRepository;
 import com.uade.skillswap.domain.booking.Booking;
+import com.uade.skillswap.domain.booking.BookingStatus;
 import com.uade.skillswap.domain.common.BusinessRuleException;
+import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.TimeSlot;
+import com.uade.skillswap.domain.wallet.BookingPaymentService;
+import com.uade.skillswap.domain.wallet.Wallet;
 
+import java.time.Clock;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -28,13 +34,20 @@ public class BookingServiceImpl implements BookingService {
     private final PublicationCatalog publications;
     private final PublicationAvailability availability;
     private final UnitOfWork unitOfWork;
+    private final WalletRepository wallets;
+    private final BookingPaymentService payments;
+    private final Clock clock;
 
     public BookingServiceImpl(BookingRepository bookings, PublicationCatalog publications,
-                              PublicationAvailability availability, UnitOfWork unitOfWork) {
+                              PublicationAvailability availability, UnitOfWork unitOfWork,
+                              WalletRepository wallets, BookingPaymentService payments, Clock clock) {
         this.bookings = Objects.requireNonNull(bookings);
         this.publications = Objects.requireNonNull(publications);
         this.availability = Objects.requireNonNull(availability);
         this.unitOfWork = Objects.requireNonNull(unitOfWork);
+        this.wallets = Objects.requireNonNull(wallets);
+        this.payments = Objects.requireNonNull(payments);
+        this.clock = Objects.requireNonNull(clock);
     }
 
     @Override
@@ -48,6 +61,50 @@ public class BookingServiceImpl implements BookingService {
             Booking booking = Booking.request(publication.id(), command.clientId(), publication.authorId(), slot,
                     command.message(), command.goal(), publication.price());
             return BookingView.from(bookings.save(booking));
+        });
+    }
+
+    @Override
+    public BookingView pay(Long bookingId, UserId actor) {
+        return unitOfWork.execute(() -> {
+            Booking booking = findBooking(bookingId);
+            booking.confirmPayment(actor);
+            Wallet clientWallet = findWallet(booking.getClientId());
+            Wallet providerWallet = findWallet(booking.getProviderId());
+            payments.pay(bookingId, clientWallet, providerWallet, booking.getPrice(), clock.instant());
+
+            Booking saved = bookings.save(booking);
+            wallets.save(clientWallet);
+            wallets.save(providerWallet);
+            return BookingView.from(saved);
+        });
+    }
+
+    @Override
+    public BookingView cancel(Long bookingId, UserId actor, String reason) {
+        return unitOfWork.execute(() -> {
+            Booking booking = findBooking(bookingId);
+            BookingStatus previousStatus = booking.getStatus();
+            booking.cancel(actor, reason);
+            if (previousStatus == BookingStatus.ACCEPTED || previousStatus == BookingStatus.CONFIRMED) {
+                availability.release(booking.getPublicationId(), booking.getSlot().getId());
+            }
+
+            Wallet clientWallet = null;
+            Wallet providerWallet = null;
+            if (previousStatus == BookingStatus.CONFIRMED) {
+                clientWallet = findWallet(booking.getClientId());
+                providerWallet = findWallet(booking.getProviderId());
+                payments.refund(bookingId, clientWallet, providerWallet, booking.getSlot().getStartsAt(),
+                        clock.instant());
+            }
+
+            Booking saved = bookings.save(booking);
+            if (previousStatus == BookingStatus.CONFIRMED) {
+                wallets.save(clientWallet);
+                wallets.save(providerWallet);
+            }
+            return BookingView.from(saved);
         });
     }
 
@@ -130,6 +187,11 @@ public class BookingServiceImpl implements BookingService {
     private Booking findBooking(Long bookingId) {
         return bookings.findById(bookingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Booking", bookingId));
+    }
+
+    private Wallet findWallet(UserId ownerId) {
+        return wallets.findByOwnerId(ownerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Wallet", ownerId));
     }
 
     private BookablePublication findPublication(long publicationId) {

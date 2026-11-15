@@ -13,6 +13,10 @@ public interface BookingService {
 
     BookingView request(RequestBookingCommand command);
 
+    BookingView pay(Long bookingId, UserId actor);
+
+    BookingView cancel(Long bookingId, UserId actor, String reason);
+
     BookingView accept(Long bookingId, UserId actor);
 
     BookingView reject(Long bookingId, UserId actor, String reason);

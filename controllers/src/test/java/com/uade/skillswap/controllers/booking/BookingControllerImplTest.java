@@ -65,6 +65,8 @@ class BookingControllerImplTest {
     void everyActionDelegatesWithTheUserAndTheBooking() {
         when(service.accept(99L, BRUNO)).thenReturn(VIEW);
         when(service.reject(99L, BRUNO, "No")).thenReturn(VIEW);
+        when(service.pay(99L, ANA)).thenReturn(VIEW);
+        when(service.cancel(99L, ANA, "Cambio de planes")).thenReturn(VIEW);
         when(service.start(99L, BRUNO)).thenReturn(VIEW);
         when(service.complete(99L, ANA)).thenReturn(VIEW);
         when(service.proposeReschedule(99L, BRUNO, 2L)).thenReturn(VIEW);
@@ -79,6 +81,8 @@ class BookingControllerImplTest {
                 controller.proposeReschedule("bruno", 99L, 2L));
         loggedAs(ANA);
         List<ControllerResult<BookingView>> asClient = List.of(
+                controller.pay("ana", 99L),
+                controller.cancel("ana", 99L, "Cambio de planes"),
                 controller.complete("ana", 99L),
                 controller.acceptReschedule("ana", 99L),
                 controller.rejectReschedule("ana", 99L));

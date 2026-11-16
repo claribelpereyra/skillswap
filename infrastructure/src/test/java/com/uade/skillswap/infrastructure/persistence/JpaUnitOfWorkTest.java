@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -140,6 +141,49 @@ class JpaUnitOfWorkTest {
                 .setParameter(1, key)
                 .setParameter(2, "value")
                 .executeUpdate());
+    }
+
+    @Test
+    void nestedCallbacksRunOnceAfterTheRootCommitAndCanReadCommittedData() {
+        AtomicInteger called = new AtomicInteger();
+        unitOfWork.execute(() -> {
+            insert("test-committed");
+            unitOfWork.execute(() -> unitOfWork.afterCommit(() -> {
+                assertThat(EntityManagerContext.hasCurrent()).isFalse();
+                assertThat(countTestRows()).isEqualTo(1);
+                called.incrementAndGet();
+            }));
+            assertThat(called.get()).isZero();
+        });
+        assertThat(called.get()).isEqualTo(1);
+    }
+
+    @Test
+    void rootRollbackDiscardsNestedCallbacksAndDoesNotLeakToTheNextTransaction() {
+        AtomicInteger called = new AtomicInteger();
+        assertThatThrownBy(() -> unitOfWork.execute(() -> {
+            insert("test-rollback");
+            unitOfWork.execute(() -> unitOfWork.afterCommit(called::incrementAndGet));
+            throw new IllegalStateException("rollback");
+        })).isExactlyInstanceOf(IllegalStateException.class).hasMessage("rollback");
+        unitOfWork.execute(() -> insert("test-next"));
+        assertThat(called.get()).isZero();
+        assertThat(countTestRows()).isEqualTo(1);
+    }
+
+    @Test
+    void rejectsOrphanCallbacksAndContinuesAfterAFailedCallback() {
+        assertThatThrownBy(() -> unitOfWork.afterCommit(() -> { }))
+                .isExactlyInstanceOf(IllegalStateException.class)
+                .hasMessage("afterCommit requires an active unit of work");
+        AtomicInteger called = new AtomicInteger();
+        unitOfWork.execute(() -> {
+            insert("test-callback");
+            unitOfWork.afterCommit(() -> { throw new IllegalStateException("delivery unavailable"); });
+            unitOfWork.afterCommit(called::incrementAndGet);
+        });
+        assertThat(called.get()).isEqualTo(1);
+        assertThat(countTestRows()).isEqualTo(1);
     }
 
     private static long countTestRows() {

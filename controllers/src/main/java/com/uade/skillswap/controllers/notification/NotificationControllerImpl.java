@@ -1,4 +1,6 @@
-package com.uade.skillswap.controllers;
+package com.uade.skillswap.controllers.notification;
+
+import com.uade.skillswap.controllers.ControllerResult;
 
 import com.uade.skillswap.application.notificaciones.PaginaNotificaciones;
 import com.uade.skillswap.application.ports.in.BandejaNotificacionEntrada;
@@ -11,12 +13,12 @@ import com.uade.skillswap.controllers.notification.NotificationController;
 import com.uade.skillswap.domain.common.UserId;
 import java.util.*;
 
-public final class NotificacionController implements NotificationController {
+public final class NotificationControllerImpl implements NotificationController {
     private final BandejaNotificacionEntrada bandeja;
     private final IdentityService identidad;
 
     /** La identidad es compartida con los demás controllers; la UI no elige el destinatario. */
-    public NotificacionController(BandejaNotificacionEntrada bandeja, IdentityService identidad) {
+    public NotificationControllerImpl(BandejaNotificacionEntrada bandeja, IdentityService identidad) {
         this.bandeja = Objects.requireNonNull(bandeja);
         this.identidad = Objects.requireNonNull(identidad);
     }

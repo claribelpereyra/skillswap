@@ -27,15 +27,24 @@ public final class RecommendationControllerImpl implements RecommendationControl
     private final SkillAffinityRecommendationStrategy skillAffinity;
     private final RecentPopularityRecommendationStrategy recentPopularity;
     private final IdentityService identity;
+    private final RecommendationStrategy defaultStrategy;
 
     public RecommendationControllerImpl(RecommendPublicationsUseCase recommend,
                                         SkillAffinityRecommendationStrategy skillAffinity,
                                         RecentPopularityRecommendationStrategy recentPopularity,
                                         IdentityService identity) {
+        this(recommend, skillAffinity, recentPopularity, identity, skillAffinity);
+    }
+
+    public RecommendationControllerImpl(RecommendPublicationsUseCase recommend,
+                                        SkillAffinityRecommendationStrategy skillAffinity,
+                                        RecentPopularityRecommendationStrategy recentPopularity,
+                                        IdentityService identity, RecommendationStrategy defaultStrategy) {
         this.recommend = Objects.requireNonNull(recommend, "The recommendation use case is required");
         this.skillAffinity = Objects.requireNonNull(skillAffinity, "The skill affinity strategy is required");
         this.recentPopularity = Objects.requireNonNull(recentPopularity, "The recent popularity strategy is required");
         this.identity = Objects.requireNonNull(identity, "The identity service is required");
+        this.defaultStrategy = Objects.requireNonNull(defaultStrategy, "The default strategy is required");
     }
 
     @Override
@@ -58,7 +67,7 @@ public final class RecommendationControllerImpl implements RecommendationControl
 
     private RecommendationStrategy strategyFor(String strategy) {
         if (strategy == null || strategy.isBlank()) {
-            return skillAffinity;
+            return defaultStrategy;
         }
         return switch (strategy.strip().toUpperCase(Locale.ROOT)) {
             case "SKILL_AFFINITY" -> skillAffinity;

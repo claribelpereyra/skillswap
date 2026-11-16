@@ -1,17 +1,15 @@
-# Tarea 101 — Configuración externa
+# Tarea 101 — Configuración externa integrada
 
-`ConfiguracionFuncional.desdeEntorno()` lee las siguientes variables en infraestructura. También permite construir la configuración desde un mapa para probar sin modificar el entorno del equipo.
+`ConfiguracionFuncional` lee y valida las variables; `CompositionRoot` consume el resultado y entrega estrategias a los servicios. Los casos de uso no consultan `System.getenv()`.
 
-| Variable | Default local propuesto | Validación |
+| Variable | Default | Uso real |
 | --- | --- | --- |
-| `SKILLSWAP_CANCELACION_TOTAL_HORAS` | 48 | Horas enteras, mayor que el umbral parcial |
-| `SKILLSWAP_CANCELACION_PARCIAL_HORAS` | 24 | Horas enteras no negativas |
-| `SKILLSWAP_RECOMENDACION` | AFINIDAD | AFINIDAD o POPULARIDAD; admite espacios externos y minúsculas |
+| `SKILLSWAP_CANCELACION_TOTAL_HORAS` | 48 | Umbral de reintegro del 100 % en `RefundPolicy` |
+| `SKILLSWAP_CANCELACION_PARCIAL_HORAS` | 24 | Umbral del 50 %; por debajo se aplica 0 % |
+| `SKILLSWAP_RECOMENDACION` | AFINIDAD | Estrategia predeterminada si el formulario no selecciona otra: AFINIDAD o POPULARIDAD |
 
-Los defaults son una propuesta para desarrollo: la consigna exige anticipación configurable pero no fija 48/24 horas. Una variable ausente o en blanco usa el default; un valor inválido se rechaza. Los umbrales se entregan como `Duration` y la estrategia como una selección tipada, sin cargar clases por nombre ni decidir reglas dentro de la configuración.
+Los umbrales se expresan en horas enteras no negativas y el total debe ser mayor que el parcial. Una variable ausente o vacía usa el default. Una configuración inválida falla antes de abrir la base. 48/24 son decisiones locales configurables, no valores exigidos por la consigna. La ventana de popularidad usa 30 días en el root.
 
-## Integración pendiente
+El formulario puede elegir explícitamente `SKILL_AFFINITY` o `RECENT_POPULARITY` para demostrar el intercambio de estrategias. Esa selección tiene prioridad sobre el default externo.
 
-En Main se deberá leer esta configuración y pasar los umbrales a la política de cancelación de Tomi, y seleccionar su estrategia concreta de afinidad o popularidad. Los casos de uso seguirán recibiendo abstracciones del dominio, sin importar esta clase de infraestructura ni consultar `System.getenv()`.
-
-Todavía no se invoca la configuración desde Main porque esas implementaciones no existen en el checkout. No se implementan aquí los porcentajes ni las condiciones de borde de cancelación: se acordarán con la política de Tomi para evitar dos reglas diferentes. La tarea queda avanzada en lectura y validación; falta demostrar el cambio de comportamiento real con esa política y con recomendación.
+Evidencia: `ConfiguracionFuncionalTest` cubre lectura y validación; `RecommendationControllerTest` verifica el default inyectado; `FullJourneyIntegrationTest` configura 240/24 y comprueba un reintegro real del 50 % cinco días antes, con saldos persistidos y aviso de cancelación.

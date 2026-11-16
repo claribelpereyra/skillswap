@@ -17,6 +17,7 @@ import com.uade.skillswap.application.ports.out.UnitOfWork;
 import com.uade.skillswap.application.ports.out.WalletRepository;
 import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.booking.BookingStatus;
+import com.uade.skillswap.domain.booking.observer.BookingObserver;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
@@ -25,6 +26,7 @@ import com.uade.skillswap.domain.wallet.RefundStrategy;
 import com.uade.skillswap.domain.wallet.Wallet;
 
 import java.time.Clock;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Consumer;
@@ -39,6 +41,7 @@ public class BookingServiceImpl implements BookingService {
     private final RefundStrategy refundStrategy;
     private final UnitOfWork unitOfWork;
     private final Clock clock;
+    private final List<BookingObserver> observers = new ArrayList<>();
 
     public BookingServiceImpl(BookingRepository bookings, PublicationCatalog publications,
                               PublicationAvailability availability, WalletRepository wallets,
@@ -52,6 +55,11 @@ public class BookingServiceImpl implements BookingService {
         this.refundStrategy = Objects.requireNonNull(refundStrategy);
         this.unitOfWork = Objects.requireNonNull(unitOfWork);
         this.clock = Objects.requireNonNull(clock);
+    }
+
+    // Los observers los registra el composition root; se les avisa recién cuando la transacción se confirmó.
+    public void addObserver(BookingObserver observer) {
+        observers.add(Objects.requireNonNull(observer));
     }
 
     @Override
@@ -68,7 +76,9 @@ public class BookingServiceImpl implements BookingService {
                     "The booking price is required");
             Booking booking = Booking.request(publication.id(), command.clientId(), publication.authorId(), slot,
                     command.message(), command.goal(), finalPrice);
-            return BookingView.from(bookings.save(booking));
+            Changed changed = new Changed(booking, bookings.save(booking));
+            unitOfWork.afterCommit(() -> publish(changed));
+            return BookingView.from(changed.saved());
         });
     }
 
@@ -193,8 +203,16 @@ public class BookingServiceImpl implements BookingService {
         return unitOfWork.execute(() -> {
             Booking booking = findBooking(bookingId);
             action.accept(booking);
-            return BookingView.from(bookings.save(booking));
+            Changed changed = new Changed(booking, bookings.save(booking));
+            unitOfWork.afterCommit(() -> publish(changed));
+            return BookingView.from(changed.saved());
         });
+    }
+
+    // Lo registra el execute() mediante afterCommit; si la transacción revierte, no se dispara.
+    private void publish(Changed changed) {
+        observers.forEach(changed.changed()::addObserver);
+        changed.changed().publishPendingEvents(changed.saved().getId());
     }
 
     private Booking findBooking(Long bookingId) {
@@ -229,5 +247,9 @@ public class BookingServiceImpl implements BookingService {
     private TimeSlot findSlot(BookablePublication publication, long slotId) {
         return publication.findSlot(slotId)
                 .orElseThrow(() -> new BusinessRuleException("The slot does not belong to the publication"));
+    }
+
+    // El repositorio devuelve una copia nueva con id; las transiciones sin avisar quedan en la instancia que se modificó.
+    private record Changed(Booking changed, Booking saved) {
     }
 }

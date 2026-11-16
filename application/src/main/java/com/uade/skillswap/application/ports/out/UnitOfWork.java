@@ -13,4 +13,11 @@ public interface UnitOfWork {
             return null;
         });
     }
+
+    // Permite registrar un efecto que debe ocurrir recién cuando la transacción raíz confirma: si
+    // la transacción se rollbackea, el callback no se ejecuta. La implementación por defecto corre
+    // el callback de inmediato, pensada para tests que no abren una transacción real.
+    default void afterCommit(Runnable callback) {
+        callback.run();
+    }
 }

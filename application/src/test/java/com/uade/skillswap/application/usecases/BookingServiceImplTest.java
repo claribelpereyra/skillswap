@@ -16,6 +16,7 @@ import com.uade.skillswap.application.ports.out.UnitOfWork;
 import com.uade.skillswap.application.ports.out.WalletRepository;
 import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.booking.BookingStatus;
+import com.uade.skillswap.domain.booking.observer.BookingEvent;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.InsufficientBalanceException;
 import com.uade.skillswap.domain.common.InvalidTransitionException;
@@ -38,6 +39,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -89,7 +91,7 @@ class BookingServiceImplTest {
         refundStrategy = tieredRefundStrategy();
         UnitOfWork direct = Supplier::get;
         service = newService(direct);
-        when(bookings.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(bookings.save(any())).thenAnswer(invocation -> persisted(invocation.getArgument(0)));
         when(publications.findBookable(PUBLICATION_ID)).thenReturn(Optional.of(PUBLICATION));
     }
 
@@ -449,6 +451,89 @@ class BookingServiceImplTest {
         assertThat(view.slotId()).isEqualTo(1L);
         assertThat(view.proposedSlotId()).isNull();
         verifyNoInteractions(availability);
+    }
+
+    // Eventos para los observers
+
+    @Test
+    void observersAreNotifiedOfTheAcceptanceAfterItIsSaved() {
+        List<BookingEvent> received = new ArrayList<>();
+        service.addObserver(received::add);
+        stored(pending());
+
+        service.accept(BOOKING_ID, PROVIDER);
+
+        assertThat(received).last().satisfies(event -> {
+            assertThat(event.from()).isEqualTo(BookingStatus.PENDING);
+            assertThat(event.to()).isEqualTo(BookingStatus.ACCEPTED);
+            assertThat(event.actor()).isEqualTo(PROVIDER);
+        });
+    }
+
+    @Test
+    void aNewRequestIsNotifiedWithTheIdAssignedWhenSaving() {
+        List<BookingEvent> received = new ArrayList<>();
+        service.addObserver(received::add);
+
+        service.request(new RequestBookingCommand(CLIENT, PUBLICATION_ID, 1L, "Hola", "Entrevista"));
+
+        assertThat(received).singleElement().satisfies(event -> {
+            assertThat(event.bookingId()).isEqualTo(BOOKING_ID);
+            assertThat(event.from()).isNull();
+            assertThat(event.to()).isEqualTo(BookingStatus.PENDING);
+        });
+    }
+
+    @Test
+    void nothingIsNotifiedWhenTheChangeFails() {
+        List<BookingEvent> received = new ArrayList<>();
+        service.addObserver(received::add);
+        stored(pending());
+        doThrow(new BusinessRuleException("No capacity left for this publication"))
+                .when(availability).reserve(PUBLICATION_ID, 1L);
+
+        assertThatThrownBy(() -> service.accept(BOOKING_ID, PROVIDER))
+                .isExactlyInstanceOf(BusinessRuleException.class);
+        assertThat(received).isEmpty();
+    }
+
+    @Test
+    void anExternalRollbackSuppressesTheQueuedEvents() {
+        List<BookingEvent> received = new ArrayList<>();
+        List<Runnable> queued = new ArrayList<>();
+        UnitOfWork joined = new UnitOfWork() {
+            @Override
+            public <T> T execute(Supplier<T> work) {
+                return work.get();
+            }
+
+            @Override
+            public void afterCommit(Runnable callback) {
+                queued.add(callback);
+            }
+        };
+        BookingServiceImpl joinedService = newService(joined);
+        joinedService.addObserver(received::add);
+        stored(pending());
+
+        joinedService.accept(BOOKING_ID, PROVIDER);
+
+        assertThat(queued).hasSize(1);
+        assertThat(received).isEmpty();
+    }
+
+    @Test
+    void aFailingObserverDoesNotStopTheOthers() {
+        List<BookingEvent> received = new ArrayList<>();
+        service.addObserver(event -> {
+            throw new RuntimeException("observer failed");
+        });
+        service.addObserver(received::add);
+        stored(pending());
+
+        service.accept(BOOKING_ID, PROVIDER);
+
+        assertThat(received).extracting(BookingEvent::to).contains(BookingStatus.ACCEPTED);
     }
 
     // Consultas

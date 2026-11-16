@@ -15,7 +15,7 @@ class BookingNotificationObserverTest {
     @Test
     void mapsTheSixEventsAndUsesStableIdsForRepeatedDelivery() {
         List<EventoNotificable> received = new ArrayList<>();
-        var observer = new BookingNotificationObserver(event -> received.add((EventoNotificable) event));
+        var observer = new BookingNotificationObserver(received::add);
         var statuses = List.of(BookingStatus.PENDING, BookingStatus.ACCEPTED, BookingStatus.CONFIRMED,
                 BookingStatus.ACCEPTED, BookingStatus.CANCELLED, BookingStatus.COMPLETED);
         for (int i = 0; i < statuses.size(); i++) {
@@ -40,7 +40,7 @@ class BookingNotificationObserverTest {
     @Test
     void doesNotNotifyStartingRejectionOrRejectedReschedules() {
         List<EventoNotificable> received = new ArrayList<>();
-        var observer = new BookingNotificationObserver(event -> received.add((EventoNotificable) event));
+        var observer = new BookingNotificationObserver(received::add);
         for (var status : List.of(BookingStatus.IN_PROGRESS, BookingStatus.REJECTED, BookingStatus.ACCEPTED)) {
             observer.update(new BookingEvent(10, new UserId("ana"), new UserId("bruno"),
                     BookingStatus.ACCEPTED, status, new UserId("bruno"), Instant.EPOCH,

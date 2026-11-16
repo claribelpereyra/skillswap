@@ -54,12 +54,10 @@ class RepositoriosNotificacionesTest {
         gestion.cambiar("proveedor", CanalPreferido.PUSH);
         var procesador = new com.uade.skillswap.application.usecases.ProcesarEventoNotificableCasoDeUso(
                 gestion, avisos, new com.uade.skillswap.application.notificaciones.FabricaCanalNotificacion(List.of(email, push, interna)));
-        var bus = new com.uade.skillswap.application.eventos.PublicadorEventosEnMemoria();
-        bus.suscribir(new com.uade.skillswap.application.eventos.SuscriptorNotificaciones(procesador));
         var evento = new EventoNotificable(UUID.randomUUID(), Instant.EPOCH, TipoEventoNotificable.PAGO_CONFIRMADO,
                 "contratacion-1", List.of("cliente", "proveedor", "sin-preferencia"), "Pago confirmado");
-        bus.publicar(evento);
-        bus.publicar(evento);
+        procesador.procesar(evento);
+        procesador.procesar(evento);
         assertThat(email.enviados()).extracting(Aviso::destinatario).containsExactly("cliente");
         assertThat(push.enviados()).extracting(Aviso::destinatario).containsExactly("proveedor");
         assertThat(interna.enviados()).extracting(Aviso::destinatario).containsExactly("sin-preferencia");

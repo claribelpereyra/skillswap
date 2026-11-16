@@ -10,7 +10,7 @@ Bosquejo actualizado para trasladar a StarUML. La aplicación usa los módulos M
 | Contratación | BookingService | BookingServiceImpl | BookingRepository, PublicationCatalog, PublicationAvailability, WalletRepository, UnitOfWork, BookingPricingPolicy |
 | Wallet y comprobante | LoadWalletUseCase, GetWalletUseCase, GetBookingReceiptUseCase | LoadWalletService, GetWalletService, GetBookingReceiptService | WalletRepository, BookingRepository, SkillCoinGateway, UnitOfWork |
 | Calificación | RegisterRatingUseCase, ListRatingsUseCase | RegisterRatingService, ListRatingsService | RatingRepository, ProfileRepository, EligibleBookingQuery, UnitOfWork |
-| Notificaciones | BandejaNotificacionEntrada, PreferenciaNotificacionEntrada, ProcesarEventoNotificableEntrada | Casos de uso de bandeja, preferencias y procesamiento | RepositorioNotificaciones, RepositorioPreferencias, CanalNotificacion, PublicadorEventos |
+| Notificaciones | BandejaNotificacionEntrada, PreferenciaNotificacionEntrada, ProcesarEventoNotificableEntrada | Casos de uso de bandeja, preferencias y procesamiento | RepositorioNotificaciones, RepositorioPreferencias, CanalNotificacion |
 
 Los controllers validan la identidad mock y la entrada; los casos de uso comprueban las reglas y pertenencia sobre datos cargados. Las consultas devuelven DTO y `Page<T>`; nunca entidades JPA. Las estrategias y repositorios dependen de sus contratos internos, no de la UI ni de MySQL.
 
@@ -43,11 +43,11 @@ sequenceDiagram
     U->>U: commit raíz y cierre de EntityManager
     U->>B: publicar eventos pendientes
     B->>O: BookingEvent
-    O->>N: EventoNotificable vía publicador/suscriptor
+    O->>N: EventoNotificable
     N->>N: preferencia, deduplicación, canal y registro
 ```
 
-Multiplicidades para el UML: una contratación tiene dos participantes y muchas transiciones; cada instancia tiene cero o más observers; el publicador tiene cero o más suscriptores; cada evento notificable identifica dos destinatarios de la contratación; la base admite una notificación por evento/destinatario. Una preferencia corresponde a un usuario y un canal. La fábrica recibe tres adaptadores y selecciona uno según preferencia.
+Multiplicidades para el UML: una contratación tiene dos participantes y muchas transiciones; cada instancia tiene cero o más observers; cada evento notificable identifica dos destinatarios de la contratación; la base admite una notificación por evento/destinatario. Una preferencia corresponde a un usuario y un canal. La fábrica recibe tres adaptadores y selecciona uno según preferencia.
 
 `ApplicationControllers` agrupa las interfaces para las pantallas. `CompositionRoot` crea implementaciones concretas y `ApplicationRuntime` cierra los recursos. La elección de canal se realiza mediante un controller que obtiene el usuario de la sesión, sin permitir seleccionar un destinatario ajeno.
 

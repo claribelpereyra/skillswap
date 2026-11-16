@@ -62,14 +62,12 @@ public final class CompositionRoot {
             var preferences = new PreferenciaNotificacionCasoDeUso(new RepositorioPreferenciasJpa(factory));
             var channels = new FabricaCanalNotificacion(List.of(new EmailMock(), new PushMock(), new InternaMock()));
             var processor = new ProcesarEventoNotificableCasoDeUso(preferences, notificationRepository, channels);
-            var publisher = new PublicadorEventosEnMemoria();
-            publisher.suscribir(new SuscriptorNotificaciones(processor));
             var refund = new TieredRefundStrategy(new RefundPolicy(configuration.anticipacionReintegroTotal(),
                     configuration.anticipacionReintegroParcial()));
             var bookingService = new BookingServiceImpl(bookings, new PublicationCatalogAdapter(publications),
                     new PublicationAvailabilityAdapter(publications), wallets, BookingPricingPolicy.basePrice(),
                     refund, work, clock);
-            bookingService.addObserver(new BookingNotificationObserver(publisher));
+            bookingService.addObserver(new BookingNotificationObserver(processor));
             var search = new SearchPublicationsService(new JpaPublicationSearchQuery(), new JpaCategoryTree());
             var metadata = new JpaRecommendationMetadataQuery();
             var affinity = new SkillAffinityRecommendationStrategy(metadata);

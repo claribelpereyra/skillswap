@@ -32,7 +32,7 @@ public class SearchControllerImpl implements SearchController {
                     form.size() == null ? PageRequest.DEFAULT_SIZE : form.size());
             return search.search(new SearchFilters(form.text(), form.categoryId(),
                     parseEnum(Modality.class, form.modality(), "modality"), form.minPrice(), form.maxPrice(),
-                    form.tag(), form.minReputation(), parseEnum(SearchSort.class, form.sort(), "sort"), page, null));
+                    form.tag(), form.minReputation(), parseEnum(SearchSort.class, form.sort(), "sort"), page));
         });
     }
 }

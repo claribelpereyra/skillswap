@@ -1,9 +1,9 @@
 package com.uade.skillswap.application.usecases.publication;
 
 import com.uade.skillswap.application.dto.publication.PublicationSummary;
-import com.uade.skillswap.application.dto.publication.SearchFilters;
 import com.uade.skillswap.application.ports.out.publication.RecommendationMetadataQuery;
 import com.uade.skillswap.application.ports.in.publication.RecommendationStrategy;
+import com.uade.skillswap.domain.common.UserId;
 
 import java.util.Comparator;
 import java.util.List;
@@ -21,12 +21,10 @@ public class SkillAffinityRecommendationStrategy implements RecommendationStrate
     }
 
     @Override
-    public List<PublicationSummary> order(List<PublicationSummary> publications, SearchFilters filters) {
+    public List<PublicationSummary> order(List<PublicationSummary> publications, UserId activeUserId) {
         Objects.requireNonNull(publications, "The publications list is required");
-        Objects.requireNonNull(filters, "The search filters are required");
-        Set<String> profileSkills = filters.activeUserId() == null || filters.activeUserId().isBlank()
-                ? Set.of()
-                : metadata.skillsAndInterestsFor(filters.activeUserId()).stream()
+        Objects.requireNonNull(activeUserId, "The active user is required");
+        Set<String> profileSkills = metadata.skillsAndInterestsFor(activeUserId.value()).stream()
                 .map(SkillAffinityRecommendationStrategy::normalize)
                 .filter(skill -> !skill.isEmpty())
                 .collect(Collectors.toUnmodifiableSet());

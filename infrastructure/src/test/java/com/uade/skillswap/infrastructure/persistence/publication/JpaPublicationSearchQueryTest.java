@@ -79,8 +79,7 @@ class JpaPublicationSearchQueryTest extends PersistenceTestBase {
 
     private Page<PublicationSummary> find(String text, Long category, Modality modality, Long min, Long max,
                                           String skill, Double reputation, SearchSort sort, PageRequest page) {
-        return search.search(new SearchFilters(text, category, modality, min, max, skill, reputation, sort, page,
-                null));
+        return search.search(new SearchFilters(text, category, modality, min, max, skill, reputation, sort, page));
     }
 
     // Caso de aceptación 1: publicar una mentoría válida y encontrarla con búsqueda filtrada.

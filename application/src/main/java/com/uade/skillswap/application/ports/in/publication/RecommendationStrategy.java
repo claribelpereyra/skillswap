@@ -1,7 +1,7 @@
 package com.uade.skillswap.application.ports.in.publication;
 
 import com.uade.skillswap.application.dto.publication.PublicationSummary;
-import com.uade.skillswap.application.dto.publication.SearchFilters;
+import com.uade.skillswap.domain.common.UserId;
 
 import java.util.List;
 
@@ -9,5 +9,5 @@ import java.util.List;
 @FunctionalInterface
 public interface RecommendationStrategy {
 
-    List<PublicationSummary> order(List<PublicationSummary> publications, SearchFilters filters);
+    List<PublicationSummary> order(List<PublicationSummary> publications, UserId activeUserId);
 }

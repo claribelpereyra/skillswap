@@ -70,6 +70,7 @@ public class BookingServiceImpl implements BookingService {
                 throw new BusinessRuleException("A publication that is not published does not accept requests");
             }
             TimeSlot slot = findSlot(publication, command.slotId());
+            requireFree(slot);
             SkillCoins finalPrice = Objects.requireNonNull(
                     pricingPolicy.priceFor(command.clientId(), publication),
                     "The booking price is required");
@@ -157,6 +158,7 @@ public class BookingServiceImpl implements BookingService {
     public BookingView proposeReschedule(Long bookingId, UserId actor, long newSlotId) {
         return change(bookingId, booking -> {
             TimeSlot newSlot = findSlot(findPublication(booking.getPublicationId()), newSlotId);
+            requireFree(newSlot);
             booking.proposeReschedule(actor, newSlot);
         });
     }
@@ -233,6 +235,13 @@ public class BookingServiceImpl implements BookingService {
     private BookablePublication findPublication(long publicationId) {
         return publications.findBookable(publicationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Publication", publicationId));
+    }
+
+    // Una franja tomada se rechaza al pedirla, y no recién al aceptar.
+    private static void requireFree(TimeSlot slot) {
+        if (slot.isOccupied()) {
+            throw new BusinessRuleException("The slot is already taken");
+        }
     }
 
     private TimeSlot findSlot(BookablePublication publication, long slotId) {

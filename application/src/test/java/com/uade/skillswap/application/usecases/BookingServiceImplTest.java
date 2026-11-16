@@ -68,8 +68,10 @@ class BookingServiceImplTest {
             Instant.parse("2026-11-19T21:00:00Z"), Instant.parse("2026-11-19T22:00:00Z"));
     private static final TimeSlot OTHER_SLOT = new TimeSlot(2L,
             Instant.parse("2026-11-20T13:00:00Z"), Instant.parse("2026-11-20T14:00:00Z"));
+    private static final TimeSlot TAKEN_SLOT = new TimeSlot(3L,
+            Instant.parse("2026-11-21T13:00:00Z"), Instant.parse("2026-11-21T14:00:00Z"), true);
     private static final BookablePublication PUBLICATION = new BookablePublication(
-            PUBLICATION_ID, PROVIDER, true, new SkillCoins(100), List.of(SLOT, OTHER_SLOT));
+            PUBLICATION_ID, PROVIDER, true, new SkillCoins(100), List.of(SLOT, OTHER_SLOT, TAKEN_SLOT));
 
     private BookingRepository bookings;
     private PublicationCatalog publications;
@@ -152,6 +154,14 @@ class BookingServiceImplTest {
         assertThatThrownBy(() -> service.request(new RequestBookingCommand(CLIENT, PUBLICATION_ID, 7L, "Hola", "Entrevista")))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("The slot does not belong to the publication");
+    }
+
+    @Test
+    void requestFailsWhenTheSlotIsAlreadyTaken() {
+        assertThatThrownBy(() -> service.request(new RequestBookingCommand(CLIENT, PUBLICATION_ID, 3L, "Hola", "Entrevista")))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The slot is already taken");
+        verify(bookings, never()).save(any());
     }
 
     // Aceptar y reservar el cupo
@@ -391,6 +401,18 @@ class BookingServiceImplTest {
         assertThatThrownBy(() -> service.proposeReschedule(BOOKING_ID, PROVIDER, 7L))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("The slot does not belong to the publication");
+    }
+
+    @Test
+    void proposeRescheduleFailsWhenTheNewSlotIsAlreadyTaken() {
+        Booking booking = accepted();
+        stored(booking);
+
+        assertThatThrownBy(() -> service.proposeReschedule(BOOKING_ID, PROVIDER, 3L))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("The slot is already taken");
+        verify(bookings, never()).save(any());
+        assertThat(booking.getPendingReschedule()).isEmpty();
     }
 
     @Test

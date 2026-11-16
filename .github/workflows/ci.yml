@@ -2,7 +2,11 @@ name: CI
 
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
+      - feature/recomendacion-gateway-controller-60-62
+      - feature/wallet-persistence-controllers-58-59-63
   pull_request:
     branches: [main, develop]
 

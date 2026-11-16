@@ -12,15 +12,20 @@
         -->
         <class>com.uade.skillswap.infrastructure.persistence.booking.BookingJpaEntity</class>
         <class>com.uade.skillswap.infrastructure.persistence.booking.BookingTransitionJpaEntity</class>
+        <class>com.uade.skillswap.infrastructure.persistence.wallet.WalletJpaEntity</class>
+        <class>com.uade.skillswap.infrastructure.persistence.wallet.WalletMovementJpaEntity</class>
         <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationJpaEntity</class>
         <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationSlotJpaEntity</class>
         <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationTransitionJpaEntity</class>
+        <class>com.uade.skillswap.infraestructura.persistencia.notificaciones.PreferenciaJpaEntity</class>
+        <class>com.uade.skillswap.infraestructura.persistencia.notificaciones.NotificacionJpaEntity</class>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>
 
         <properties>
             <!-- El esquema lo maneja Flyway. Hibernate solo valida que las entidades coincidan con las tablas. -->
             <property name="hibernate.hbm2ddl.auto" value="validate"/>
             <property name="hibernate.show_sql" value="false"/>
+            <property name="hibernate.jdbc.time_zone" value="UTC"/>
             <property name="hibernate.format_sql" value="true"/>
         </properties>
     </persistence-unit>

@@ -24,4 +24,8 @@ public record SearchFilters(String text, Long categoryId, Modality modality, Lon
     public static SearchFilters none() {
         return new SearchFilters(null, null, null, null, null, null, null, null, null);
     }
+
+    public SearchFilters withPage(PageRequest page) {
+        return new SearchFilters(text, categoryId, modality, minPrice, maxPrice, tag, minReputation, sort, page);
+    }
 }

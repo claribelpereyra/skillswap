@@ -197,7 +197,7 @@ class PublicationControllerTest {
 
         assertThat(result.isSuccess()).isTrue();
         verify(search).search(eq(new SearchFilters("java", 2L, Modality.REMOTE, 10L, 100L, "java", 4.0,
-                SearchSort.LOWEST_PRICE, PageRequest.first(), null)));
+                SearchSort.LOWEST_PRICE, PageRequest.first())));
     }
 
     @Test

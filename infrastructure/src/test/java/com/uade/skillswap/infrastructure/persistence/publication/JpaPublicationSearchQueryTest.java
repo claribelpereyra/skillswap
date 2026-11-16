@@ -6,7 +6,6 @@ import com.uade.skillswap.application.dto.publication.PublicationSummary;
 import com.uade.skillswap.application.dto.publication.SearchFilters;
 import com.uade.skillswap.application.dto.publication.SearchSort;
 import com.uade.skillswap.application.usecases.publication.SearchPublicationsService;
-import com.uade.skillswap.application.usecases.publication.SkillAffinityRecommendationStrategy;
 import com.uade.skillswap.application.common.ResourceNotFoundException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
@@ -37,11 +36,8 @@ class JpaPublicationSearchQueryTest extends PersistenceTestBase {
     private static final Instant SLOT = Instant.parse("2026-12-01T15:00:00Z");
 
     private final JpaPublicationRepository repository = new JpaPublicationRepository();
-    private final JpaRecommendationMetadataQuery recommendationMetadata = new JpaRecommendationMetadataQuery();
     private final SearchPublicationsService search =
             new SearchPublicationsService(new JpaPublicationSearchQuery(), new JpaCategoryTree());
-    private final SkillAffinityRecommendationStrategy skillAffinity =
-            new SkillAffinityRecommendationStrategy(recommendationMetadata);
 
     @BeforeEach
     void catalogAndProfiles() {
@@ -57,12 +53,6 @@ class JpaPublicationSearchQueryTest extends PersistenceTestBase {
         sql("CREATE TABLE IF NOT EXISTS perfiles (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(100) NOT NULL,"
                 + " nombre_visible VARCHAR(150) NOT NULL, tipo_cuenta VARCHAR(30) NOT NULL,"
                 + " reputacion DECIMAL(3, 2) NOT NULL DEFAULT 0.00, activo BOOLEAN NOT NULL DEFAULT TRUE)");
-        sql("CREATE TABLE IF NOT EXISTS perfil_habilidades (id BIGINT AUTO_INCREMENT PRIMARY KEY,"
-                + " perfil_id BIGINT NOT NULL, habilidad VARCHAR(150) NOT NULL,"
-                + " FOREIGN KEY (perfil_id) REFERENCES perfiles(id))");
-        sql("CREATE TABLE IF NOT EXISTS perfil_intereses (id BIGINT AUTO_INCREMENT PRIMARY KEY,"
-                + " perfil_id BIGINT NOT NULL, interes VARCHAR(150) NOT NULL,"
-                + " FOREIGN KEY (perfil_id) REFERENCES perfiles(id))");
         insertProfile("ana", 4.8);
         insertProfile("bruno", 3.5);
     }
@@ -89,8 +79,7 @@ class JpaPublicationSearchQueryTest extends PersistenceTestBase {
 
     private Page<PublicationSummary> find(String text, Long category, Modality modality, Long min, Long max,
                                           String skill, Double reputation, SearchSort sort, PageRequest page) {
-        return search.search(new SearchFilters(text, category, modality, min, max, skill, reputation, sort, page,
-                null));
+        return search.search(new SearchFilters(text, category, modality, min, max, skill, reputation, sort, page));
     }
 
     // Caso de aceptación 1: publicar una mentoría válida y encontrarla con búsqueda filtrada.
@@ -177,27 +166,6 @@ class JpaPublicationSearchQueryTest extends PersistenceTestBase {
                 .extracting(PublicationSummary::id).containsExactly(cheapOld, noProfileMiddle, expensiveNew);
         assertThat(find(null, null, null, null, null, null, null, SearchSort.MOST_RECENT, null).items())
                 .extracting(PublicationSummary::id).containsExactly(expensiveNew, noProfileMiddle, cheapOld);
-    }
-
-    @Test
-    void skillAffinityRanksPublicationsByTheActiveUsersPersistedInterests() {
-        long matchingBoth = publish(CARLA, "Java and Spring", null, 1, Modality.REMOTE, 10, DAY_1,
-                "java", "spring");
-        long matchingOne = publish(CARLA, "Java only", null, 1, Modality.REMOTE, 10, DAY_1, "java");
-        long unrelated = publish(CARLA, "Photography", null, 1, Modality.REMOTE, 10, DAY_1, "photo");
-        sql("INSERT INTO perfil_intereses (perfil_id, interes)"
-                + " SELECT id, ? FROM perfiles WHERE user_id = ?", "java", "bruno");
-        sql("INSERT INTO perfil_intereses (perfil_id, interes)"
-                + " SELECT id, ? FROM perfiles WHERE user_id = ?", "spring", "bruno");
-
-        SearchFilters filters = new SearchFilters(null, null, null, null, null, null, null,
-                SearchSort.BEST_REPUTATION, PageRequest.first(), BRUNO.value());
-        Page<PublicationSummary> candidates = search.search(filters);
-        Page<PublicationSummary> recommendations = new Page<>(
-                skillAffinity.order(candidates.items(), filters), candidates.request(), candidates.totalItems());
-
-        assertThat(recommendations.items()).extracting(PublicationSummary::id)
-                .containsExactly(matchingBoth, matchingOne, unrelated);
     }
 
     @Test

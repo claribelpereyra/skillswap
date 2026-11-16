@@ -4,8 +4,8 @@ import com.uade.skillswap.application.dto.wallet.WalletView;
 import com.uade.skillswap.application.ports.in.wallet.LoadWalletCommand;
 import com.uade.skillswap.application.ports.in.wallet.LoadWalletUseCase;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
-import com.uade.skillswap.application.ports.out.wallet.SkillCoinGateway;
-import com.uade.skillswap.application.ports.out.wallet.WalletRepository;
+import com.uade.skillswap.application.ports.out.SkillCoinGateway;
+import com.uade.skillswap.application.ports.out.WalletRepository;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.wallet.Wallet;
 

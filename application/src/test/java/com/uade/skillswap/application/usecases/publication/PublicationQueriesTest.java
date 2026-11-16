@@ -138,7 +138,7 @@ class PublicationQueriesTest {
     void theFiltersAreNormalizedAndTheCategoryIncludesItsSubtree() {
         when(categories.idsUnder(2L)).thenReturn(Optional.of(Set.of(2L, 3L, 10L)));
         SearchFilters filters = new SearchFilters("  Java Interview ", 2L, Modality.REMOTE, 10L, 200L, " JAVA ",
-                4.0, SearchSort.LOWEST_PRICE, new PageRequest(1, 10), null);
+                4.0, SearchSort.LOWEST_PRICE, new PageRequest(1, 10));
 
         SearchCriteria criteria = searchAndCapture(filters);
 
@@ -149,7 +149,7 @@ class PublicationQueriesTest {
     @Test
     void withOnlyATextItSearchesByRelevanceOnTheFirstPage() {
         SearchCriteria criteria = searchAndCapture(new SearchFilters("mentoring", null, null, null, null, null,
-                null, null, null, null));
+                null, null, null));
 
         assertThat(criteria.sort()).isEqualTo(SearchSort.RELEVANCE);
         assertThat(criteria.categoryIds()).isNull();
@@ -170,19 +170,19 @@ class PublicationQueriesTest {
         when(categories.idsUnder(99L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> search.search(new SearchFilters(null, 99L, null, null, null, null, null, null,
-                null, null))).isInstanceOf(ResourceNotFoundException.class);
+                null))).isInstanceOf(ResourceNotFoundException.class);
         verifyNoInteractions(searchQuery);
     }
 
     @Test
     void invalidFiltersAreRejected() {
-        assertThatThrownBy(() -> new SearchFilters(null, null, null, 100L, 10L, null, null, null, null, null))
+        assertThatThrownBy(() -> new SearchFilters(null, null, null, 100L, 10L, null, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The minimum price cannot be higher than the maximum price");
-        assertThatThrownBy(() -> new SearchFilters(null, null, null, -1L, null, null, null, null, null, null))
+        assertThatThrownBy(() -> new SearchFilters(null, null, null, -1L, null, null, null, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Prices cannot be negative");
-        assertThatThrownBy(() -> new SearchFilters(null, null, null, null, null, null, 6.0, null, null, null))
+        assertThatThrownBy(() -> new SearchFilters(null, null, null, null, null, null, 6.0, null, null))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("The minimum reputation must be between 0 and 5");
     }
@@ -195,7 +195,7 @@ class PublicationQueriesTest {
         when(searchQuery.search(any(), eq(page))).thenReturn(new Page<>(List.of(row), page, 3));
 
         Page<PublicationSummary> result = search.search(new SearchFilters("mock", null, null, null, null, null,
-                null, null, page, null));
+                null, null, page));
 
         assertThat(result.items()).containsExactly(row);
         assertThat(result.totalPages()).isEqualTo(3);

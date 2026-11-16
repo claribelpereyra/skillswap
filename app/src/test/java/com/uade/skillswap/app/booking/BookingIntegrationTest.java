@@ -33,6 +33,7 @@ import com.uade.skillswap.infrastructure.persistence.publication.JpaPublicationR
 import com.uade.skillswap.infrastructure.persistence.wallet.JpaWalletRepository;
 import com.uade.skillswap.domain.wallet.FullRefundStrategy;
 import com.uade.skillswap.domain.wallet.RefundStrategy;
+import com.uade.skillswap.domain.wallet.Wallet;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -88,12 +89,14 @@ class BookingIntegrationTest {
         EntityManagerContext.close();
     }
 
-    // Caso de aceptación 3, hasta aceptar: el pago con saldo se suma cuando esté el caso de uso de pagar.
+    // Caso de aceptación 3: solicitar, aceptar y pagar con saldo suficiente.
     @Test
-    void aClientRequestsAMentoringAndTheProviderAcceptsIt() {
+    void aClientRequestsAMentoringAcceptsItAndPaysWithEnoughBalance() {
         Publication publication = publishedMentoring(1, 1);
         long slotId = slotIds(publication).get(0);
         BookingController controller = controller(PUBLICATIONS);
+        topUp(ANA, 150);
+        topUp(BRUNO, 0);
 
         signIn(ANA);
         ControllerResult<BookingView> requested = controller.request("ana", publication.getId(), slotId,
@@ -107,12 +110,18 @@ class BookingIntegrationTest {
         ControllerResult<BookingView> accepted = controller.accept("bruno", bookingId);
         assertThat(accepted.isSuccess()).isTrue();
         assertThat(accepted.getData().status()).isEqualTo(BookingStatus.ACCEPTED);
-
         assertThat(PUBLICATIONS.findById(publication.getId()).orElseThrow().getReservedSpots()).isEqualTo(1);
-        List<BookingHistoryEntry> history = controller.history("bruno", bookingId).getData();
-        assertThat(history).extracting(BookingHistoryEntry::to)
-                .containsExactly(BookingStatus.PENDING, BookingStatus.ACCEPTED);
+
         signIn(ANA);
+        ControllerResult<BookingView> paid = controller.pay("ana", bookingId);
+        assertThat(paid.isSuccess()).isTrue();
+        assertThat(paid.getData().status()).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(balanceOf(ANA)).isEqualTo(new SkillCoins(50));
+        assertThat(balanceOf(BRUNO)).isEqualTo(new SkillCoins(100));
+
+        List<BookingHistoryEntry> history = controller.history("ana", bookingId).getData();
+        assertThat(history).extracting(BookingHistoryEntry::to)
+                .containsExactly(BookingStatus.PENDING, BookingStatus.ACCEPTED, BookingStatus.CONFIRMED);
         Page<BookingView> asClient = controller.listAsClient("ana", 0, PageRequest.DEFAULT_SIZE).getData();
         assertThat(asClient.items()).extracting(BookingView::id).contains(bookingId);
     }
@@ -179,6 +188,20 @@ class BookingIntegrationTest {
 
     private static void signIn(UserId user) {
         ACTIVE.set(user);
+    }
+
+    private static void topUp(UserId owner, long amount) {
+        UNIT_OF_WORK.execute(() -> {
+            Wallet wallet = WALLETS.findByOwnerId(owner).orElseGet(() -> Wallet.open(owner));
+            if (amount > 0) {
+                wallet.topUp(new SkillCoins(amount), NOW);
+            }
+            WALLETS.save(wallet);
+        });
+    }
+
+    private static SkillCoins balanceOf(UserId owner) {
+        return UNIT_OF_WORK.execute(() -> WALLETS.findByOwnerId(owner).orElseThrow().balance());
     }
 
     private static BookingStatus status(long bookingId) {

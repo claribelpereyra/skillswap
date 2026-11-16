@@ -1,5 +1,6 @@
 package com.uade.skillswap.domain.wallet;
 
+import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 
@@ -30,32 +31,110 @@ public final class Wallet {
     }
 
     public void topUp(SkillCoins amount, Instant occurredAt) {
-        apply(new CreditMovement(CreditMovementType.TOP_UP, amount, occurredAt, null));
+        apply(CreditMovementType.TOP_UP, amount, occurredAt, null);
     }
 
-    public void debit(SkillCoins amount, long bookingId, Instant occurredAt) {
-        apply(new CreditMovement(CreditMovementType.DEBIT, amount, occurredAt, bookingId));
+    public void payBookingTo(Wallet providerWallet, SkillCoins amount, long bookingId, Instant occurredAt) {
+        Objects.requireNonNull(providerWallet, "The provider wallet is required");
+        Objects.requireNonNull(amount, "The payment amount is required");
+        Objects.requireNonNull(occurredAt, "The payment date is required");
+        validateDifferentOwners(providerWallet);
+        requireBookingId(bookingId);
+        if (hasMovement(CreditMovementType.DEBIT, bookingId)
+                || providerWallet.hasMovement(CreditMovementType.CREDIT, bookingId)) {
+            throw new BusinessRuleException("A payment already exists for booking " + bookingId);
+        }
+
+        CreditMovement debit = prepare(CreditMovementType.DEBIT, amount, occurredAt, bookingId);
+        CreditMovement credit = providerWallet.prepare(CreditMovementType.CREDIT, amount, occurredAt, bookingId);
+        SkillCoins nextPayerBalance = balance.subtract(amount);
+        SkillCoins nextProviderBalance = providerWallet.balance.add(amount);
+
+        commit(debit, nextPayerBalance);
+        providerWallet.commit(credit, nextProviderBalance);
     }
 
-    public void credit(SkillCoins amount, long bookingId, Instant occurredAt) {
-        apply(new CreditMovement(CreditMovementType.CREDIT, amount, occurredAt, bookingId));
+    public void refundBookingTo(Wallet clientWallet, SkillCoins amount, long bookingId, Instant occurredAt) {
+        Objects.requireNonNull(clientWallet, "The client wallet is required");
+        Objects.requireNonNull(amount, "The refund amount is required");
+        Objects.requireNonNull(occurredAt, "The refund date is required");
+        validateDifferentOwners(clientWallet);
+        requireBookingId(bookingId);
+
+        SkillCoins paidAmount = movementAmount(CreditMovementType.CREDIT, bookingId);
+        SkillCoins clientPayment = clientWallet.movementAmount(CreditMovementType.DEBIT, bookingId);
+        if (paidAmount == null || !paidAmount.equals(clientPayment)) {
+            throw new BusinessRuleException("No matching payment exists for booking " + bookingId);
+        }
+        if (hasMovement(CreditMovementType.DEBIT, bookingId)
+                || clientWallet.hasMovement(CreditMovementType.REFUND, bookingId)) {
+            throw new BusinessRuleException("A refund already exists for booking " + bookingId);
+        }
+        if (amount.amount() > paidAmount.amount()) {
+            throw new BusinessRuleException("A refund cannot exceed the booking payment");
+        }
+        if (amount.equals(SkillCoins.ZERO)) {
+            return;
+        }
+
+        CreditMovement debit = prepare(CreditMovementType.DEBIT, amount, occurredAt, bookingId);
+        CreditMovement refund = clientWallet.prepare(CreditMovementType.REFUND, amount, occurredAt, bookingId);
+        SkillCoins nextProviderBalance = balance.subtract(amount);
+        SkillCoins nextClientBalance = clientWallet.balance.add(amount);
+
+        commit(debit, nextProviderBalance);
+        clientWallet.commit(refund, nextClientBalance);
     }
 
-    public void refund(SkillCoins amount, long bookingId, Instant occurredAt) {
-        apply(new CreditMovement(CreditMovementType.REFUND, amount, occurredAt, bookingId));
+    private void apply(CreditMovementType type, SkillCoins amount, Instant occurredAt, Long bookingId) {
+        apply(new CreditMovement(type, amount, occurredAt, bookingId));
     }
 
     private void apply(CreditMovement movement) {
-        if (!movements.isEmpty()
-                && movement.occurredAt().isBefore(movements.get(movements.size() - 1).occurredAt())) {
-            throw new IllegalStateException("A movement cannot be dated before the previous movement");
-        }
+        movement = prepare(movement.type(), movement.amount(), movement.occurredAt(), movement.bookingId());
         SkillCoins nextBalance = switch (movement.type()) {
             case TOP_UP, CREDIT, REFUND -> balance.add(movement.amount());
             case DEBIT -> balance.subtract(movement.amount());
         };
+        commit(movement, nextBalance);
+    }
+
+    private CreditMovement prepare(CreditMovementType type, SkillCoins amount, Instant occurredAt, Long bookingId) {
+        CreditMovement movement = new CreditMovement(type, amount, occurredAt, bookingId);
+        if (!movements.isEmpty()
+                && occurredAt.isBefore(movements.get(movements.size() - 1).occurredAt())) {
+            throw new IllegalStateException("A movement cannot be dated before the previous movement");
+        }
+        return movement;
+    }
+
+    private void commit(CreditMovement movement, SkillCoins nextBalance) {
         balance = nextBalance;
         movements.add(movement);
+    }
+
+    private SkillCoins movementAmount(CreditMovementType type, long bookingId) {
+        return movements.stream()
+                .filter(movement -> movement.type() == type && Objects.equals(movement.bookingId(), bookingId))
+                .map(CreditMovement::amount)
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean hasMovement(CreditMovementType type, long bookingId) {
+        return movementAmount(type, bookingId) != null;
+    }
+
+    private void validateDifferentOwners(Wallet otherWallet) {
+        if (this == otherWallet || ownerId.equals(otherWallet.ownerId)) {
+            throw new BusinessRuleException("A booking payment requires two different wallet owners");
+        }
+    }
+
+    private static void requireBookingId(long bookingId) {
+        if (bookingId <= 0) {
+            throw new BusinessRuleException("A booking is required for this movement");
+        }
     }
 
     public UserId ownerId() {

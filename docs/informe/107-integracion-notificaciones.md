@@ -10,4 +10,4 @@ Una transacción externa que revierte una solicitud no persiste contratación ni
 
 `NotificationIntegrationTest` conserva además la prueba de deduplicación al reprocesar un evento idéntico. Los fallos de observers y callbacks se registran, sin reintentos automáticos ni garantía de entrega durable.
 
-Esto verifica la integración de backend. Faltan la demostración sobre el Mock UI Kit y la verificación contra MySQL real; H2 no sustituye esa validación final.
+Además del backend, RealUiControllersIntegrationTest recorre el contrato real del kit y SkillSwapViewIntegrationTest verifica sus siete pantallas. Los tres recorridos FullJourney y los dos del adaptador también pasaron sobre MySQL 8.4.13, con bases desechables por prueba. Ver validacion-ui-mysql.md.

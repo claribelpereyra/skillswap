@@ -36,4 +36,4 @@ La bandeja y perfiles usan paginación SQL existente. La nueva consulta de walle
 
 FullJourneyIntegrationTest usa el root real con JPA, H2 y Flyway para publicar, contratar, pagar, reprogramar, completar y calificar, así como cancelar con configuración externa. JpaUnitOfWorkTest verifica commit/rollback raíz y callbacks anidados. El build exige 80 % de instrucciones en domain/application.
 
-La conexión de pantallas está pendiente del kit de la cátedra. La validación final contra MySQL sigue siendo necesaria; H2 verifica el flujo y mapeo pero no reproduce todas las diferencias del motor.
+La pantalla Swing de la cátedra ya está conectada por RealUiControllers. Hay validación adicional de los recorridos completos y del adaptador sobre MySQL 8.4.13, además de H2. Ver validacion-ui-mysql.md.

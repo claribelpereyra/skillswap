@@ -9,7 +9,15 @@ import java.util.Set;
 // Fila del resultado de búsqueda: proyección con solo lo que muestra la lista (evita N+1).
 public record PublicationSummary(long id, String authorId, double authorReputation, PublicationType type,
                                  String title, Long categoryId, Modality modality, long basePrice,
-                                 int availableSpots, Set<String> tags, Instant publishedAt) {
+                                 int availableSpots, Set<String> tags, Instant publishedAt,
+                                 String description, long durationMinutes, String authorDisplayName) {
+
+    public PublicationSummary(long id, String authorId, double authorReputation, PublicationType type,
+            String title, Long categoryId, Modality modality, long basePrice, int availableSpots,
+            Set<String> tags, Instant publishedAt) {
+        this(id, authorId, authorReputation, type, title, categoryId, modality, basePrice,
+                availableSpots, tags, publishedAt, "", 0, authorId);
+    }
 
     public PublicationSummary {
         tags = tags == null ? Set.of() : Set.copyOf(tags);

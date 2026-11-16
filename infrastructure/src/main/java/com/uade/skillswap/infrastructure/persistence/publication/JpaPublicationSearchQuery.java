@@ -53,7 +53,8 @@ public class JpaPublicationSearchQuery implements PublicationSearchQuery {
                     + " pub.category_id, pub.modality, pub.base_price,"
                     + " pub.capacity - (SELECT COUNT(*) FROM publication_slot s"
                     + " WHERE s.publication_id = pub.id AND s.occupied = TRUE) AS available,"
-                    + " pub.published_at AS published_at"
+                    + " pub.published_at AS published_at, pub.description AS description, pub.duration_minutes AS duration_minutes,"
+                    + " COALESCE(prof.display_name, pub.author_id) AS author_display_name"
                     + (criteria.text() == null ? "" : ", " + RELEVANCE + " AS relevance");
             Query query = bind(em.createNativeQuery(select + from + orderBy(criteria)), parameters)
                     .setFirstResult(Math.toIntExact(page.offset()))
@@ -69,7 +70,10 @@ public class JpaPublicationSearchQuery implements PublicationSearchQuery {
                     .addScalar("modality", StandardBasicTypes.STRING)
                     .addScalar("base_price", StandardBasicTypes.LONG)
                     .addScalar("available", StandardBasicTypes.INTEGER)
-                    .addScalar("published_at", StandardBasicTypes.INSTANT);
+                    .addScalar("published_at", StandardBasicTypes.INSTANT)
+                    .addScalar("description", StandardBasicTypes.STRING)
+                    .addScalar("duration_minutes", StandardBasicTypes.LONG)
+                    .addScalar("author_display_name", StandardBasicTypes.STRING);
             List<Object[]> rows = nativeQuery.getResultList();
 
             Map<Long, Set<String>> tags = tagsOf(em, rows.stream().map(r -> (Long) r[0]).toList());
@@ -79,7 +83,8 @@ public class JpaPublicationSearchQuery implements PublicationSearchQuery {
                 items.add(new PublicationSummary(id, (String) row[1], (Double) row[2],
                         PublicationType.valueOf((String) row[3]), (String) row[4], (Long) row[5],
                         row[6] == null ? null : Modality.valueOf((String) row[6]), (Long) row[7],
-                        (Integer) row[8], tags.getOrDefault(id, Set.of()), (Instant) row[9]));
+                        (Integer) row[8], tags.getOrDefault(id, Set.of()), (Instant) row[9],
+                        (String) row[10], (Long) row[11], (String) row[12]));
             }
             return new Page<>(items, page, total);
         });

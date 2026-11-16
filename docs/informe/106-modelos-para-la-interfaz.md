@@ -17,4 +17,4 @@
 
 Las vistas mantienen fechas como `Instant`; el formateo y la zona horaria pertenecen a la presentación. Cada operación usa `ControllerResult<T>` para compartir el formato de error.
 
-Los modelos de backend están disponibles y probados; falta contrastarlos contra los campos efectivos del Mock UI Kit cuando se entregue. No se afirma que las pantallas estén conectadas.
+Los modelos ya se contrastaron con el ZIP del kit: RealUiControllers mapea los DTO a Models y la pantalla Swing está conectada. PublicationSummary incluye descripción/duración/nombre por proyección; BookingView incluye títulos y nombres cargados por lote. Ver 105-integracion-mock-ui-kit.md y validacion-ui-mysql.md.

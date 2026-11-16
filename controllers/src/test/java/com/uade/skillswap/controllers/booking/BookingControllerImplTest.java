@@ -65,6 +65,8 @@ class BookingControllerImplTest {
     @Test
     void everyActionDelegatesWithTheUserAndTheBooking() {
         when(service.accept(99L, BRUNO)).thenReturn(VIEW);
+        when(service.pay(99L, ANA)).thenReturn(VIEW);
+        when(service.cancel(99L, ANA, "Cambio de planes")).thenReturn(VIEW);
         when(service.reject(99L, BRUNO, "No")).thenReturn(VIEW);
         when(service.start(99L, BRUNO)).thenReturn(VIEW);
         when(service.complete(99L, ANA)).thenReturn(VIEW);
@@ -82,6 +84,8 @@ class BookingControllerImplTest {
                 controller.proposeReschedule("bruno", 99L, 2L));
         loggedAs(ANA);
         List<ControllerResult<BookingView>> asClient = List.of(
+                controller.pay("ana", 99L),
+                controller.cancel("ana", 99L, "Cambio de planes"),
                 controller.complete("ana", 99L),
                 controller.acceptReschedule("ana", 99L),
                 controller.rejectReschedule("ana", 99L),
@@ -94,17 +98,17 @@ class BookingControllerImplTest {
 
     @Test
     void aBrokenBusinessRuleIsReturnedAsAnError() {
-        when(service.accept(99L, ANA)).thenThrow(new BusinessRuleException("Only the provider can accept a booking"));
+        when(service.accept(99L, ANA)).thenThrow(new BusinessRuleException("The slot is already taken"));
         when(service.start(99L, BRUNO)).thenThrow(new InvalidTransitionException(BookingStatus.PENDING, "start"));
 
         loggedAs(ANA);
-        ControllerResult<BookingView> notTheProvider = controller.accept("ana", 99L);
+        ControllerResult<BookingView> slotTaken = controller.accept("ana", 99L);
         loggedAs(BRUNO);
         ControllerResult<BookingView> wrongState = controller.start("bruno", 99L);
 
-        assertThat(notTheProvider.isSuccess()).isFalse();
-        assertThat(notTheProvider.getErrorType()).isEqualTo(ErrorType.BUSINESS_RULE);
-        assertThat(notTheProvider.getMessage()).isEqualTo("Only the provider can accept a booking");
+        assertThat(slotTaken.isSuccess()).isFalse();
+        assertThat(slotTaken.getErrorType()).isEqualTo(ErrorType.BUSINESS_RULE);
+        assertThat(slotTaken.getMessage()).isEqualTo("The slot is already taken");
         assertThat(wrongState.getErrorType()).isEqualTo(ErrorType.BUSINESS_RULE);
         assertThat(wrongState.getMessage()).isEqualTo("Cannot start in state PENDING");
     }
@@ -134,12 +138,12 @@ class BookingControllerImplTest {
     @Test
     void aDomainPermissionDeniedIsReturnedAsAccessDenied() {
         loggedAs(ANA);
-        when(service.accept(99L, ANA)).thenThrow(new PermissionDeniedException("Only the provider can accept"));
+        when(service.accept(99L, ANA)).thenThrow(new PermissionDeniedException("Only the provider can accept a booking"));
 
         ControllerResult<BookingView> result = controller.accept("ana", 99L);
 
         assertThat(result.getErrorType()).isEqualTo(ErrorType.ACCESS_DENIED);
-        assertThat(result.getMessage()).isEqualTo("Only the provider can accept");
+        assertThat(result.getMessage()).isEqualTo("Only the provider can accept a booking");
     }
 
     @Test

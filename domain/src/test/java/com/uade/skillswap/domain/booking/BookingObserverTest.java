@@ -3,6 +3,7 @@ package com.uade.skillswap.domain.booking;
 import com.uade.skillswap.domain.booking.observer.BookingEvent;
 import com.uade.skillswap.domain.booking.observer.BookingObserver;
 import com.uade.skillswap.domain.common.SkillCoins;
+import com.uade.skillswap.domain.common.StateTransition;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.TimeSlot;
 import org.junit.jupiter.api.Test;
@@ -101,6 +102,25 @@ class BookingObserverTest {
         loaded.publishPendingEvents(BOOKING_ID);
 
         assertThat(received).isEmpty();
+    }
+
+    @Test
+    void publicaLaTransicionConLaFechaAjustadaAlUltimoEstado() {
+        Instant future = Instant.now().plusSeconds(3600);
+        Booking booking = Booking.rebuild(BOOKING_ID, 10L, CLIENT, PROVIDER, SLOT, "Hola", "Aprender",
+                new SkillCoins(100), List.of(new StateTransition<>(null, BookingStatus.PENDING, CLIENT, future, null)),
+                null);
+        booking.addObserver(recorder);
+
+        booking.accept(PROVIDER);
+        booking.publishPendingEvents(BOOKING_ID);
+
+        assertThat(booking.getHistory()).last().satisfies(transition ->
+                assertThat(transition.occurredAt()).isEqualTo(future));
+        assertThat(received).singleElement().satisfies(event -> {
+            assertThat(event.to()).isEqualTo(BookingStatus.ACCEPTED);
+            assertThat(event.occurredAt()).isEqualTo(future);
+        });
     }
 
     @Test

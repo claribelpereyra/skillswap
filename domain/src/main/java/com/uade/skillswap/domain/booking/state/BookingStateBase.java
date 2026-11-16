@@ -19,6 +19,11 @@ public abstract class BookingStateBase implements BookingState {
     }
 
     @Override
+    public void validatePayment(Booking booking, UserId actor) {
+        throw invalid("pay");
+    }
+
+    @Override
     public void confirmPayment(Booking booking, UserId actor) {
         throw invalid("pay");
     }

@@ -2,6 +2,7 @@ package com.uade.skillswap.domain.booking;
 
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.InvalidTransitionException;
+import com.uade.skillswap.domain.common.PermissionDeniedException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.StateTransition;
 import com.uade.skillswap.domain.common.UserId;
@@ -159,10 +160,10 @@ class BookingTest {
         Booking booking = newBooking();
 
         assertThatThrownBy(() -> booking.accept(CLIENT))
-                .isExactlyInstanceOf(BusinessRuleException.class)
+                .isExactlyInstanceOf(PermissionDeniedException.class)
                 .hasMessage("Only the provider can accept a booking");
         assertThatThrownBy(() -> booking.reject(CLIENT, "No"))
-                .isExactlyInstanceOf(BusinessRuleException.class)
+                .isExactlyInstanceOf(PermissionDeniedException.class)
                 .hasMessage("Only the provider can reject a booking");
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.PENDING);
     }
@@ -172,7 +173,7 @@ class BookingTest {
         Booking booking = accepted();
 
         assertThatThrownBy(() -> booking.confirmPayment(PROVIDER))
-                .isExactlyInstanceOf(BusinessRuleException.class)
+                .isExactlyInstanceOf(PermissionDeniedException.class)
                 .hasMessage("Only the client can pay a booking");
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.ACCEPTED);
     }
@@ -182,7 +183,7 @@ class BookingTest {
         Booking booking = confirmed();
 
         assertThatThrownBy(() -> booking.start(CLIENT))
-                .isExactlyInstanceOf(BusinessRuleException.class)
+                .isExactlyInstanceOf(PermissionDeniedException.class)
                 .hasMessage("Only the provider can start a booking");
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
     }
@@ -193,10 +194,10 @@ class BookingTest {
         Booking accepted = accepted();
 
         assertThatThrownBy(() -> inProgress.complete(OUTSIDER))
-                .isExactlyInstanceOf(BusinessRuleException.class)
+                .isExactlyInstanceOf(PermissionDeniedException.class)
                 .hasMessage("Only the client or the provider can complete a booking");
         assertThatThrownBy(() -> accepted.cancel(OUTSIDER, "Porque sí"))
-                .isExactlyInstanceOf(BusinessRuleException.class)
+                .isExactlyInstanceOf(PermissionDeniedException.class)
                 .hasMessage("Only the client or the provider can cancel a booking");
     }
 
@@ -325,7 +326,7 @@ class BookingTest {
         Booking booking = accepted();
 
         assertThatThrownBy(() -> booking.proposeReschedule(OUTSIDER, OTHER_SLOT))
-                .isExactlyInstanceOf(BusinessRuleException.class)
+                .isExactlyInstanceOf(PermissionDeniedException.class)
                 .hasMessage("Only the client or the provider can reschedule a booking");
     }
 

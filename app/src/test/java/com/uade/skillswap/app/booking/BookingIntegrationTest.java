@@ -4,7 +4,9 @@ import com.uade.skillswap.application.common.Page;
 import com.uade.skillswap.application.common.PageRequest;
 import com.uade.skillswap.application.dto.BookingHistoryEntry;
 import com.uade.skillswap.application.dto.BookingView;
+import com.uade.skillswap.application.ports.out.BookingPricingPolicy;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
+import com.uade.skillswap.application.ports.out.WalletRepository;
 import com.uade.skillswap.application.ports.out.publication.PublicationRepository;
 import com.uade.skillswap.application.usecases.BookingServiceImpl;
 import com.uade.skillswap.controllers.ControllerResult;
@@ -28,12 +30,17 @@ import com.uade.skillswap.infrastructure.persistence.JpaUnitOfWork;
 import com.uade.skillswap.infrastructure.persistence.PersistenceConfiguration;
 import com.uade.skillswap.infrastructure.persistence.booking.JpaBookingRepository;
 import com.uade.skillswap.infrastructure.persistence.publication.JpaPublicationRepository;
+import com.uade.skillswap.infrastructure.persistence.wallet.JpaWalletRepository;
+import com.uade.skillswap.domain.wallet.FullRefundStrategy;
+import com.uade.skillswap.domain.wallet.RefundStrategy;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -59,6 +66,10 @@ class BookingIntegrationTest {
     private static final AtomicReference<UserId> ACTIVE = new AtomicReference<>();
     private static final JpaPublicationRepository PUBLICATIONS = new JpaPublicationRepository();
     private static final JpaBookingRepository BOOKINGS = new JpaBookingRepository();
+    private static final WalletRepository WALLETS = new JpaWalletRepository();
+    private static final BookingPricingPolicy PRICING_POLICY = BookingPricingPolicy.basePrice();
+    private static final RefundStrategy REFUND_STRATEGY = new FullRefundStrategy();
+    private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
     private static final UnitOfWork UNIT_OF_WORK = new JpaUnitOfWork();
 
     @BeforeAll
@@ -162,7 +173,8 @@ class BookingIntegrationTest {
 
     private static BookingController controller(PublicationRepository publications) {
         return new BookingControllerImpl(new BookingServiceImpl(BOOKINGS, new PublicationCatalogAdapter(publications),
-                new PublicationAvailabilityAdapter(publications), UNIT_OF_WORK), ACTIVE::get);
+                new PublicationAvailabilityAdapter(publications), WALLETS, PRICING_POLICY, REFUND_STRATEGY,
+                UNIT_OF_WORK, CLOCK), ACTIVE::get);
     }
 
     private static void signIn(UserId user) {

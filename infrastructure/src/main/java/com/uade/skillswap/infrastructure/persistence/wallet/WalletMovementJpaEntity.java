@@ -24,15 +24,12 @@ public class WalletMovementJpaEntity {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "wallet_owner_id", nullable = false)
+    @JoinColumn(name = "wallet_id", nullable = false)
     private WalletJpaEntity wallet;
-
-    @Column(name = "seq", nullable = false)
-    private int sequenceNumber;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "movement_type", nullable = false, length = 20)
-    private CreditMovementType movementType;
+    private CreditMovementType type;
 
     @Column(nullable = false)
     private long amount;
@@ -46,23 +43,19 @@ public class WalletMovementJpaEntity {
     protected WalletMovementJpaEntity() {
     }
 
-    WalletMovementJpaEntity(
-            WalletJpaEntity wallet,
-            int sequenceNumber,
-            CreditMovementType movementType,
-            long amount,
-            Instant occurredAt,
-            Long bookingId) {
-        this.wallet = wallet;
-        this.sequenceNumber = sequenceNumber;
-        this.movementType = movementType;
+    WalletMovementJpaEntity(CreditMovementType type, long amount, Instant occurredAt, Long bookingId) {
+        this.type = type;
         this.amount = amount;
         this.occurredAt = occurredAt;
         this.bookingId = bookingId;
     }
 
-    CreditMovementType getMovementType() {
-        return movementType;
+    Long getId() {
+        return id;
+    }
+
+    CreditMovementType getType() {
+        return type;
     }
 
     long getAmount() {
@@ -73,11 +66,11 @@ public class WalletMovementJpaEntity {
         return occurredAt;
     }
 
-    int getSequenceNumber() {
-        return sequenceNumber;
-    }
-
     Long getBookingId() {
         return bookingId;
+    }
+
+    void setWallet(WalletJpaEntity wallet) {
+        this.wallet = wallet;
     }
 }

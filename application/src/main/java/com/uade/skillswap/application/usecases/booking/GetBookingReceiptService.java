@@ -6,7 +6,7 @@ import com.uade.skillswap.application.dto.booking.BookingReceipt;
 import com.uade.skillswap.application.dto.booking.GetBookingReceiptCommand;
 import com.uade.skillswap.application.ports.in.booking.GetBookingReceiptUseCase;
 import com.uade.skillswap.application.ports.out.BookingRepository;
-import com.uade.skillswap.application.ports.out.wallet.WalletRepository;
+import com.uade.skillswap.application.ports.out.WalletRepository;
 import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.booking.BookingStatus;
 import com.uade.skillswap.domain.common.BusinessRuleException;
@@ -46,9 +46,6 @@ public final class GetBookingReceiptService implements GetBookingReceiptUseCase 
                         && Objects.equals(movement.bookingId(), command.bookingId()))
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Payment", command.bookingId()));
-        if (payment.amount().amount() > booking.getPrice().amount()) {
-            throw new IllegalStateException("The recorded payment exceeds the booking price");
-        }
         Instant completedAt = booking.getHistory().stream()
                 .filter(transition -> transition.to() == BookingStatus.COMPLETED)
                 .map(StateTransition::occurredAt)

@@ -1,8 +1,6 @@
 package com.uade.skillswap.controllers.wallet;
 
-import com.uade.skillswap.application.dto.wallet.GetWalletCommand;
 import com.uade.skillswap.application.dto.wallet.WalletView;
-import com.uade.skillswap.application.ports.in.wallet.GetWalletUseCase;
 import com.uade.skillswap.application.ports.in.wallet.LoadWalletCommand;
 import com.uade.skillswap.application.ports.in.wallet.LoadWalletUseCase;
 import com.uade.skillswap.application.ports.out.IdentityService;
@@ -13,8 +11,6 @@ import com.uade.skillswap.domain.common.UserId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -27,9 +23,8 @@ class WalletControllerTest {
     private static final UserId USER = new UserId("ana");
 
     private final LoadWalletUseCase loadWallet = mock(LoadWalletUseCase.class);
-    private final GetWalletUseCase getWallet = mock(GetWalletUseCase.class);
     private final IdentityService identity = mock(IdentityService.class);
-    private final WalletController controller = new WalletControllerImpl(loadWallet, getWallet, identity);
+    private final WalletController controller = new WalletControllerImpl(loadWallet, identity);
 
     @BeforeEach
     void activeIdentity() {
@@ -38,7 +33,7 @@ class WalletControllerTest {
 
     @Test
     void theActiveUserCanLoadCredits() {
-        WalletView wallet = new WalletView("ana", 50, List.of());
+        WalletView wallet = new WalletView("ana", 50, java.util.List.of());
         when(loadWallet.loadCredits(new LoadWalletCommand(USER, new SkillCoins(50)))).thenReturn(wallet);
 
         ControllerResult<WalletView> result = controller.loadCredits("ana", 50L);
@@ -58,24 +53,5 @@ class WalletControllerTest {
         assertThat(controller.loadCredits("ana", 0L).getErrorType()).isEqualTo(ErrorType.INVALID_INPUT);
         assertThat(controller.loadCredits("ana", -1L).getErrorType()).isEqualTo(ErrorType.INVALID_INPUT);
         verifyNoInteractions(loadWallet);
-    }
-
-    @Test
-    void getMyWalletReturnsTheActiveUsersBalanceAndMovements() {
-        WalletView wallet = new WalletView("ana", 40, List.of());
-        when(getWallet.getWallet(new GetWalletCommand(USER, USER))).thenReturn(wallet);
-
-        ControllerResult<WalletView> result = controller.getMyWallet("ana");
-
-        assertThat(result.getData()).isEqualTo(wallet);
-        assertThat(result.isSuccess()).isTrue();
-        verify(getWallet).getWallet(new GetWalletCommand(USER, USER));
-    }
-
-    @Test
-    void getMyWalletRequiresAnActiveUser() {
-        assertThat(controller.getMyWallet(" ").getErrorType()).isEqualTo(ErrorType.ACCESS_DENIED);
-        assertThat(controller.getMyWallet("bruno").getErrorType()).isEqualTo(ErrorType.ACCESS_DENIED);
-        verifyNoInteractions(getWallet);
     }
 }

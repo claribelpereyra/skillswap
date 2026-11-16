@@ -67,14 +67,8 @@ class PublicationIntegrationTest {
         unitOfWork.execute(() -> EntityManagerContext.withEntityManager(em -> {
             em.createNativeQuery("INSERT INTO category (id, parent_id, name, kind) VALUES"
                     + " (1, NULL, 'Tecnología', 'CATEGORY'), (2, 1, 'Backend', 'CATEGORY')").executeUpdate();
-            // Tabla de perfiles del área de Andy (ver JpaPublicationSearchQuery); se crea si su migración no está.
-            em.createNativeQuery("CREATE TABLE IF NOT EXISTS perfiles (id BIGINT AUTO_INCREMENT PRIMARY KEY,"
-                    + " user_id VARCHAR(100) NOT NULL, nombre_visible VARCHAR(150) NOT NULL,"
-                    + " tipo_cuenta VARCHAR(30) NOT NULL, reputacion DECIMAL(3, 2) NOT NULL DEFAULT 0.00,"
-                    + " activo BOOLEAN NOT NULL DEFAULT TRUE)")
-                    .executeUpdate();
-            em.createNativeQuery("INSERT INTO perfiles (user_id, nombre_visible, tipo_cuenta, reputacion)"
-                    + " VALUES ('ana', 'Ana', 'PROFESIONAL', 4.50)").executeUpdate();
+            em.createNativeQuery("INSERT INTO profile (user_id, display_name, time_zone, account_type, reputation, created_at)"
+                    + " VALUES ('ana', 'Ana', 'UTC', 'PROFESSIONAL', 4.50, '2026-11-14 10:00:00')").executeUpdate();
             return null;
         }));
 

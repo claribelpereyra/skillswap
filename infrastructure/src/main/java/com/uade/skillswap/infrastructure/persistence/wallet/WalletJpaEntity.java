@@ -3,12 +3,13 @@ package com.uade.skillswap.infrastructure.persistence.wallet;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,7 +19,10 @@ import java.util.List;
 public class WalletJpaEntity {
 
     @Id
-    @Column(name = "owner_id", nullable = false, length = 100)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "owner_id", nullable = false, unique = true, length = 100)
     private String ownerId;
 
     @Column(nullable = false)
@@ -28,17 +32,21 @@ public class WalletJpaEntity {
     @Column(nullable = false)
     private long version;
 
-    @OneToMany(mappedBy = "wallet", cascade = CascadeType.PERSIST)
-    @OrderBy("sequenceNumber")
-    @BatchSize(size = 50)
+    @OneToMany(mappedBy = "wallet", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("occurredAt, id")
     private List<WalletMovementJpaEntity> movements = new ArrayList<>();
 
     protected WalletJpaEntity() {
     }
 
-    WalletJpaEntity(String ownerId, long balance) {
-        this.ownerId = ownerId;
-        this.balance = balance;
+    static WalletJpaEntity create(String ownerId) {
+        WalletJpaEntity entity = new WalletJpaEntity();
+        entity.ownerId = ownerId;
+        return entity;
+    }
+
+    Long getId() {
+        return id;
     }
 
     String getOwnerId() {
@@ -55,5 +63,10 @@ public class WalletJpaEntity {
 
     List<WalletMovementJpaEntity> getMovements() {
         return movements;
+    }
+
+    void addMovement(WalletMovementJpaEntity movement) {
+        movements.add(movement);
+        movement.setWallet(this);
     }
 }

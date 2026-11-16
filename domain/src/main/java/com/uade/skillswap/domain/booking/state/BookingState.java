@@ -14,6 +14,8 @@ public interface BookingState {
 
     void reject(Booking booking, UserId actor, String reason);
 
+    void validatePayment(Booking booking, UserId actor);
+
     void confirmPayment(Booking booking, UserId actor);
 
     void start(Booking booking, UserId actor);

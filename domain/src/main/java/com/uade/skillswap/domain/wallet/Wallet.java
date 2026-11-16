@@ -23,13 +23,10 @@ public final class Wallet {
         return new Wallet(ownerId);
     }
 
-    public static Wallet restore(UserId ownerId, SkillCoins expectedBalance, List<CreditMovement> movements) {
-        Objects.requireNonNull(expectedBalance, "The wallet balance is required");
+    public static Wallet restore(UserId ownerId, List<CreditMovement> movements) {
         Wallet wallet = new Wallet(ownerId);
-        Objects.requireNonNull(movements, "The wallet movements are required").forEach(wallet::apply);
-        if (!wallet.balance.equals(expectedBalance)) {
-            throw new IllegalArgumentException("The persisted wallet balance does not match its movements");
-        }
+        Objects.requireNonNull(movements, "The wallet movements are required")
+                .forEach(wallet::apply);
         return wallet;
     }
 
@@ -87,15 +84,6 @@ public final class Wallet {
 
         commit(debit, nextProviderBalance);
         clientWallet.commit(refund, nextClientBalance);
-    }
-
-    public SkillCoins paymentAmountFor(long bookingId) {
-        requireBookingId(bookingId);
-        SkillCoins amount = movementAmount(CreditMovementType.CREDIT, bookingId);
-        if (amount == null) {
-            throw new BusinessRuleException("No payment exists for booking " + bookingId);
-        }
-        return amount;
     }
 
     private void apply(CreditMovementType type, SkillCoins amount, Instant occurredAt, Long bookingId) {

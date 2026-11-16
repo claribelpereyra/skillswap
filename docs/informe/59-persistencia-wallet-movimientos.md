@@ -6,11 +6,11 @@ Persistir el saldo y el historial de cada wallet para recuperar sus datos entre 
 
 ## Cambios realizados
 
-- La migración `V5__wallets_and_movements.sql` crea `wallet` y `wallet_movement`, con claves, restricciones de saldo y tipo, secuencia por wallet, referencia a contratación e índice por contratación.
+- La migración `V6__wallets.sql` crea `wallet` y `wallet_movement`, con claves, restricciones de saldo y tipo, secuencia por wallet, referencia a contratación e índice por contratación.
 - `WalletJpaEntity` y `WalletMovementJpaEntity` representan las tablas sin acoplar el dominio a JPA.
-- `WalletMapper` reconstruye el agregado y su ledger mediante `Wallet.restore`, que compara el saldo reconstruido con el valor persistido; al guardar, solo agrega movimientos nuevos.
+- `WalletMapper` reconstruye el agregado y su ledger mediante `Wallet.restore`, que calcula el saldo desde el ledger; al guardar, solo agrega movimientos nuevos.
 - `JpaWalletRepository` implementa búsqueda por propietario y guardado transaccional; `WalletJpaEntity` declara `@Version` para control optimista.
-- `JpaWalletRepositoryTest` verifica lectura y escritura del ledger, rollback y que un pago pueda reintegrarse correctamente después de recargar las wallets.
+- `JpaWalletRepositoryTest` verifica lectura y escritura del ledger y el conflicto optimista; `BookingWalletIntegrationTest` cubre pago, saldo insuficiente y reintegro con persistencia real.
 
 ## Resultado
 

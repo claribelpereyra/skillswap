@@ -1,6 +1,6 @@
 package com.uade.skillswap.infrastructure.adapters;
 
-import com.uade.skillswap.application.ports.out.wallet.SkillCoinGateway;
+import com.uade.skillswap.application.ports.out.SkillCoinGateway;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 

@@ -5,24 +5,18 @@ import com.uade.skillswap.application.common.ResourceNotFoundException;
 import com.uade.skillswap.application.dto.booking.BookingReceipt;
 import com.uade.skillswap.application.dto.booking.GetBookingReceiptCommand;
 import com.uade.skillswap.application.ports.out.BookingRepository;
-import com.uade.skillswap.application.ports.out.wallet.WalletRepository;
+import com.uade.skillswap.application.ports.out.WalletRepository;
 import com.uade.skillswap.application.usecases.booking.GetBookingReceiptService;
 import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.TimeSlot;
-import com.uade.skillswap.domain.pricing.PercentagePromotion;
-import com.uade.skillswap.domain.wallet.BookingPaymentService;
-import com.uade.skillswap.domain.wallet.FullRefundStrategy;
 import com.uade.skillswap.domain.wallet.CreditMovementType;
-import com.uade.skillswap.domain.wallet.RefundPolicy;
-import com.uade.skillswap.domain.wallet.TieredRefundStrategy;
 import com.uade.skillswap.domain.wallet.Wallet;
 
 import org.junit.jupiter.api.Test;
 
-import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -46,8 +40,6 @@ class BookingReceiptServiceTest {
 
     private final BookingRepository bookings = mock(BookingRepository.class);
     private final WalletRepository wallets = mock(WalletRepository.class);
-    private final BookingPaymentService payments = new BookingPaymentService(
-            new TieredRefundStrategy(new RefundPolicy(Duration.ofDays(2), Duration.ofDays(1))));
     private final GetBookingReceiptService service = new GetBookingReceiptService(bookings, wallets);
 
     @Test
@@ -68,7 +60,7 @@ class BookingReceiptServiceTest {
         Wallet clientWallet = Wallet.open(CLIENT);
         clientWallet.topUp(PRICE, PAID_AT.minusSeconds(60));
         Wallet providerWallet = Wallet.open(PROVIDER);
-        payments.pay(BOOKING_ID, clientWallet, providerWallet, PRICE, PAID_AT);
+        clientWallet.payBookingTo(providerWallet, PRICE, BOOKING_ID, PAID_AT);
         when(bookings.findById(BOOKING_ID)).thenReturn(Optional.of(booking));
         when(wallets.findByOwnerId(CLIENT)).thenReturn(Optional.of(clientWallet));
 
@@ -83,25 +75,6 @@ class BookingReceiptServiceTest {
                 .occurredAt());
         assertThat(clientWallet.movements()).filteredOn(m -> m.type() == CreditMovementType.DEBIT)
                 .hasSize(1);
-    }
-
-    @Test
-    void completedBookingReceiptReportsTheDiscountedPayment() {
-        Booking booking = completedBooking();
-        Wallet clientWallet = Wallet.open(CLIENT);
-        clientWallet.topUp(PRICE, PAID_AT.minusSeconds(60));
-        Wallet providerWallet = Wallet.open(PROVIDER);
-        BookingPaymentService discountedPayments = new BookingPaymentService(
-                new FullRefundStrategy(),
-                price -> new PercentagePromotion(price, 10));
-        discountedPayments.pay(BOOKING_ID, clientWallet, providerWallet, PRICE, PAID_AT);
-        when(bookings.findById(BOOKING_ID)).thenReturn(Optional.of(booking));
-        when(wallets.findByOwnerId(CLIENT)).thenReturn(Optional.of(clientWallet));
-
-        BookingReceipt receipt = service.getReceipt(new GetBookingReceiptCommand(CLIENT, BOOKING_ID));
-
-        assertThat(receipt.amount()).isEqualTo(90);
-        assertThat(receipt.paidAt()).isEqualTo(PAID_AT);
     }
 
     @Test

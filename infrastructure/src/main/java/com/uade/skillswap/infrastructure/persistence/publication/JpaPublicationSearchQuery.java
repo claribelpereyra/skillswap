@@ -25,17 +25,11 @@ import java.util.Set;
 // Búsqueda en SQL nativo con 3 consultas fijas (COUNT, página como proyección y etiquetas con IN), sin N+1.
 public class JpaPublicationSearchQuery implements PublicationSearchQuery {
 
-    // Tabla y columnas de perfiles (migración del #37, que tiene que mergearse antes). Si cambian, se cambia solo acá.
-    static final String PROFILES_TABLE = "perfiles";
+    // Tabla y columnas de perfiles (migración V5__profiles_and_ratings). Si cambian, se cambia solo acá.
+    static final String PROFILES_TABLE = "profile";
     static final String PROFILE_USER_ID = "user_id";
-    static final String PROFILE_REPUTATION = "reputacion";
-    static final String PROFILE_ACTIVE = "activo";
-    static final String PROFILE_ID = "id";
-    static final String PROFILE_SKILLS_TABLE = "perfil_habilidades";
-    static final String PROFILE_INTERESTS_TABLE = "perfil_intereses";
-    static final String PROFILE_ID_COLUMN = "perfil_id";
-    static final String PROFILE_SKILL_COLUMN = "habilidad";
-    static final String PROFILE_INTEREST_COLUMN = "interes";
+    static final String PROFILE_REPUTATION = "reputation";
+    static final String PROFILE_ACTIVE = "active";
 
     private static final String REPUTATION = "COALESCE(prof." + PROFILE_REPUTATION + ", 0)";
     private static final String TAG_MATCHES_TEXT = "EXISTS (SELECT 1 FROM publication_tag tt "

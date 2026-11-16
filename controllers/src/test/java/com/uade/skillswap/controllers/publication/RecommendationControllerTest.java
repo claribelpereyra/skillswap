@@ -26,6 +26,7 @@ import java.time.ZoneOffset;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -55,7 +56,7 @@ class RecommendationControllerTest {
     @Test
     void defaultsToSkillAffinityAndPassesTheActualStrategy() {
         Page<PublicationSummary> page = Page.empty(PageRequest.first());
-        when(recommend.recommend(any(), any())).thenReturn(page);
+        when(recommend.recommend(any(), any(), any())).thenReturn(page);
 
         ControllerResult<Page<PublicationSummary>> result = controller.recommend("ana",
                 new RecommendationForm(null,
@@ -65,22 +66,22 @@ class RecommendationControllerTest {
         assertThat(result.getData()).isEqualTo(page);
         ArgumentCaptor<SearchFilters> filters = ArgumentCaptor.forClass(SearchFilters.class);
         ArgumentCaptor<RecommendationStrategy> strategy = ArgumentCaptor.forClass(RecommendationStrategy.class);
-        verify(recommend).recommend(filters.capture(), strategy.capture());
+        verify(recommend).recommend(filters.capture(), eq(USER), strategy.capture());
         assertThat(filters.getValue()).isEqualTo(new SearchFilters("java", 2L, Modality.REMOTE, 10L, 100L,
-                "java", 4.0, SearchSort.MOST_RECENT, new PageRequest(1, 5), "ana"));
+                "java", 4.0, SearchSort.MOST_RECENT, new PageRequest(1, 5)));
         assertThat(strategy.getValue()).isSameAs(skillAffinity);
     }
 
     @Test
     void recentPopularitySelectsItsStrategyWithoutChangingSearchSort() {
-        when(recommend.recommend(any(), any())).thenReturn(Page.empty(PageRequest.first()));
+        when(recommend.recommend(any(), any(), any())).thenReturn(Page.empty(PageRequest.first()));
 
         controller.recommend("ana", new RecommendationForm("recent_popularity",
                 new SearchForm(null, null, null, null, null, null, null, "BEST_REPUTATION", null, null)));
 
         ArgumentCaptor<SearchFilters> filters = ArgumentCaptor.forClass(SearchFilters.class);
         ArgumentCaptor<RecommendationStrategy> strategy = ArgumentCaptor.forClass(RecommendationStrategy.class);
-        verify(recommend).recommend(filters.capture(), strategy.capture());
+        verify(recommend).recommend(filters.capture(), eq(USER), strategy.capture());
         assertThat(filters.getValue().sort()).isEqualTo(SearchSort.BEST_REPUTATION);
         assertThat(strategy.getValue()).isSameAs(recentPopularity);
     }

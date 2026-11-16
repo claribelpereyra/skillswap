@@ -61,7 +61,7 @@ La cadena de promociones se inyecta en el servicio de pago. No hay un catálogo 
 ## Evidencia
 
 - `LoadWalletServiceTest`: autorización, creación de wallet ausente y rechazo sin cambios.
-- `BookingPaymentUseCasesTest`: pago, saldo insuficiente, cancelación, reintegro y aplicación de promociones en el flujo de aplicación.
-- `BookingPaymentServiceTest`: movimientos pareados, pago duplicado, descuentos acumulados y saldo insuficiente.
+- `BookingServiceImplTest`: pago, saldo insuficiente, doble pago, cancelación, reintegro y precio promocional en el flujo de aplicación.
+- `WalletTest` y `PromotionTest`: movimientos pareados, reintegro duplicado, descuentos acumulados y saldo insuficiente.
 - `BookingReceiptServiceTest`: comprobante con el importe realmente cobrado.
 - `JpaWalletRepositoryTest`: persistencia, rollback y concurrencia.

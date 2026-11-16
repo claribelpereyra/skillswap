@@ -51,9 +51,8 @@ public final class RecommendationControllerImpl implements RecommendationControl
                     parseEnum(Modality.class, search.modality(), "modality"), search.minPrice(), search.maxPrice(),
                     search.tag(), search.minReputation(), parseEnum(SearchSort.class, search.sort(), "sort"),
                     new PageRequest(search.page() == null ? 0 : search.page(),
-                            search.size() == null ? PageRequest.DEFAULT_SIZE : search.size()),
-                    userId.value());
-            return recommend.recommend(filters, strategyFor(form.strategy()));
+                            search.size() == null ? PageRequest.DEFAULT_SIZE : search.size()));
+            return recommend.recommend(filters, userId, strategyFor(form.strategy()));
         });
     }
 

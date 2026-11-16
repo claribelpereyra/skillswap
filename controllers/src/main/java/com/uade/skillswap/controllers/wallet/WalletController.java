@@ -6,6 +6,4 @@ import com.uade.skillswap.controllers.ControllerResult;
 public interface WalletController {
 
     ControllerResult<WalletView> loadCredits(String userId, Long amount);
-
-    ControllerResult<WalletView> getMyWallet(String activeUserId);
 }

@@ -10,7 +10,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class PromotionTest {
 
     @Test
-    void promocionesAcumuladasNoDejanPrecioNegativo() {
+    void promotionsAccumulateAndCannotProduceANegativeTotal() {
         Price price = new FixedPromotion(
                 new PercentagePromotion(
                         new FixedPromotion(new BasePrice(new SkillCoins(100)), new SkillCoins(30)),

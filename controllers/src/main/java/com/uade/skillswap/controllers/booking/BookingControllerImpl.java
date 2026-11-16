@@ -38,6 +38,17 @@ public class BookingControllerImpl implements BookingController {
     }
 
     @Override
+    public ControllerResult<BookingView> pay(String userId, long bookingId) {
+        return ControllerResult.of(() -> service.pay(bookingId, currentUser(userId, "pay for a booking")));
+    }
+
+    @Override
+    public ControllerResult<BookingView> cancel(String userId, long bookingId, String reason) {
+        return ControllerResult.of(() ->
+                service.cancel(bookingId, currentUser(userId, "cancel a booking"), reason));
+    }
+
+    @Override
     public ControllerResult<BookingView> reject(String userId, long bookingId, String reason) {
         return ControllerResult.of(() -> service.reject(bookingId, currentUser(userId, "reject a booking"), reason));
     }

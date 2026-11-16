@@ -17,6 +17,8 @@
         <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationJpaEntity</class>
         <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationSlotJpaEntity</class>
         <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationTransitionJpaEntity</class>
+        <class>com.uade.skillswap.infrastructure.persistence.profile.ProfileJpaEntity</class>
+        <class>com.uade.skillswap.infrastructure.persistence.rating.RatingJpaEntity</class>
         <class>com.uade.skillswap.infraestructura.persistencia.notificaciones.PreferenciaJpaEntity</class>
         <class>com.uade.skillswap.infraestructura.persistencia.notificaciones.NotificacionJpaEntity</class>
         <exclude-unlisted-classes>true</exclude-unlisted-classes>

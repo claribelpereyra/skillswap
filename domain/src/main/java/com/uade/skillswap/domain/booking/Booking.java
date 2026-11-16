@@ -110,7 +110,10 @@ public class Booking {
     }
 
     public void changeState(BookingState next, UserId actor, String reason) {
-        history.record(state.getStatus(), next.getStatus(), actor, Instant.now(), reason);
+        Instant now = Instant.now();
+        Instant last = history.last().occurredAt();
+        Instant effectiveTime = now.isBefore(last) ? last : now;
+        history.record(state.getStatus(), next.getStatus(), actor, effectiveTime, reason);
         state = next;
     }
 

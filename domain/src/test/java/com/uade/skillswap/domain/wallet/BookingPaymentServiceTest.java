@@ -1,9 +1,9 @@
 package com.uade.skillswap.domain.wallet;
 
-import com.uade.skillswap.domain.common.SkillCoins;
-import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.InsufficientBalanceException;
+import com.uade.skillswap.domain.common.SkillCoins;
+import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.pricing.FixedPromotion;
 import com.uade.skillswap.domain.pricing.PercentagePromotion;
 

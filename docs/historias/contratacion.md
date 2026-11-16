@@ -16,7 +16,7 @@ Cubre el ciclo de una contratación, desde que un cliente pide una publicación 
 
 Criterios de aceptación:
 
-1. Dada una publicación `PUBLICADA`, cuando la solicito con mensaje, franja y objetivo, entonces se crea una contratación `PENDIENTE` con el precio de la publicación, y el proveedor recibe la notificación de solicitud recibida.
+1. Dada una publicación `PUBLICADA`, cuando la solicito con mensaje, franja y objetivo, entonces se crea una contratación `PENDIENTE` con el precio final calculado para ese cliente y publicación, y el proveedor recibe la notificación de solicitud recibida.
 2. Dado que soy el autor de la publicación, cuando intento solicitarla, entonces se rechaza.
 3. Dada una publicación en `BORRADOR`, `PAUSADA`, `CERRADA` o `CANCELADA`, cuando intento solicitarla, entonces se rechaza.
 4. La franja elegida tiene que ser una de las franjas de la publicación.
@@ -55,7 +55,7 @@ El pago es del área de wallet; acá solo se cubre el cambio de estado que provo
 
 Criterios de aceptación:
 
-1. Dada una contratación `ACEPTADA`, cuando se confirma el pago, entonces pasa a `CONFIRMADA` y el pago y el cambio de estado se confirman juntos.
+1. Dada una contratación `ACEPTADA`, cuando se confirma el pago, entonces pasa a `CONFIRMADA` y el pago y el cambio de estado se confirman juntos. Si el precio es cero, no se crean movimientos, pero el estado avanza igualmente.
 2. Dada una contratación en cualquier otro estado, cuando se intenta pagar, entonces se rechaza por transición inválida y no se mueve ningún saldo.
 
 ### HU-C05. Proponer una reprogramación
@@ -190,6 +190,7 @@ Cualquier acción que no esté en la tabla anterior se rechaza con un error de t
 | D2 | ¿Quién inicia y completa la sesión? | El proveedor inicia y cualquiera de los participantes completa: la sesión no arranca sin el proveedor, y el cliente no queda sin poder calificar si el proveedor no la cierra. |
 | D3 | ¿El cliente puede retirar una solicitud `PENDIENTE`? | No, como en la tabla del enunciado: en `PENDIENTE` solo se acepta o se rechaza. |
 | Reprogramación | ¿Es un estado o una propuesta? | Una propuesta: la contratación no cambia de estado mientras la otra parte responde, así los estados quedan como en la tabla del enunciado. |
+| D6 | ¿Qué pasa si el proveedor ya gastó los créditos que debe reintegrar? | No hay escrow ni saldo negativo: el reintegro y la cancelación fallan juntos, y la contratación mantiene su estado y cupo hasta que el proveedor tenga saldo suficiente. |
 
 ## Decisiones pendientes
 

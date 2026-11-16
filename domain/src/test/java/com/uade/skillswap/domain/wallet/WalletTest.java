@@ -1,5 +1,6 @@
 package com.uade.skillswap.domain.wallet;
 
+import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.InsufficientBalanceException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
@@ -101,6 +102,97 @@ class WalletTest {
         assertThat(wallet.movements()).hasSize(movementCount);
         assertThat(provider.balance()).isEqualTo(SkillCoins.ZERO);
         assertThat(provider.movements()).isEmpty();
+    }
+
+    @Test
+    void noPermitePagarLaMismaContratacionDosVeces() {
+        Wallet client = Wallet.open(OWNER);
+        Wallet provider = Wallet.open(new UserId("provider"));
+        client.topUp(new SkillCoins(100), NOW);
+        client.payBookingTo(provider, new SkillCoins(35), BOOKING_ID, NOW.plusSeconds(60));
+
+        assertThatThrownBy(() ->
+                client.payBookingTo(provider, new SkillCoins(35), BOOKING_ID, NOW.plusSeconds(120)))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("A payment already exists for booking " + BOOKING_ID);
+
+        assertThat(client.balance()).isEqualTo(new SkillCoins(65));
+        assertThat(provider.balance()).isEqualTo(new SkillCoins(35));
+        assertThat(client.movements()).hasSize(2);
+        assertThat(provider.movements()).hasSize(1);
+    }
+
+    @Test
+    void noPermiteReintegrarLaMismaContratacionDosVeces() {
+        Wallet client = Wallet.open(OWNER);
+        Wallet provider = Wallet.open(new UserId("provider"));
+        client.topUp(new SkillCoins(100), NOW);
+        client.payBookingTo(provider, new SkillCoins(35), BOOKING_ID, NOW.plusSeconds(60));
+        provider.refundBookingTo(client, new SkillCoins(15), BOOKING_ID, NOW.plusSeconds(120));
+
+        assertThatThrownBy(() ->
+                provider.refundBookingTo(client, new SkillCoins(15), BOOKING_ID, NOW.plusSeconds(180)))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("A refund already exists for booking " + BOOKING_ID);
+
+        assertThat(client.balance()).isEqualTo(new SkillCoins(80));
+        assertThat(provider.balance()).isEqualTo(new SkillCoins(20));
+        assertThat(client.movements()).hasSize(3);
+        assertThat(provider.movements()).hasSize(2);
+    }
+
+    @Test
+    void saldoInsuficienteDelProveedorNoModificaLaWalletDelCliente() {
+        Wallet client = Wallet.open(OWNER);
+        Wallet provider = Wallet.open(new UserId("provider"));
+        Wallet thirdParty = Wallet.open(new UserId("carla"));
+        client.topUp(new SkillCoins(100), NOW);
+        client.payBookingTo(provider, new SkillCoins(35), BOOKING_ID, NOW.plusSeconds(60));
+        provider.payBookingTo(thirdParty, new SkillCoins(35), BOOKING_ID + 1, NOW.plusSeconds(120));
+
+        assertThatThrownBy(() ->
+                provider.refundBookingTo(client, new SkillCoins(35), BOOKING_ID, NOW.plusSeconds(180)))
+                .isExactlyInstanceOf(InsufficientBalanceException.class)
+                .hasMessage("Insufficient balance: 0 < 35");
+
+        assertThat(client.balance()).isEqualTo(new SkillCoins(65));
+        assertThat(provider.balance()).isEqualTo(SkillCoins.ZERO);
+        assertThat(client.movements()).hasSize(2);
+        assertThat(provider.movements()).hasSize(2);
+    }
+
+    @Test
+    void overflowDelSaldoDelProveedorNoDebitaAlCliente() {
+        Wallet client = Wallet.open(OWNER);
+        Wallet provider = Wallet.open(new UserId("provider"));
+        client.topUp(new SkillCoins(100), NOW);
+        provider.topUp(new SkillCoins(Long.MAX_VALUE), NOW);
+
+        assertThatThrownBy(() ->
+                client.payBookingTo(provider, new SkillCoins(1), BOOKING_ID, NOW.plusSeconds(60)))
+                .isExactlyInstanceOf(ArithmeticException.class);
+
+        assertThat(client.balance()).isEqualTo(new SkillCoins(100));
+        assertThat(provider.balance()).isEqualTo(new SkillCoins(Long.MAX_VALUE));
+        assertThat(client.movements()).hasSize(1);
+        assertThat(provider.movements()).hasSize(1);
+    }
+
+    @Test
+    void reintegroCeroNoGeneraMovimientos() {
+        Wallet client = Wallet.open(OWNER);
+        Wallet provider = Wallet.open(new UserId("provider"));
+        client.topUp(new SkillCoins(100), NOW);
+        client.payBookingTo(provider, new SkillCoins(35), BOOKING_ID, NOW.plusSeconds(60));
+        int clientMovementCount = client.movements().size();
+        int providerMovementCount = provider.movements().size();
+
+        provider.refundBookingTo(client, SkillCoins.ZERO, BOOKING_ID, NOW.plusSeconds(120));
+
+        assertThat(client.balance()).isEqualTo(new SkillCoins(65));
+        assertThat(provider.balance()).isEqualTo(new SkillCoins(35));
+        assertThat(client.movements()).hasSize(clientMovementCount);
+        assertThat(provider.movements()).hasSize(providerMovementCount);
     }
 
     @Test

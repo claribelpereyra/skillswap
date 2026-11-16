@@ -12,6 +12,8 @@
         -->
         <class>com.uade.skillswap.infrastructure.persistence.booking.BookingJpaEntity</class>
         <class>com.uade.skillswap.infrastructure.persistence.booking.BookingTransitionJpaEntity</class>
+        <class>com.uade.skillswap.infrastructure.persistence.wallet.WalletJpaEntity</class>
+        <class>com.uade.skillswap.infrastructure.persistence.wallet.WalletMovementJpaEntity</class>
         <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationJpaEntity</class>
         <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationSlotJpaEntity</class>
         <class>com.uade.skillswap.infrastructure.persistence.publication.PublicationTransitionJpaEntity</class>

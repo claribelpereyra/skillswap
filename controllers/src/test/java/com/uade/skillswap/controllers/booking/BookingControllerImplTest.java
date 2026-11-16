@@ -64,9 +64,9 @@ class BookingControllerImplTest {
     @Test
     void everyActionDelegatesWithTheUserAndTheBooking() {
         when(service.accept(99L, BRUNO)).thenReturn(VIEW);
-        when(service.reject(99L, BRUNO, "No")).thenReturn(VIEW);
         when(service.pay(99L, ANA)).thenReturn(VIEW);
         when(service.cancel(99L, ANA, "Cambio de planes")).thenReturn(VIEW);
+        when(service.reject(99L, BRUNO, "No")).thenReturn(VIEW);
         when(service.start(99L, BRUNO)).thenReturn(VIEW);
         when(service.complete(99L, ANA)).thenReturn(VIEW);
         when(service.proposeReschedule(99L, BRUNO, 2L)).thenReturn(VIEW);

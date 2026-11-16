@@ -403,12 +403,14 @@ class BookingServiceImplTest {
 
     @Test
     void proposeRescheduleFailsWhenTheNewSlotIsAlreadyTaken() {
-        stored(accepted());
+        Booking booking = accepted();
+        stored(booking);
 
         assertThatThrownBy(() -> service.proposeReschedule(BOOKING_ID, PROVIDER, 3L))
                 .isExactlyInstanceOf(BusinessRuleException.class)
                 .hasMessage("The slot is already taken");
         verify(bookings, never()).save(any());
+        assertThat(booking.getPendingReschedule()).isEmpty();
     }
 
     @Test

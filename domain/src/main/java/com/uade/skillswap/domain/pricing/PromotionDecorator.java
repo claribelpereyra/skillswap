@@ -6,6 +6,7 @@ import java.util.Objects;
 
 public abstract class PromotionDecorator implements Price {
 
+    // Decorator: each promotion wraps a price and applies its discount to the current total.
     private final Price decoratedPrice;
 
     protected PromotionDecorator(Price decoratedPrice) {

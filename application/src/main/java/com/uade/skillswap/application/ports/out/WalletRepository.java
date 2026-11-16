@@ -1,4 +1,4 @@
-package com.uade.skillswap.application.ports.out.wallet;
+package com.uade.skillswap.application.ports.out;
 
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.wallet.Wallet;
@@ -7,7 +7,7 @@ import java.util.Optional;
 
 public interface WalletRepository {
 
-    Optional<Wallet> findByOwnerId(UserId ownerId);
+    Wallet save(Wallet wallet);
 
-    void save(Wallet wallet);
+    Optional<Wallet> findByOwnerId(UserId ownerId);
 }

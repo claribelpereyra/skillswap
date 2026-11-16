@@ -4,7 +4,7 @@ import com.uade.skillswap.application.common.AccessDeniedException;
 import com.uade.skillswap.application.common.ResourceNotFoundException;
 import com.uade.skillswap.application.dto.wallet.GetWalletCommand;
 import com.uade.skillswap.application.dto.wallet.WalletView;
-import com.uade.skillswap.application.ports.out.wallet.WalletRepository;
+import com.uade.skillswap.application.ports.out.WalletRepository;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.wallet.Wallet;

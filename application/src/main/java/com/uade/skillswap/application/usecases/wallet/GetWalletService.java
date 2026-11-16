@@ -5,7 +5,7 @@ import com.uade.skillswap.application.common.ResourceNotFoundException;
 import com.uade.skillswap.application.dto.wallet.GetWalletCommand;
 import com.uade.skillswap.application.dto.wallet.WalletView;
 import com.uade.skillswap.application.ports.in.wallet.GetWalletUseCase;
-import com.uade.skillswap.application.ports.out.wallet.WalletRepository;
+import com.uade.skillswap.application.ports.out.WalletRepository;
 import com.uade.skillswap.domain.wallet.Wallet;
 
 import java.util.Objects;

@@ -217,7 +217,6 @@ public class Booking implements BookingSubject {
         Instant last = history.last().occurredAt();
         return now.isBefore(last) ? last : now;
     }
-
     @Override
     public void addObserver(BookingObserver observer) {
         if (observer != null && !observers.contains(observer)) {

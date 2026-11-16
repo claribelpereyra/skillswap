@@ -259,6 +259,19 @@ class BookingServiceImplTest {
     }
 
     @Test
+    void unSegundoPagoSeRechazaSinTocarWalletsNiGuardarLaContratacion() {
+        Booking booking = persisted(confirmed());
+        stored(booking);
+
+        assertThatThrownBy(() -> service.pay(BOOKING_ID, CLIENT))
+                .isExactlyInstanceOf(InvalidTransitionException.class)
+                .hasMessage("Cannot pay in state CONFIRMED");
+
+        verifyNoInteractions(wallets);
+        verify(bookings, never()).save(any());
+    }
+
+    @Test
     void saldoInsuficienteNoConfirmaNiGuardaLaContratacion() {
         Booking booking = persisted(accepted());
         Wallet client = wallet(CLIENT, 10);
@@ -386,6 +399,17 @@ class BookingServiceImplTest {
         assertThat(service.start(BOOKING_ID, PROVIDER).status()).isEqualTo(BookingStatus.IN_PROGRESS);
 
         assertThat(service.complete(BOOKING_ID, CLIENT).status()).isEqualTo(BookingStatus.COMPLETED);
+    }
+
+    @Test
+    void cancellingWithoutAReasonChangesNothing() {
+        stored(confirmed());
+
+        assertThatThrownBy(() -> service.cancel(BOOKING_ID, CLIENT, " "))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("A reason is required to cancel a booking");
+        verifyNoInteractions(availability, wallets);
+        verify(bookings, never()).save(any());
     }
 
     // Reprogramación

@@ -212,7 +212,6 @@ public class BookingServiceImpl implements BookingService {
         unitOfWork.afterCommit(() -> publish(changed));
         return BookingView.from(changed.saved());
     }
-
     // Lo registra el execute() mediante afterCommit; si la transacción revierte, no se dispara.
     private void publish(Changed changed) {
         observers.forEach(changed.changed()::addObserver);

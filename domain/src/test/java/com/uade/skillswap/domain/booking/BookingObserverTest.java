@@ -151,6 +151,25 @@ class BookingObserverTest {
     }
 
     @Test
+    void publicaLaTransicionConLaFechaAjustadaAlUltimoEstado() {
+        Instant future = Instant.now().plusSeconds(3600);
+        Booking booking = Booking.rebuild(BOOKING_ID, 10L, CLIENT, PROVIDER, SLOT, "Hola", "Aprender",
+                new SkillCoins(100), List.of(new StateTransition<>(null, BookingStatus.PENDING, CLIENT, future, null)),
+                null);
+        booking.addObserver(recorder);
+
+        booking.accept(PROVIDER);
+        booking.publishPendingEvents(BOOKING_ID);
+
+        assertThat(booking.getHistory()).last().satisfies(transition ->
+                assertThat(transition.occurredAt()).isEqualTo(future));
+        assertThat(received).singleElement().satisfies(event -> {
+            assertThat(event.to()).isEqualTo(BookingStatus.ACCEPTED);
+            assertThat(event.occurredAt()).isEqualTo(future);
+        });
+    }
+
+    @Test
     void aRemovedObserverIsNotNotified() {
         Booking booking = newBooking();
         booking.addObserver(recorder);

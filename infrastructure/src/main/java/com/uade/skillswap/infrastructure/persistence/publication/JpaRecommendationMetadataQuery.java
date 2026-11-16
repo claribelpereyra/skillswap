@@ -10,8 +10,20 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public final class JpaRecommendationMetadataQuery implements RecommendationMetadataQuery {
+
+    private static final String PROFILE_TABLE = "profile";
+    private static final String PROFILE_ID = "id";
+    private static final String PROFILE_USER_ID = "user_id";
+    private static final String PROFILE_ACTIVE = "active";
+    private static final String PROFILE_SKILLS_TABLE = "profile_skill";
+    private static final String PROFILE_INTERESTS_TABLE = "profile_interest";
+    private static final String PROFILE_ID_COLUMN = "profile_id";
+    private static final String PROFILE_SKILL_COLUMN = "skill_id";
+    private static final String PROFILE_INTEREST_COLUMN = "interest";
+    private static final String SKILL_CATALOG_TABLE = "category";
 
     @Override
     public Set<String> skillsAndInterestsFor(String userId) {
@@ -19,15 +31,14 @@ public final class JpaRecommendationMetadataQuery implements RecommendationMetad
             return Set.of();
         }
         return EntityManagerContext.withEntityManager(em -> {
-            String profileJoin = " JOIN " + JpaPublicationSearchQuery.PROFILES_TABLE + " profile ON profile."
-                    + JpaPublicationSearchQuery.PROFILE_ID + " = profile_value."
-                    + JpaPublicationSearchQuery.PROFILE_ID_COLUMN + " WHERE profile."
-                    + JpaPublicationSearchQuery.PROFILE_USER_ID + " = :userId AND profile."
-                    + JpaPublicationSearchQuery.PROFILE_ACTIVE + " = TRUE";
-            String skills = "SELECT LOWER(profile_value." + JpaPublicationSearchQuery.PROFILE_SKILL_COLUMN + ") FROM "
-                    + JpaPublicationSearchQuery.PROFILE_SKILLS_TABLE + " profile_value" + profileJoin;
-            String interests = "SELECT LOWER(profile_value." + JpaPublicationSearchQuery.PROFILE_INTEREST_COLUMN + ") FROM "
-                    + JpaPublicationSearchQuery.PROFILE_INTERESTS_TABLE + " profile_value" + profileJoin;
+            String profileJoin = " JOIN " + PROFILE_TABLE + " profile ON profile." + PROFILE_ID
+                    + " = profile_value." + PROFILE_ID_COLUMN + " WHERE profile."
+                    + PROFILE_USER_ID + " = :userId AND profile." + PROFILE_ACTIVE + " = TRUE";
+            String skills = "SELECT LOWER(skill.name) FROM " + PROFILE_SKILLS_TABLE + " profile_value"
+                    + " JOIN " + SKILL_CATALOG_TABLE + " skill ON skill.id = profile_value."
+                    + PROFILE_SKILL_COLUMN + " AND skill.kind = 'SKILL'" + profileJoin;
+            String interests = "SELECT LOWER(profile_value." + PROFILE_INTEREST_COLUMN + ") FROM "
+                    + PROFILE_INTERESTS_TABLE + " profile_value" + profileJoin;
             List<?> rows = em.createNativeQuery(skills + " UNION " + interests)
                     .setParameter("userId", userId)
                     .getResultList();
@@ -35,7 +46,7 @@ public final class JpaRecommendationMetadataQuery implements RecommendationMetad
                     .map(Object::toString)
                     .map(String::strip)
                     .filter(value -> !value.isEmpty())
-                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
+                    .collect(Collectors.toUnmodifiableSet());
         });
     }
 

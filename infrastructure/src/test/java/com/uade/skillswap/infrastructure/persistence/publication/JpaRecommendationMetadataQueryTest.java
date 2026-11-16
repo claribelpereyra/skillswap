@@ -1,6 +1,7 @@
 package com.uade.skillswap.infrastructure.persistence.publication;
 
 import com.uade.skillswap.infrastructure.persistence.PersistenceTestBase;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,14 +18,7 @@ class JpaRecommendationMetadataQueryTest extends PersistenceTestBase {
     private final JpaRecommendationMetadataQuery query = new JpaRecommendationMetadataQuery();
 
     @BeforeEach
-    void recommendationTables() {
-        sql("CREATE TABLE IF NOT EXISTS perfiles (id BIGINT AUTO_INCREMENT PRIMARY KEY, user_id VARCHAR(100) NOT NULL,"
-                + " nombre_visible VARCHAR(150) NOT NULL, tipo_cuenta VARCHAR(30) NOT NULL,"
-                + " reputacion DECIMAL(3, 2) NOT NULL DEFAULT 0.00, activo BOOLEAN NOT NULL DEFAULT TRUE)");
-        sql("CREATE TABLE IF NOT EXISTS perfil_habilidades (id BIGINT AUTO_INCREMENT PRIMARY KEY,"
-                + " perfil_id BIGINT NOT NULL, habilidad VARCHAR(150) NOT NULL)");
-        sql("CREATE TABLE IF NOT EXISTS perfil_intereses (id BIGINT AUTO_INCREMENT PRIMARY KEY,"
-                + " perfil_id BIGINT NOT NULL, interes VARCHAR(150) NOT NULL)");
+    void publicationsAndSlots() {
         sql("INSERT INTO publication (id, author_id, type, status, capacity, created_at, version)"
                 + " VALUES (1, 'author', 'MENTORING', 'PUBLISHED', 1, ?, 0)", NOW);
         sql("INSERT INTO publication (id, author_id, type, status, capacity, created_at, version)"
@@ -37,15 +31,28 @@ class JpaRecommendationMetadataQueryTest extends PersistenceTestBase {
 
     @Test
     void skillsAndInterestsAreLoadedForOnlyTheActiveProfile() {
+        Assumptions.assumeTrue(profileSchemaIsAvailable(),
+                "The profile metadata test requires the Flyway profile migration from PR #37");
+        sql("INSERT INTO category (id, parent_id, name, kind) VALUES (1, NULL, 'Java', 'SKILL')");
+        sql("INSERT INTO category (id, parent_id, name, kind) VALUES (2, NULL, 'Python', 'SKILL')");
         long activeProfile = profile("ana", true);
         long inactiveProfile = profile("bruno", false);
-        sql("INSERT INTO perfil_habilidades (perfil_id, habilidad) VALUES (?, ?)", activeProfile, "Java");
-        sql("INSERT INTO perfil_intereses (perfil_id, interes) VALUES (?, ?)", activeProfile, "Cloud");
-        sql("INSERT INTO perfil_habilidades (perfil_id, habilidad) VALUES (?, ?)", inactiveProfile, "Python");
+        sql("INSERT INTO profile_skill (profile_id, skill_id) VALUES (?, ?)", activeProfile, 1L);
+        sql("INSERT INTO profile_interest (profile_id, interest) VALUES (?, ?)", activeProfile, "Cloud");
+        sql("INSERT INTO profile_skill (profile_id, skill_id) VALUES (?, ?)", inactiveProfile, 2L);
 
         assertThat(query.skillsAndInterestsFor("ana")).containsExactlyInAnyOrder("java", "cloud");
         assertThat(query.skillsAndInterestsFor("bruno")).isEmpty();
         assertThat(query.skillsAndInterestsFor(null)).isEmpty();
+    }
+
+    private boolean profileSchemaIsAvailable() {
+        return inTransaction(em -> ((Number) em.createNativeQuery("""
+                        SELECT COUNT(*) FROM information_schema.tables
+                        WHERE table_schema = CURRENT_SCHEMA
+                          AND table_name IN ('profile', 'profile_skill', 'profile_interest')
+                        """)
+                .getSingleResult()).intValue() == 3);
     }
 
     @Test
@@ -62,14 +69,14 @@ class JpaRecommendationMetadataQueryTest extends PersistenceTestBase {
 
     private long profile(String userId, boolean active) {
         return inTransaction(em -> {
-            em.createNativeQuery("INSERT INTO perfiles (user_id, nombre_visible, tipo_cuenta, activo)"
-                            + " VALUES (?, ?, ?, ?)")
+            em.createNativeQuery("INSERT INTO profile (user_id, display_name, time_zone, account_type, active, created_at)"
+                            + " VALUES (?, ?, 'UTC', 'PROFESSIONAL', ?, ?)")
                     .setParameter(1, userId)
                     .setParameter(2, userId)
-                    .setParameter(3, "PROFESIONAL")
-                    .setParameter(4, active)
+                    .setParameter(3, active)
+                    .setParameter(4, NOW)
                     .executeUpdate();
-            return ((Number) em.createNativeQuery("SELECT id FROM perfiles WHERE user_id = ?")
+            return ((Number) em.createNativeQuery("SELECT id FROM profile WHERE user_id = ?")
                     .setParameter(1, userId)
                     .getSingleResult()).longValue();
         });

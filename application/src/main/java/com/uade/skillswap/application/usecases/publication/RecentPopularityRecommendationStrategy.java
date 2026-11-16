@@ -1,9 +1,9 @@
 package com.uade.skillswap.application.usecases.publication;
 
 import com.uade.skillswap.application.dto.publication.PublicationSummary;
-import com.uade.skillswap.application.dto.publication.SearchFilters;
 import com.uade.skillswap.application.ports.in.publication.RecommendationStrategy;
 import com.uade.skillswap.application.ports.out.publication.RecommendationMetadataQuery;
+import com.uade.skillswap.domain.common.UserId;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -30,9 +30,9 @@ public class RecentPopularityRecommendationStrategy implements RecommendationStr
     }
 
     @Override
-    public List<PublicationSummary> order(List<PublicationSummary> publications, SearchFilters filters) {
+    public List<PublicationSummary> order(List<PublicationSummary> publications, UserId activeUserId) {
         Objects.requireNonNull(publications, "The publications list is required");
-        Objects.requireNonNull(filters, "The search filters are required");
+        Objects.requireNonNull(activeUserId, "The active user is required");
         if (publications.isEmpty()) {
             return List.of();
         }
@@ -43,6 +43,7 @@ public class RecentPopularityRecommendationStrategy implements RecommendationStr
         Comparator<PublicationSummary> comparator = Comparator
                 .comparingLong((PublicationSummary publication) -> counts.getOrDefault(publication.id(), 0L))
                 .reversed()
+                .thenComparing(PublicationSummary::publishedAt, Comparator.nullsLast(Comparator.reverseOrder()))
                 .thenComparing(Comparator.comparingDouble(PublicationSummary::authorReputation).reversed())
                 .thenComparing(Comparator.comparingLong(PublicationSummary::id).reversed());
         return publications.stream().sorted(comparator).toList();

@@ -13,8 +13,13 @@ public class AcceptedState extends BookingStateBase {
     }
 
     @Override
-    public void confirmPayment(Booking booking, UserId actor) {
+    public void validatePayment(Booking booking, UserId actor) {
         booking.requireClient(actor, "pay");
+    }
+
+    @Override
+    public void confirmPayment(Booking booking, UserId actor) {
+        validatePayment(booking, actor);
         booking.changeState(new ConfirmedState(), actor, null);
     }
 

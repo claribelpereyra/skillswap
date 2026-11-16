@@ -6,12 +6,14 @@ Debitar los SkillCoins del cliente y acreditarlos al proveedor como una sola ope
 
 ## Cambios realizados
 
-- Se agregó `BookingPaymentService` para procesar pagos asociados a un identificador de contratación.
+- `BookingServiceImpl.pay` carga la contratación y ambas wallets en aplicación y coordina el pago dentro de una unidad de trabajo.
 - `Wallet.payBookingTo` valida las dos billeteras, el monto, la fecha, los saldos y los movimientos previos antes de modificar cualquiera de ellas.
-- El débito del cliente y el crédito del proveedor se preparan antes de guardar ambos movimientos; la unidad de trabajo de aplicación aporta la atomicidad persistente.
+- El pago usa el precio final persistido en la contratación; el débito, el crédito y el cambio a `CONFIRMED` se confirman juntos.
+- `JpaWalletRepository` guarda movimientos inmutables y usa `@Version`; un conflicto optimista se traduce a `ConcurrentUpdateException`.
 - Se conserva el identificador de contratación en ambas billeteras. Una repetición del pago se rechaza sin generar otro débito o crédito.
+- Las contrataciones gratuitas se confirman sin crear movimientos de monto cero.
 - Si el saldo del cliente es insuficiente o el saldo del proveedor no puede incrementarse, ambas billeteras quedan sin cambios.
 
 ## Resultado
 
-El dominio ofrece solo operaciones pareadas para pagar y reintegrar; no mantiene un bloqueo global ni permite débitos o créditos sueltos. `PayBookingService` carga la contratación y ambas billeteras, usa el precio persistido de la reserva y confirma el estado dentro de la misma unidad de trabajo.
+El dominio ofrece operaciones pareadas para pagar y reintegrar, sin bloqueo global ni movimientos unilaterales. La aplicación orquesta el pago con el importe persistido; JPA protege las escrituras concurrentes mediante versionado optimista.

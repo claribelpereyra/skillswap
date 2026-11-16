@@ -6,6 +6,7 @@ import com.uade.skillswap.application.dto.profile.ProfileView;
 import com.uade.skillswap.application.dto.profile.PublicProfileView;
 import com.uade.skillswap.application.dto.rating.RatingView;
 import com.uade.skillswap.application.ports.out.BookablePublication;
+import com.uade.skillswap.application.ports.out.BookingPricingPolicy;
 import com.uade.skillswap.application.ports.out.PublicationAvailability;
 import com.uade.skillswap.application.ports.out.PublicationCatalog;
 import com.uade.skillswap.application.usecases.BookingServiceImpl;
@@ -31,6 +32,7 @@ import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.booking.BookingStatus;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.profile.AccountType;
+import com.uade.skillswap.domain.wallet.FullRefundStrategy;
 import com.uade.skillswap.domain.publication.Modality;
 import com.uade.skillswap.domain.publication.Publication;
 import com.uade.skillswap.domain.publication.PublicationDetails;
@@ -49,10 +51,13 @@ import com.uade.skillswap.infrastructure.persistence.profile.JpaProfileRepositor
 import com.uade.skillswap.infrastructure.persistence.publication.JpaPublicationRepository;
 import com.uade.skillswap.infrastructure.persistence.rating.JpaEligibleBookingQuery;
 import com.uade.skillswap.infrastructure.persistence.rating.JpaRatingRepository;
+import com.uade.skillswap.infrastructure.persistence.wallet.JpaWalletRepository;
 import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+
+import java.time.Clock;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
@@ -163,7 +168,13 @@ class ProfileAndRatingIntegrationTest {
                 identityAdapter
         );
         bookingController = new BookingControllerImpl(
-                new BookingServiceImpl(bookingRepo, catalog, availability, unitOfWork),
+                new BookingServiceImpl(
+                        bookingRepo, catalog, availability,
+                        new JpaWalletRepository(),
+                        BookingPricingPolicy.basePrice(),
+                        new FullRefundStrategy(),
+                        unitOfWork,
+                        Clock.systemUTC()),
                 identityAdapter
         );
         ratingController = new RatingControllerImpl(

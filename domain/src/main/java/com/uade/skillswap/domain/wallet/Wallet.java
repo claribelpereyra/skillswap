@@ -86,15 +86,6 @@ public final class Wallet {
         clientWallet.commit(refund, nextClientBalance);
     }
 
-    public SkillCoins paymentAmountFor(long bookingId) {
-        requireBookingId(bookingId);
-        SkillCoins amount = movementAmount(CreditMovementType.CREDIT, bookingId);
-        if (amount == null) {
-            throw new BusinessRuleException("No payment exists for booking " + bookingId);
-        }
-        return amount;
-    }
-
     private void apply(CreditMovementType type, SkillCoins amount, Instant occurredAt, Long bookingId) {
         apply(new CreditMovement(type, amount, occurredAt, bookingId));
     }

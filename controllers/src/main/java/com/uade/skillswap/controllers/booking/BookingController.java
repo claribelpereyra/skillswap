@@ -14,6 +14,10 @@ public interface BookingController {
 
     ControllerResult<BookingView> accept(String userId, long bookingId);
 
+    ControllerResult<BookingView> pay(String userId, long bookingId);
+
+    ControllerResult<BookingView> cancel(String userId, long bookingId, String reason);
+
     ControllerResult<BookingView> reject(String userId, long bookingId, String reason);
 
     ControllerResult<BookingView> start(String userId, long bookingId);

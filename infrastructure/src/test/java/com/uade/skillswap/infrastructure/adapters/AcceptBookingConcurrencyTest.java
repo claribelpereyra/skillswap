@@ -3,7 +3,9 @@ package com.uade.skillswap.infrastructure.adapters;
 import com.uade.skillswap.application.common.ConcurrentUpdateException;
 import com.uade.skillswap.application.common.Page;
 import com.uade.skillswap.application.common.PageRequest;
+import com.uade.skillswap.application.ports.out.BookingPricingPolicy;
 import com.uade.skillswap.application.ports.out.publication.PublicationRepository;
+import com.uade.skillswap.application.ports.out.WalletRepository;
 import com.uade.skillswap.application.usecases.BookingServiceImpl;
 import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.booking.BookingStatus;
@@ -12,12 +14,16 @@ import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.Publication;
 import com.uade.skillswap.domain.publication.PublicationStatus;
 import com.uade.skillswap.domain.publication.TimeSlot;
+import com.uade.skillswap.domain.wallet.RefundPolicy;
+import com.uade.skillswap.domain.wallet.TieredRefundStrategy;
 import com.uade.skillswap.infrastructure.persistence.PersistenceTestBase;
 import com.uade.skillswap.infrastructure.persistence.booking.JpaBookingRepository;
 import com.uade.skillswap.infrastructure.persistence.publication.JpaPublicationRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Clock;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -31,6 +37,7 @@ import static com.uade.skillswap.infrastructure.adapters.PublicationAdaptersTest
 import static com.uade.skillswap.infrastructure.adapters.PublicationAdaptersTest.publication;
 import static com.uade.skillswap.infrastructure.adapters.PublicationAdaptersTest.slotId;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 // Caso de aceptación 4: dos aceptaciones simultáneas no consumen el último cupo.
 class AcceptBookingConcurrencyTest extends PersistenceTestBase {
@@ -52,7 +59,12 @@ class AcceptBookingConcurrencyTest extends PersistenceTestBase {
         CountDownLatch bothLoaded = new CountDownLatch(2);
         BookingServiceImpl service = new BookingServiceImpl(bookings,
                 new PublicationCatalogAdapter(publications),
-                new PublicationAvailabilityAdapter(new WaitForBothRepository(publications, bothLoaded)), unitOfWork);
+                new PublicationAvailabilityAdapter(new WaitForBothRepository(publications, bothLoaded)),
+                mock(WalletRepository.class),
+                BookingPricingPolicy.basePrice(),
+                new TieredRefundStrategy(new RefundPolicy(Duration.ofDays(2), Duration.ofDays(1))),
+                unitOfWork,
+                Clock.systemUTC());
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         List<Future<String>> outcomes = new ArrayList<>();

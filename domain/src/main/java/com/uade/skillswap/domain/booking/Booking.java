@@ -219,10 +219,15 @@ public class Booking implements BookingSubject {
         observers.remove(observer);
     }
 
+    // Aísla cada observer: una excepción en un listener no debe cortar la cadena ni convertir una
+    // operación de negocio ya confirmada en una respuesta de error.
     @Override
     public void notifyObservers(BookingEvent event) {
         for (BookingObserver observer : observers) {
-            observer.update(event);
+            try {
+                observer.update(event);
+            } catch (RuntimeException ignored) {
+            }
         }
     }
 

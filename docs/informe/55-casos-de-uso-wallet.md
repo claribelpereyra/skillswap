@@ -6,12 +6,11 @@ Orquestar el pago y la cancelación de contrataciones, y permitir que cada usuar
 
 ## Cambios realizados
 
-- `BookingService.pay` confirma el estado aceptado una sola vez, transfiere los SkillCoins mediante `BookingPaymentService` y guarda la contratación y ambas wallets en una unidad de trabajo.
-- `BookingService.cancel` cancela una contratación y libera su franja; si estaba confirmada, reintegra el importe configurado antes de guardar la operación.
-- `GetWalletService` devuelve un DTO simple de saldo y movimientos, y solo permite consultar la wallet del usuario autenticado.
-- Pago y cancelación se exponen desde el puerto `BookingService` y `BookingController`; se reutiliza el `BookingRepository` existente.
-- Los comandos y vistas de booking y wallet están en `application.dto.booking` y `application.dto.wallet`; las vistas no exponen entidades ni tipos de dominio.
-- Los tests verifican transferencia, saldo insuficiente, liberación de franja, reintegro, consulta y control de acceso.
+- `BookingService.pay` confirma una contratación aceptada, aplica las promociones configuradas al precio guardado y transfiere el importe final mediante `BookingPaymentService`; la contratación y ambas wallets se guardan en una unidad de trabajo.
+- `BookingService.cancel` cancela una contratación y libera su franja; si estaba confirmada, calcula el reintegro sobre el importe realmente cobrado antes de guardar la operación.
+- `GetWalletService.getWallet` devuelve el saldo y los movimientos de la billetera del usuario autenticado; no permite consultar la billetera de otra persona.
+- Se agregaron los puertos de entrada para cada operación y los puertos de salida `BookingRepository` y `WalletRepository`.
+- Los tests de casos de uso verifican transferencia con promociones, saldo insuficiente, liberación de franja, reintegro basado en el pago real, consulta y control de acceso.
 
 ## Resultado
 

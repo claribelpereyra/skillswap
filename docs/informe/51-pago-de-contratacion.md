@@ -14,4 +14,4 @@ Debitar los SkillCoins del cliente y acreditarlos al proveedor como una sola ope
 
 ## Resultado
 
-El dominio ofrece solo operaciones pareadas para pagar y reintegrar; no mantiene un bloqueo global ni permite débitos o créditos sueltos. `PayBookingService` carga la contratación y ambas billeteras, usa el precio persistido de la reserva y confirma el estado dentro de la misma unidad de trabajo.
+El dominio ofrece solo operaciones pareadas para pagar y reintegrar; no mantiene un bloqueo global ni permite débitos o créditos sueltos. `BookingServiceImpl` carga la contratación y ambas wallets, usa el precio persistido de la reserva y confirma el estado dentro de la misma unidad de trabajo. Las promociones configuradas determinan el importe final al cobrar.

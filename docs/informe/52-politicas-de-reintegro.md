@@ -15,4 +15,4 @@ Aplicar un reintegro del 100 %, 50 % o 0 % según la anticipación con la que se
 
 ## Resultado
 
-La estrategia puede reemplazarse sin cambiar el caso de uso consumidor. Los tests calculan montos distintos para la misma reserva usando `TieredRefundStrategy` y `FullRefundStrategy`; los umbrales se suministran al construir la política.
+La estrategia puede reemplazarse sin cambiar el caso de uso consumidor. El importe base del reintegro es el pago registrado para la contratación (incluido el descuento aplicado al cobrar); los tests cubren políticas distintas y umbrales configurables.

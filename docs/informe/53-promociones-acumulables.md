@@ -16,4 +16,4 @@ Aplicar promociones acumulables al precio de una contratación y garantizar que 
 
 ## Resultado
 
-Las promociones pueden componerse en el orden deseado sin alterar el precio base y sin que el importe final sea negativo.
+Las promociones pueden componerse en el orden deseado sin alterar el precio base y sin que el importe final sea negativo. La cadena se inyecta al servicio de pago; no hay un catálogo persistido de promociones activas.

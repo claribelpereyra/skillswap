@@ -9,7 +9,7 @@ Priorizar publicaciones con más contrataciones aceptadas, confirmadas, en curso
 - `RecentPopularityRecommendationStrategy` solicita los conteos de las publicaciones candidatas en una sola consulta por lote.
 - La consulta usa la fecha de creación de la contratación y excluye contrataciones pendientes, rechazadas y canceladas.
 - La ventana y el reloj son explícitos y se pueden fijar en pruebas.
-- Los empates se resuelven por fecha de publicación, reputación e ID.
+- Los empates se resuelven por reputación descendente y luego por ID descendente.
 
 ## Resultado
 

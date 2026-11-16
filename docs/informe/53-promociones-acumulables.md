@@ -11,9 +11,10 @@ Aplicar promociones acumulables al precio de una contratación y garantizar que 
 - `FixedPromotion` aplica un descuento fijo y `PercentagePromotion` aplica un porcentaje de 0 a 100.
 - Cada descuento se aplica al total decorado anterior; si excede el precio restante, el resultado queda limitado a cero.
 - Los cálculos porcentuales evitan desbordamientos incluso para el máximo monto representable.
-- `BookingPaymentService.pay` compone el precio promocional al momento del cobro y usa el importe final para ambos movimientos de wallet.
-- Un descuento que reduzca el cobro a cero se rechaza, porque el ledger de pagos requiere movimientos positivos.
+- `BookingPricingPolicy` calcula el importe por cliente y publicación al crear la contratación; `Booking.price` persiste el precio final y el pago no vuelve a aplicar descuentos.
+- Las políticas pueden componer `PromotionDecorator` sin compartir una única cadena global entre todos los clientes y publicaciones.
+- Un precio final de cero es válido: la contratación avanza sin insertar movimientos de monto cero.
 
 ## Resultado
 
-Las promociones pueden componerse en el orden deseado sin alterar el precio base y sin que el importe final sea negativo.
+Las promociones pueden componerse por contratación y quedan reflejadas en el importe persistido; el total nunca es negativo y puede ser cero.

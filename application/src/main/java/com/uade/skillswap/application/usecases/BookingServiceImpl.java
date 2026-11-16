@@ -84,10 +84,10 @@ public class BookingServiceImpl implements BookingService {
     public BookingView pay(Long bookingId, UserId actor) {
         return unitOfWork.execute(() -> {
             Booking booking = findBooking(bookingId);
-            if (booking.getStatus() != BookingStatus.ACCEPTED) {
-                booking.confirmPayment(actor);
+            if (!booking.getClientId().equals(actor)) {
+                throw new AccessDeniedException(actor, "pay for booking " + bookingId);
             }
-            booking.requireClient(actor, "pay");
+            booking.validatePayment(actor);
 
             if (booking.getPrice().amount() > 0) {
                 Wallet client = findWallet(booking.getClientId());
@@ -106,10 +106,10 @@ public class BookingServiceImpl implements BookingService {
     public BookingView cancel(Long bookingId, UserId actor, String reason) {
         return unitOfWork.execute(() -> {
             Booking booking = findBooking(bookingId);
-            boolean wasConfirmed = booking.getStatus() == BookingStatus.CONFIRMED;
+            BookingStatus previousStatus = booking.getStatus();
             booking.cancel(actor, reason);
 
-            if (wasConfirmed) {
+            if (previousStatus == BookingStatus.CONFIRMED) {
                 SkillCoins refundAmount = refundStrategy.refundAmount(
                         booking.getPrice(), booking.getSlot().getStartsAt(), clock.instant());
                 if (refundAmount.amount() > 0) {
@@ -121,7 +121,9 @@ public class BookingServiceImpl implements BookingService {
                 }
             }
 
-            availability.release(booking.getPublicationId(), booking.getSlot().getId());
+            if (previousStatus == BookingStatus.ACCEPTED || previousStatus == BookingStatus.CONFIRMED) {
+                availability.release(booking.getPublicationId(), booking.getSlot().getId());
+            }
             return BookingView.from(bookings.save(booking));
         });
     }

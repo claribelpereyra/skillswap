@@ -80,6 +80,10 @@ public class Booking {
         state.confirmPayment(this, actor);
     }
 
+    public void validatePayment(UserId actor) {
+        state.validatePayment(this, actor);
+    }
+
     public void start(UserId actor) {
         state.start(this, actor);
     }

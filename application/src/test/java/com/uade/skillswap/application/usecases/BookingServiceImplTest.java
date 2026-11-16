@@ -18,6 +18,7 @@ import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.booking.BookingStatus;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.InsufficientBalanceException;
+import com.uade.skillswap.domain.common.InvalidTransitionException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.pricing.BasePrice;
@@ -220,6 +221,32 @@ class BookingServiceImplTest {
     }
 
     @Test
+    void usuarioQueNoEsClienteRecibeAccesoDenegadoAntesDeValidarElEstado() {
+        Booking booking = persisted(pending());
+        stored(booking);
+
+        assertThatThrownBy(() -> service.pay(BOOKING_ID, PROVIDER))
+                .isExactlyInstanceOf(AccessDeniedException.class)
+                .hasMessage("User bruno is not allowed to pay for booking " + BOOKING_ID);
+
+        verifyNoInteractions(wallets);
+        verify(bookings, never()).save(any());
+    }
+
+    @Test
+    void clienteNoPuedePagarUnaContratacionPendiente() {
+        Booking booking = persisted(pending());
+        stored(booking);
+
+        assertThatThrownBy(() -> service.pay(BOOKING_ID, CLIENT))
+                .isExactlyInstanceOf(InvalidTransitionException.class)
+                .hasMessage("Cannot pay in state PENDING");
+
+        verifyNoInteractions(wallets);
+        verify(bookings, never()).save(any());
+    }
+
+    @Test
     void saldoInsuficienteNoConfirmaNiGuardaLaContratacion() {
         Booking booking = persisted(accepted());
         Wallet client = wallet(CLIENT, 10);
@@ -258,6 +285,31 @@ class BookingServiceImplTest {
         verify(wallets).save(client);
         verify(availability).release(PUBLICATION_ID, 1L);
         verify(bookings).save(booking);
+    }
+
+    @Test
+    void cancelarUnaContratacionAceptadaLiberaElCupoSinBuscarWallets() {
+        Booking booking = persisted(accepted());
+        stored(booking);
+
+        BookingView view = service.cancel(BOOKING_ID, CLIENT, "No puedo asistir");
+
+        assertThat(view.status()).isEqualTo(BookingStatus.CANCELLED);
+        verify(availability).release(PUBLICATION_ID, 1L);
+        verifyNoInteractions(wallets);
+    }
+
+    @Test
+    void cancelarUnaContratacionPendienteNoLiberaUnaFranjaNoReservada() {
+        Booking booking = persisted(pending());
+        stored(booking);
+
+        assertThatThrownBy(() -> service.cancel(BOOKING_ID, CLIENT, "Ya no puedo"))
+                .isExactlyInstanceOf(InvalidTransitionException.class)
+                .hasMessage("Cannot cancel in state PENDING");
+
+        verify(availability, never()).release(anyLong(), anyLong());
+        verify(bookings, never()).save(any());
     }
 
     @Test

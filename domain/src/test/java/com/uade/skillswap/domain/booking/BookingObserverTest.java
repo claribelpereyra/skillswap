@@ -11,6 +11,9 @@ import org.junit.jupiter.api.Test;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Handler;
+import java.util.logging.LogRecord;
+import java.util.logging.Logger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
@@ -27,6 +30,49 @@ class BookingObserverTest {
 
     private final List<BookingEvent> received = new ArrayList<>();
     private final BookingObserver recorder = received::add;
+
+    @Test
+    void observerFailuresAreLoggedAndDoNotStopOtherObservers() {
+        List<LogRecord> records = new ArrayList<>();
+        Handler handler = new Handler() {
+            @Override public void publish(LogRecord record) { records.add(record); }
+            @Override public void flush() { }
+            @Override public void close() { }
+        };
+        Logger logger = Logger.getLogger(Booking.class.getName());
+        logger.addHandler(handler);
+        try {
+            var booking = newBooking();
+            booking.addObserver(event -> { throw new IllegalStateException("channel unavailable"); });
+            booking.addObserver(recorder);
+            booking.publishPendingEvents(BOOKING_ID);
+            assertThat(received).hasSize(1);
+            assertThat(records).singleElement().satisfies(record -> {
+                assertThat(record.getThrown()).isInstanceOf(IllegalStateException.class);
+                assertThat(record.getMessage()).contains("booking " + BOOKING_ID, "not retried");
+            });
+        } finally {
+            logger.removeHandler(handler);
+        }
+    }
+
+    @Test
+    void persistedTimestampsAheadOfTheClockDoNotBreakTransitionsOrEvents() {
+        Instant persistedTime = Instant.now().plusSeconds(60);
+        Booking booking = Booking.rebuild(BOOKING_ID, 10L, CLIENT, PROVIDER, SLOT, "Hola", "Aprender",
+                new SkillCoins(100), List.of(new StateTransition<>(null, BookingStatus.PENDING,
+                        CLIENT, persistedTime, null)), null);
+        booking.addObserver(recorder);
+
+        booking.accept(PROVIDER);
+        booking.proposeReschedule(PROVIDER, OTHER_SLOT);
+        booking.acceptReschedule(CLIENT);
+        booking.publishPendingEvents(BOOKING_ID);
+
+        assertThat(received).hasSize(2).allSatisfy(event ->
+                assertThat(event.occurredAt()).isEqualTo(persistedTime));
+        assertThat(booking.getSlot()).isEqualTo(OTHER_SLOT);
+    }
 
     @Test
     void nothingIsNotifiedUntilTheEventsArePublished() {

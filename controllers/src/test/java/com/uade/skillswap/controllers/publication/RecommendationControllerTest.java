@@ -87,6 +87,16 @@ class RecommendationControllerTest {
     }
 
     @Test
+    void configuredDefaultIsUsedWhenTheScreenDoesNotChooseAStrategy() {
+        when(recommend.recommend(any(), any(), any())).thenReturn(Page.empty(PageRequest.first()));
+        var configured = new RecommendationControllerImpl(recommend, skillAffinity, recentPopularity, identity, recentPopularity);
+        var result = configured.recommend("ana", new RecommendationForm(null,
+                new SearchForm(null, null, null, null, null, null, null, null, null, null)));
+        assertThat(result.isSuccess()).isTrue();
+        verify(recommend).recommend(any(), eq(USER), eq(recentPopularity));
+    }
+
+    @Test
     void activeIdentityAndFormsAreValidatedBeforeCallingTheUseCase() {
         assertThat(controller.recommend(" ", new RecommendationForm(null,
                 new SearchForm(null, null, null, null, null, null, null, null, null, null))).getErrorType())

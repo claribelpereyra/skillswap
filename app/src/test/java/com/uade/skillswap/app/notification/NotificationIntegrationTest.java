@@ -4,7 +4,7 @@ import com.uade.skillswap.application.eventos.*;
 import com.uade.skillswap.application.usecases.*;
 import com.uade.skillswap.application.notificaciones.FabricaCanalNotificacion;
 import com.uade.skillswap.controllers.ControllerResult;
-import com.uade.skillswap.controllers.NotificacionController;
+import com.uade.skillswap.controllers.notification.NotificationControllerImpl;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.notificaciones.*;
 import com.uade.skillswap.infrastructure.adapters.notificaciones.*;
@@ -42,7 +42,7 @@ class NotificationIntegrationTest {
             assertThat(push.enviados()).hasSize(1);
             assertThat(internal.enviados()).isEmpty();
             var active = new AtomicReference<>(new UserId("client"));
-            var controller = new NotificacionController(new BandejaNotificacionCasoDeUso(repository,
+            var controller = new NotificationControllerImpl(new BandejaNotificacionCasoDeUso(repository,
                     Clock.fixed(now.plusSeconds(60), ZoneOffset.UTC)), active::get);
             var clientPage = controller.listar(0, 1);
             assertThat(clientPage.isSuccess()).isTrue();

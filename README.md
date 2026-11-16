@@ -17,6 +17,16 @@ mvn verify               # compila, corre los tests y genera cobertura
 
 Para ejecutar la app, corré `com.uade.skillswap.app.Main` desde IntelliJ (módulo `app`). Al arrancar aplica las migraciones de Flyway.
 
+`Main` arma los controllers reales mediante `CompositionRoot`. El Mock UI Kit de la cátedra todavía no está en el repositorio: por ahora el arranque comprueba la conexión y composición y termina sin abrir ventanas. Para integrar el kit, conservar el `ApplicationRuntime` abierto durante la vida de la UI y pasarle `runtime.controllers()`; cerrar el runtime al salir. El contrato está en `docs/informe/105-integracion-mock-ui-kit.md`.
+
+El recorrido de backend completo se puede ejecutar sin Docker, contra H2:
+
+```bash
+mvn -B -pl app -am -Dtest=FullJourneyIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false test
+```
+
+Ese test publica, solicita, acepta, reprograma, paga, completa y califica usando los controllers y repositorios reales; también prueba cancelación, reintegro configurable, avisos a ambas partes y rollback. Para la entrega final falta validar sobre MySQL real.
+
 La conexión se puede cambiar con variables de entorno (los defaults coinciden con el `docker-compose.yml`):
 
 | Variable | Default |
@@ -24,6 +34,13 @@ La conexión se puede cambiar con variables de entorno (los defaults coinciden c
 | `SKILLSWAP_DB_URL` | `jdbc:mysql://localhost:3306/skillswap` |
 | `SKILLSWAP_DB_USER` | `skillswap` |
 | `SKILLSWAP_DB_PASSWORD` | `skillswap` |
+| `SKILLSWAP_CANCELACION_TOTAL_HORAS` | `48` |
+| `SKILLSWAP_CANCELACION_PARCIAL_HORAS` | `24` |
+| `SKILLSWAP_RECOMENDACION` | `AFINIDAD` (`POPULARIDAD` como alternativa) |
+
+Los umbrales se aplican al reintegro y la estrategia se usa cuando el formulario de recomendación no elige otra. La identidad y los canales siguen siendo simulados; los avisos se procesan después del commit, con registro de fallos y sin reintentos automáticos.
+
+El estado de las tareas 88–107 está en `docs/informe/estado-tareas-ian.md`.
 
 La cobertura de cada módulo queda en `<modulo>/target/site/jacoco/index.html`.
 

@@ -109,7 +109,7 @@ public class BookingServiceImpl implements BookingService {
             }
 
             booking.confirmPayment(actor);
-            return BookingView.from(bookings.save(booking));
+            return saveAndScheduleEvents(booking);
         });
     }
 
@@ -135,7 +135,7 @@ public class BookingServiceImpl implements BookingService {
             if (previousStatus == BookingStatus.ACCEPTED || previousStatus == BookingStatus.CONFIRMED) {
                 availability.release(booking.getPublicationId(), booking.getSlot().getId());
             }
-            return BookingView.from(bookings.save(booking));
+            return saveAndScheduleEvents(booking);
         });
     }
 
@@ -203,12 +203,15 @@ public class BookingServiceImpl implements BookingService {
         return unitOfWork.execute(() -> {
             Booking booking = findBooking(bookingId);
             action.accept(booking);
-            Changed changed = new Changed(booking, bookings.save(booking));
-            unitOfWork.afterCommit(() -> publish(changed));
-            return BookingView.from(changed.saved());
+            return saveAndScheduleEvents(booking);
         });
     }
 
+    private BookingView saveAndScheduleEvents(Booking booking) {
+        Changed changed = new Changed(booking, bookings.save(booking));
+        unitOfWork.afterCommit(() -> publish(changed));
+        return BookingView.from(changed.saved());
+    }
     // Lo registra el execute() mediante afterCommit; si la transacción revierte, no se dispara.
     private void publish(Changed changed) {
         observers.forEach(changed.changed()::addObserver);

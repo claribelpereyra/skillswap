@@ -18,8 +18,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Booking implements BookingSubject {
+    private static final Logger LOG = Logger.getLogger(Booking.class.getName());
 
     private Long id;
     private final long publicationId;
@@ -119,10 +122,7 @@ public class Booking implements BookingSubject {
     }
 
     public void changeState(BookingState next, UserId actor, String reason) {
-        Instant now = Instant.now();
-        Instant last = history.last().occurredAt();
-        Instant effectiveTime = now.isBefore(last) ? last : now;
-        history.record(state.getStatus(), next.getStatus(), actor, effectiveTime, reason);
+        history.record(state.getStatus(), next.getStatus(), actor, nextHistoryTime(), reason);
         unpublished.add(history.last());
         state = next;
     }
@@ -207,10 +207,16 @@ public class Booking implements BookingSubject {
     // La reprogramación no cambia el estado: queda en el historial como transición al mismo estado.
     private void recordInCurrentState(UserId actor, String reason) {
         BookingStatus current = state.getStatus();
-        history.record(current, current, actor, Instant.now(), reason);
+        history.record(current, current, actor, nextHistoryTime(), reason);
         unpublished.add(history.last());
     }
 
+    private Instant nextHistoryTime() {
+        // La precisión de TIMESTAMP(6) puede redondear hacia adelante la fecha persistida.
+        Instant now = Instant.now();
+        Instant last = history.last().occurredAt();
+        return now.isBefore(last) ? last : now;
+    }
     @Override
     public void addObserver(BookingObserver observer) {
         if (observer != null && !observers.contains(observer)) {
@@ -230,7 +236,9 @@ public class Booking implements BookingSubject {
         for (BookingObserver observer : observers) {
             try {
                 observer.update(event);
-            } catch (RuntimeException ignored) {
+            } catch (RuntimeException error) {
+                LOG.log(Level.WARNING, "Booking observer failed for booking " + event.bookingId()
+                        + "; delivery is not retried automatically", error);
             }
         }
     }

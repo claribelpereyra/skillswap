@@ -10,11 +10,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class JpaUnitOfWork implements UnitOfWork {
+    private static final Logger LOG = Logger.getLogger(JpaUnitOfWork.class.getName());
 
     // Callbacks que esperan a que la transacción raíz confirme. Son por hilo porque el EntityManager también lo es.
-    private static final ThreadLocal<List<Runnable>> AFTER_COMMIT = ThreadLocal.withInitial(ArrayList::new);
+    private static final ThreadLocal<List<Runnable>> AFTER_COMMIT = new ThreadLocal<>();
 
     @Override
     public <T> T execute(Supplier<T> work) {
@@ -24,13 +27,14 @@ public class JpaUnitOfWork implements UnitOfWork {
         }
         EntityManager entityManager = EntityManagerContext.openCurrent();
         EntityTransaction transaction = entityManager.getTransaction();
+        AFTER_COMMIT.set(new ArrayList<>());
         List<Runnable> callbacks;
         T result;
         try {
             transaction.begin();
             result = work.get();
             transaction.commit();
-        } catch (RuntimeException error) {
+        } catch (RuntimeException | Error error) {
             if (transaction.isActive()) {
                 transaction.rollback();
             }
@@ -45,13 +49,20 @@ public class JpaUnitOfWork implements UnitOfWork {
         callbacks = AFTER_COMMIT.get();
         AFTER_COMMIT.remove();
         for (Runnable callback : callbacks) {
-            callback.run();
+            try {
+                callback.run();
+            } catch (RuntimeException error) {
+                LOG.log(Level.WARNING, "After-commit callback failed; business transaction remains committed", error);
+            }
         }
         return result;
     }
 
     @Override
     public void afterCommit(Runnable callback) {
+        if (!EntityManagerContext.hasCurrent() || AFTER_COMMIT.get() == null) {
+            throw new IllegalStateException("afterCommit requires an active unit of work");
+        }
         AFTER_COMMIT.get().add(Objects.requireNonNull(callback, "The callback is required"));
     }
 

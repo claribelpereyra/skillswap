@@ -469,6 +469,55 @@ class BookingServiceImplTest {
     // Eventos para los observers
 
     @Test
+    void observersReceivePaymentAndCancellationOnlyAfterCommit() {
+        List<BookingEvent> received = new ArrayList<>();
+        List<Runnable> queued = new ArrayList<>();
+        UnitOfWork deferred = new UnitOfWork() {
+            @Override
+            public <T> T execute(Supplier<T> work) {
+                return work.get();
+            }
+
+            @Override
+            public void afterCommit(Runnable callback) {
+                queued.add(callback);
+            }
+        };
+        BookingServiceImpl deferredService = newService(deferred);
+        deferredService.addObserver(received::add);
+        stored(persisted(accepted(new SkillCoins(0))));
+
+        deferredService.pay(BOOKING_ID, CLIENT);
+        assertThat(received).isEmpty();
+        assertThat(queued).hasSize(1);
+        queued.remove(0).run();
+        assertThat(received).extracting(BookingEvent::to).containsExactly(BookingStatus.CONFIRMED);
+
+        stored(persisted(confirmed(new SkillCoins(0), SLOT)));
+        deferredService.cancel(BOOKING_ID, CLIENT, "Changed plans");
+        assertThat(received).hasSize(1);
+        assertThat(queued).hasSize(1);
+        queued.remove(0).run();
+        assertThat(received).extracting(BookingEvent::to)
+                .containsExactly(BookingStatus.CONFIRMED, BookingStatus.CANCELLED);
+    }
+
+    @Test
+    void failedPaymentDoesNotNotifyObservers() {
+        List<BookingEvent> received = new ArrayList<>();
+        service.addObserver(received::add);
+        stored(persisted(accepted()));
+        when(wallets.findByOwnerId(CLIENT)).thenReturn(Optional.of(wallet(CLIENT, 10)));
+        when(wallets.findByOwnerId(PROVIDER)).thenReturn(Optional.of(wallet(PROVIDER, 0)));
+
+        assertThatThrownBy(() -> service.pay(BOOKING_ID, CLIENT))
+                .isInstanceOf(InsufficientBalanceException.class);
+
+        assertThat(received).isEmpty();
+        verify(bookings, never()).save(any());
+    }
+
+    @Test
     void observersAreNotifiedOfTheAcceptanceAfterItIsSaved() {
         List<BookingEvent> received = new ArrayList<>();
         service.addObserver(received::add);

@@ -1,5 +1,7 @@
 # Tarea 103 — Controller de notificaciones
 
+Actualización: los módulos ahora son `domain`, `application`, `infrastructure`, `controllers` y `app`. Notificaciones usa `IdentityService`, `ControllerResult` y el contrato `NotificationController` con `Page<NotificationView>` (tareas 102 y 106). La migración de notificaciones se renumeró a V9. Las referencias siguientes a los contratos anteriores describen el estado inicial; consultar esos documentos para la integración actual.
+
 `NotificacionController` permite listar con paginación y marcar una notificación como leída. Recibe `BandejaNotificacionEntrada` y una función que entrega el userId activo. No acepta elegir otro destinatario desde la pantalla y consulta la sesión en cada operación. El caso de uso y el repositorio comprueban la pertenencia al marcar lectura.
 
 El resultado usa `Resultado<T>` y `ErrorController`, preparados en la tarea 102. Los errores de datos, sesión ausente, notificación no encontrada y fallos internos conservan el mismo formato. La conexión del resto de los controllers y la clasificación de sus conflictos de negocio siguen pendientes de sus implementaciones y de los errores base de Clari.

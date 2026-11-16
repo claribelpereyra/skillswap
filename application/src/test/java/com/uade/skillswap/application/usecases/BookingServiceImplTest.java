@@ -259,6 +259,19 @@ class BookingServiceImplTest {
     }
 
     @Test
+    void unSegundoPagoSeRechazaSinTocarWalletsNiGuardarLaContratacion() {
+        Booking booking = persisted(confirmed());
+        stored(booking);
+
+        assertThatThrownBy(() -> service.pay(BOOKING_ID, CLIENT))
+                .isExactlyInstanceOf(InvalidTransitionException.class)
+                .hasMessage("Cannot pay in state CONFIRMED");
+
+        verifyNoInteractions(wallets);
+        verify(bookings, never()).save(any());
+    }
+
+    @Test
     void saldoInsuficienteNoConfirmaNiGuardaLaContratacion() {
         Booking booking = persisted(accepted());
         Wallet client = wallet(CLIENT, 10);

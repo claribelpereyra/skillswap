@@ -386,6 +386,17 @@ class BookingServiceImplTest {
         assertThat(service.complete(BOOKING_ID, CLIENT).status()).isEqualTo(BookingStatus.COMPLETED);
     }
 
+    @Test
+    void cancellingWithoutAReasonChangesNothing() {
+        stored(confirmed());
+
+        assertThatThrownBy(() -> service.cancel(BOOKING_ID, CLIENT, " "))
+                .isExactlyInstanceOf(BusinessRuleException.class)
+                .hasMessage("A reason is required to cancel a booking");
+        verifyNoInteractions(availability, wallets);
+        verify(bookings, never()).save(any());
+    }
+
     // Reprogramación
 
     @Test

@@ -1,10 +1,15 @@
 package com.uade.skillswap.infrastructure.persistence.wallet;
 
 import com.uade.skillswap.application.common.ConcurrentUpdateException;
+import com.uade.skillswap.application.ports.out.PublicationAvailability;
+import com.uade.skillswap.application.ports.out.PublicationCatalog;
+import com.uade.skillswap.application.usecases.BookingServiceImpl;
 import com.uade.skillswap.domain.common.BusinessRuleException;
+import com.uade.skillswap.domain.common.InsufficientBalanceException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.booking.Booking;
+import com.uade.skillswap.domain.booking.BookingStatus;
 import com.uade.skillswap.domain.profile.AccountType;
 import com.uade.skillswap.domain.publication.Modality;
 import com.uade.skillswap.domain.publication.Publication;
@@ -13,6 +18,7 @@ import com.uade.skillswap.domain.publication.PublicationType;
 import com.uade.skillswap.domain.publication.TimeSlot;
 import com.uade.skillswap.domain.wallet.BookingPaymentService;
 import com.uade.skillswap.domain.wallet.CreditMovementType;
+import com.uade.skillswap.domain.wallet.FullRefundStrategy;
 import com.uade.skillswap.domain.wallet.RefundPolicy;
 import com.uade.skillswap.domain.wallet.TieredRefundStrategy;
 import com.uade.skillswap.domain.wallet.Wallet;
@@ -22,8 +28,10 @@ import com.uade.skillswap.infrastructure.persistence.publication.JpaPublicationR
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
@@ -34,6 +42,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.mock;
 
 class JpaWalletRepositoryTest extends PersistenceTestBase {
 
@@ -121,6 +130,36 @@ class JpaWalletRepositoryTest extends PersistenceTestBase {
 
         assertThat(load(CLIENT).balance()).isEqualTo(new SkillCoins(100));
         assertThat(load(CLIENT).movements()).hasSize(1);
+        assertThat(load(PROVIDER).balance()).isEqualTo(SkillCoins.ZERO);
+        assertThat(load(PROVIDER).movements()).isEmpty();
+    }
+
+    @Test
+    void saldoInsuficienteNoPersisteCambiosDeWalletNiEstadoDeContratacion() {
+        Wallet client = Wallet.open(CLIENT);
+        client.topUp(new SkillCoins(10), NOW);
+        unitOfWork.execute(() -> {
+            wallets.save(client);
+            wallets.save(Wallet.open(PROVIDER));
+            Booking booking = bookings.findById(bookingId).orElseThrow();
+            booking.accept(PROVIDER);
+            return bookings.save(booking);
+        });
+        BookingServiceImpl bookingService = new BookingServiceImpl(bookings, mock(PublicationCatalog.class),
+                mock(PublicationAvailability.class), unitOfWork, wallets,
+                new BookingPaymentService(new FullRefundStrategy()), Clock.fixed(NOW, ZoneOffset.UTC));
+
+        assertThatThrownBy(() -> bookingService.pay(bookingId, CLIENT))
+                .isExactlyInstanceOf(InsufficientBalanceException.class)
+                .hasMessage("Insufficient balance: 10 < 35");
+
+        Booking persistedBooking = bookings.findById(bookingId).orElseThrow();
+        assertThat(persistedBooking.getStatus()).isEqualTo(BookingStatus.ACCEPTED);
+        assertThat(persistedBooking.getHistory()).extracting(transition -> transition.to())
+                .containsExactly(BookingStatus.PENDING, BookingStatus.ACCEPTED);
+        assertThat(load(CLIENT).balance()).isEqualTo(new SkillCoins(10));
+        assertThat(load(CLIENT).movements()).extracting(movement -> movement.type())
+                .containsExactly(CreditMovementType.TOP_UP);
         assertThat(load(PROVIDER).balance()).isEqualTo(SkillCoins.ZERO);
         assertThat(load(PROVIDER).movements()).isEmpty();
     }

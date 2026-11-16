@@ -25,6 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -95,6 +96,23 @@ class RecommendPublicationsServiceTest {
         assertThatThrownBy(() -> service.recommend(SearchFilters.none(), null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("The recommendation strategy is required");
+    }
+
+    @Test
+    void elCasoDeUsoAceptaOtraEstrategiaSinModificarSuImplementacion() {
+        List<PublicationSummary> candidates = List.of(publication(1), publication(2));
+        PageRequest candidatePage = new PageRequest(0, PageRequest.MAX_SIZE);
+        when(search.search(any())).thenReturn(new Page<>(candidates, candidatePage, candidates.size()));
+        SearchFilters filters = SearchFilters.none();
+
+        Page<PublicationSummary> ascending = service.recommend(filters, (publications, ignored) ->
+                publications.stream().sorted((left, right) -> Long.compare(left.id(), right.id())).toList());
+        Page<PublicationSummary> descending = service.recommend(filters, (publications, ignored) ->
+                publications.stream().sorted((left, right) -> Long.compare(right.id(), left.id())).toList());
+
+        assertThat(ascending.items()).extracting(PublicationSummary::id).containsExactly(1L, 2L);
+        assertThat(descending.items()).extracting(PublicationSummary::id).containsExactly(2L, 1L);
+        verify(search, times(2)).search(filters.withPage(candidatePage));
     }
 
     private PublicationSummary publication(int id) {

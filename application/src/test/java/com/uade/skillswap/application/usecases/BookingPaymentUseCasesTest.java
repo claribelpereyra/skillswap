@@ -9,12 +9,16 @@ import com.uade.skillswap.application.ports.out.wallet.WalletRepository;
 import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.booking.BookingStatus;
 import com.uade.skillswap.domain.common.InsufficientBalanceException;
+import com.uade.skillswap.domain.common.InvalidTransitionException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.TimeSlot;
 import com.uade.skillswap.domain.pricing.PercentagePromotion;
 import com.uade.skillswap.domain.wallet.BookingPaymentService;
 import com.uade.skillswap.domain.wallet.FullRefundStrategy;
+import com.uade.skillswap.domain.wallet.RefundPolicy;
+import com.uade.skillswap.domain.wallet.RefundStrategy;
+import com.uade.skillswap.domain.wallet.TieredRefundStrategy;
 import com.uade.skillswap.domain.wallet.Wallet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,6 +36,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -110,7 +115,7 @@ class BookingPaymentUseCasesTest {
     }
 
     @Test
-    void insufficientBalanceDoesNotSaveTheBookingOrEitherWallet() {
+    void saldoInsuficienteNoPersisteSaldoNiEstadoDeContratacion() {
         Booking booking = acceptedBooking();
         Wallet clientWallet = wallet(CLIENT, 10, NOW.minusSeconds(120));
         Wallet providerWallet = Wallet.open(PROVIDER);
@@ -126,6 +131,47 @@ class BookingPaymentUseCasesTest {
         assertThat(providerWallet.balance()).isEqualTo(SkillCoins.ZERO);
         verify(bookings, never()).save(any());
         verify(wallets, never()).save(any());
+    }
+
+    @Test
+    void unPagoDuplicadoNoVuelveAfectarSaldosMovimientosNiEstado() {
+        Booking booking = acceptedBooking();
+        Wallet clientWallet = wallet(CLIENT, 100, NOW.minusSeconds(120));
+        Wallet providerWallet = Wallet.open(PROVIDER);
+        when(bookings.findById(BOOKING_ID)).thenReturn(Optional.of(booking));
+        when(wallets.findByOwnerId(CLIENT)).thenReturn(Optional.of(clientWallet));
+        when(wallets.findByOwnerId(PROVIDER)).thenReturn(Optional.of(providerWallet));
+
+        service.pay(BOOKING_ID, CLIENT);
+        int clientMovementsAfterPayment = clientWallet.movements().size();
+        int providerMovementsAfterPayment = providerWallet.movements().size();
+
+        assertThatThrownBy(() -> service.pay(BOOKING_ID, CLIENT))
+                .isExactlyInstanceOf(InvalidTransitionException.class)
+                .hasMessage("Cannot pay in state CONFIRMED");
+
+        assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
+        assertThat(clientWallet.balance()).isEqualTo(SkillCoins.ZERO);
+        assertThat(providerWallet.balance()).isEqualTo(PRICE);
+        assertThat(clientWallet.movements()).hasSize(clientMovementsAfterPayment);
+        assertThat(providerWallet.movements()).hasSize(providerMovementsAfterPayment);
+        verify(bookings, times(1)).save(booking);
+        verify(wallets, times(1)).save(clientWallet);
+        verify(wallets, times(1)).save(providerWallet);
+    }
+
+    @Test
+    void dosPoliticasDeReintegroProducenResultadosDistintosAlCancelar() {
+        CancellationOutcome partialRefund = cancelWithRefundStrategy(new TieredRefundStrategy(
+                new RefundPolicy(Duration.ofDays(7), Duration.ofDays(2))));
+        CancellationOutcome fullRefund = cancelWithRefundStrategy(new FullRefundStrategy());
+
+        assertThat(partialRefund.status()).isEqualTo(BookingStatus.CANCELLED);
+        assertThat(partialRefund.clientBalance()).isEqualTo(new SkillCoins(50));
+        assertThat(partialRefund.providerBalance()).isEqualTo(new SkillCoins(50));
+        assertThat(fullRefund.status()).isEqualTo(BookingStatus.CANCELLED);
+        assertThat(fullRefund.clientBalance()).isEqualTo(new SkillCoins(100));
+        assertThat(fullRefund.providerBalance()).isEqualTo(SkillCoins.ZERO);
     }
 
     @Test
@@ -193,5 +239,31 @@ class BookingPaymentUseCasesTest {
         Wallet wallet = Wallet.open(owner);
         wallet.topUp(new SkillCoins(amount), toppedUpAt);
         return wallet;
+    }
+
+    private CancellationOutcome cancelWithRefundStrategy(RefundStrategy refundStrategy) {
+        BookingRepository bookingRepository = mock(BookingRepository.class);
+        WalletRepository walletRepository = mock(WalletRepository.class);
+        Booking booking = acceptedBooking();
+        Wallet clientWallet = wallet(CLIENT, 100, NOW.minusSeconds(120));
+        Wallet providerWallet = Wallet.open(PROVIDER);
+        when(bookingRepository.findById(BOOKING_ID)).thenReturn(Optional.of(booking));
+        when(bookingRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(walletRepository.findByOwnerId(CLIENT)).thenReturn(Optional.of(clientWallet));
+        when(walletRepository.findByOwnerId(PROVIDER)).thenReturn(Optional.of(providerWallet));
+        BookingServiceImpl refundService = new BookingServiceImpl(bookingRepository, publications, availability,
+                unitOfWork, walletRepository, new BookingPaymentService(refundStrategy),
+                Clock.fixed(NOW, ZoneOffset.UTC));
+
+        refundService.pay(BOOKING_ID, CLIENT);
+        var result = refundService.cancel(BOOKING_ID, CLIENT, "No puedo asistir");
+
+        return new CancellationOutcome(result.status(), clientWallet.balance(), providerWallet.balance());
+    }
+
+    private record CancellationOutcome(
+            BookingStatus status,
+            SkillCoins clientBalance,
+            SkillCoins providerBalance) {
     }
 }

@@ -48,6 +48,7 @@ La conexión se puede cambiar con variables de entorno (los defaults coinciden c
 | `SKILLSWAP_CANCELACION_TOTAL_HORAS` | `48` |
 | `SKILLSWAP_CANCELACION_PARCIAL_HORAS` | `24` |
 | `SKILLSWAP_RECOMENDACION` | `AFINIDAD` (`POPULARIDAD` como alternativa) |
+| `SKILLSWAP_RECOMENDACION_CANDIDATOS` | `200` (cuántas publicaciones recientes se ordenan para recomendar) |
 | `SKILLSWAP_PROMOCIONES` | sin promociones (ejemplo: `user-sofia=PORCENTAJE:10,FIJO:5;user-mateo=FIJO:20`) |
 | `SKILLSWAP_UI_ZONE` | `America/Argentina/Buenos_Aires` |
 

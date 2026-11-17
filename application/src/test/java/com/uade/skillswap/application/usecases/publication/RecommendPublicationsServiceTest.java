@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 class RecommendPublicationsServiceTest {
@@ -37,6 +38,27 @@ class RecommendPublicationsServiceTest {
     private final SearchPublicationsUseCase search = mock(SearchPublicationsUseCase.class);
     private final RecommendationMetadataQuery metadata = mock(RecommendationMetadataQuery.class);
     private final RecommendPublicationsService service = new RecommendPublicationsService(search);
+
+    @Test
+    void onlyTheNewestCandidatesUpToTheCapAreOrdered() {
+        var capped = new RecommendPublicationsService(search, 3);
+        PageRequest candidatePage = new PageRequest(0, 3);
+        when(search.search(any())).thenReturn(new Page<>(List.of(publication(1), publication(2), publication(3)),
+                candidatePage, 50));
+        List<Integer> received = new java.util.ArrayList<>();
+        SearchFilters filters = new SearchFilters(null, null, null, null, null, null, null,
+                SearchSort.BEST_REPUTATION, new PageRequest(0, 10));
+
+        Page<PublicationSummary> result = capped.recommend(filters, ANA, (publications, ignored) -> {
+            received.add(publications.size());
+            return publications;
+        });
+
+        assertThat(received).containsExactly(3);
+        assertThat(result.totalItems()).isEqualTo(3);
+        verify(search).search(filters.withSort(SearchSort.MOST_RECENT).withPage(candidatePage));
+        verifyNoMoreInteractions(search);
+    }
 
     @Test
     void itOrdersAllCandidatePagesBeforeApplyingTheRequestedPage() {
@@ -57,8 +79,8 @@ class RecommendPublicationsServiceTest {
         assertThat(result.items()).extracting(PublicationSummary::id).containsExactly(101L, 100L, 99L, 98L,
                 97L, 96L, 95L, 94L, 93L, 92L);
         assertThat(result.totalItems()).isEqualTo(101);
-        verify(search).search(filters.withPage(new PageRequest(0, PageRequest.MAX_SIZE)));
-        verify(search).search(filters.withPage(new PageRequest(1, PageRequest.MAX_SIZE)));
+        verify(search).search(filters.withSort(SearchSort.MOST_RECENT).withPage(new PageRequest(0, PageRequest.MAX_SIZE)));
+        verify(search).search(filters.withSort(SearchSort.MOST_RECENT).withPage(new PageRequest(1, PageRequest.MAX_SIZE)));
     }
 
     @Test

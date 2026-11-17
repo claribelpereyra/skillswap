@@ -6,10 +6,10 @@ Reutilizar la búsqueda filtrada de publicaciones y ordenar sus resultados con e
 
 ## Flujo de afinidad
 
-1. `RecommendPublicationsService` solicita todas las páginas de candidatos con los mismos filtros y tamaño máximo de página.
+1. `RecommendPublicationsService` solicita los candidatos con los mismos filtros, ordenados por fecha, hasta el tope configurable `SKILLSWAP_RECOMENDACION_CANDIDATOS` (200 por defecto). Así la memoria queda acotada aunque crezca el catálogo.
 2. `SkillAffinityRecommendationStrategy` consulta en un lote las habilidades e intereses del perfil activo mediante `RecommendationMetadataQuery`.
 3. La estrategia ordena los candidatos por coincidencias de etiquetas, reputación y un desempate determinístico.
-4. El caso de uso aplica la página solicitada después del ordenamiento, de modo que una coincidencia de una página posterior no quede fuera de las recomendaciones.
+4. El caso de uso aplica la página solicitada después del ordenamiento, de modo que una coincidencia entre los candidatos no quede fuera por estar en otra página. Trade-off: una publicación más vieja que el tope no entra al ranking.
 
 `JpaRecommendationMetadataQuery` lee solo perfiles activos. Declara sus propias constantes `PROFILE_USER_ID` y `PROFILE_ACTIVE`, con los mismos nombres de columna que usa `JpaPublicationSearchQuery`.
 

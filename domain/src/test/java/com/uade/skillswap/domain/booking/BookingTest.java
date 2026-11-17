@@ -128,8 +128,9 @@ class BookingTest {
     void eitherParticipantCancelsAnAcceptedBookingWithAReason() {
         Booking booking = accepted();
 
-        booking.cancel(CLIENT, "Me surgió un viaje");
+        CancellationOutcome outcome = booking.cancel(CLIENT, "Me surgió un viaje");
 
+        assertThat(outcome).isEqualTo(new CancellationOutcome(false, true));
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
         assertLastTransition(booking, BookingStatus.ACCEPTED, BookingStatus.CANCELLED, CLIENT, "Me surgió un viaje");
     }
@@ -138,8 +139,9 @@ class BookingTest {
     void eitherParticipantCancelsAConfirmedBookingWithAReason() {
         Booking booking = confirmed();
 
-        booking.cancel(PROVIDER, "Estoy enfermo");
+        CancellationOutcome outcome = booking.cancel(PROVIDER, "Estoy enfermo");
 
+        assertThat(outcome).isEqualTo(new CancellationOutcome(true, true));
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CANCELLED);
         assertLastTransition(booking, BookingStatus.CONFIRMED, BookingStatus.CANCELLED, PROVIDER, "Estoy enfermo");
     }

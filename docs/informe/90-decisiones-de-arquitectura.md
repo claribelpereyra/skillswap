@@ -30,7 +30,7 @@ El compromiso elegido es envío síncrono después del commit, sin outbox ni rei
 
 ApplicationControllers contiene interfaces y las consultas devuelven DTO, ControllerResult y Page. La pantalla formatea Instant en su zona horaria y presenta ErrorType. La identidad mock se valida en controllers; no se implementan credenciales, OAuth ni dinero real.
 
-La bandeja y perfiles usan paginación SQL existente. La nueva consulta de wallet pagina el resultado del GetWalletService existente en memoria, por lo que todavía carga su ledger completo; se documenta y no se afirma resolver eficiencia SQL allí.
+La bandeja y perfiles usan paginación SQL existente. La consulta de wallet también pagina en SQL: `WalletStatementQuery` lee el saldo de la fila de la wallet, cuenta los movimientos y trae solo la página pedida. El pago sigue cargando el agregado completo, porque es el que protege el doble cobro en el dominio.
 
 ## Evidencia
 

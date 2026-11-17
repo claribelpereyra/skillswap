@@ -23,6 +23,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -46,7 +47,11 @@ class RecommendationControllerTest {
             new RecentPopularityRecommendationStrategy(metadata, Clock.fixed(NOW, ZoneOffset.UTC),
                     Duration.ofDays(30));
     private final RecommendationController controller =
-            new RecommendationControllerImpl(recommend, skillAffinity, recentPopularity, identity);
+            new RecommendationControllerImpl(recommend, strategies(), skillAffinity, identity);
+
+    private Map<String, RecommendationStrategy> strategies() {
+        return Map.of("SKILL_AFFINITY", skillAffinity, "RECENT_POPULARITY", recentPopularity);
+    }
 
     @BeforeEach
     void activeIdentity() {
@@ -89,11 +94,26 @@ class RecommendationControllerTest {
     @Test
     void configuredDefaultIsUsedWhenTheScreenDoesNotChooseAStrategy() {
         when(recommend.recommend(any(), any(), any())).thenReturn(Page.empty(PageRequest.first()));
-        var configured = new RecommendationControllerImpl(recommend, skillAffinity, recentPopularity, identity, recentPopularity);
+        var configured = new RecommendationControllerImpl(recommend, strategies(), recentPopularity, identity);
         var result = configured.recommend("ana", new RecommendationForm(null,
                 new SearchForm(null, null, null, null, null, null, null, null, null, null)));
         assertThat(result.isSuccess()).isTrue();
         verify(recommend).recommend(any(), eq(USER), eq(recentPopularity));
+    }
+
+    @Test
+    void aNewRegisteredStrategyIsSelectableWithoutChangingTheController() {
+        RecommendationStrategy custom = (publications, user) -> publications;
+        when(recommend.recommend(any(), any(), any())).thenReturn(Page.empty(PageRequest.first()));
+        var withThird = new RecommendationControllerImpl(recommend,
+                Map.of("SKILL_AFFINITY", skillAffinity, "RECENT_POPULARITY", recentPopularity, "custom", custom),
+                skillAffinity, identity);
+
+        var result = withThird.recommend("ana", new RecommendationForm(" Custom ",
+                new SearchForm(null, null, null, null, null, null, null, null, null, null)));
+
+        assertThat(result.isSuccess()).isTrue();
+        verify(recommend).recommend(any(), eq(USER), eq(custom));
     }
 
     @Test

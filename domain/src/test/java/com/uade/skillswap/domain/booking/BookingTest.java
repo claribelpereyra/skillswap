@@ -42,6 +42,7 @@ class BookingTest {
             assertThat(creation.from()).isNull();
             assertThat(creation.to()).isEqualTo(BookingStatus.PENDING);
             assertThat(creation.actor()).isEqualTo(CLIENT);
+            assertThat(creation.reason()).isEqualTo("Requested by the client");
         });
     }
 
@@ -74,7 +75,7 @@ class BookingTest {
         booking.accept(PROVIDER);
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.ACCEPTED);
-        assertLastTransition(booking, BookingStatus.PENDING, BookingStatus.ACCEPTED, PROVIDER, null);
+        assertLastTransition(booking, BookingStatus.PENDING, BookingStatus.ACCEPTED, PROVIDER, "Accepted by the provider");
     }
 
     @Test
@@ -94,7 +95,8 @@ class BookingTest {
         booking.confirmPayment(CLIENT);
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.CONFIRMED);
-        assertLastTransition(booking, BookingStatus.ACCEPTED, BookingStatus.CONFIRMED, CLIENT, null);
+        assertLastTransition(booking, BookingStatus.ACCEPTED, BookingStatus.CONFIRMED, CLIENT,
+                "Payment confirmed by the client");
     }
 
     @Test
@@ -104,7 +106,8 @@ class BookingTest {
         booking.start(PROVIDER);
 
         assertThat(booking.getStatus()).isEqualTo(BookingStatus.IN_PROGRESS);
-        assertLastTransition(booking, BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS, PROVIDER, null);
+        assertLastTransition(booking, BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS, PROVIDER,
+                "Session started by the provider");
     }
 
     @Test
@@ -117,7 +120,8 @@ class BookingTest {
 
         assertThat(completedByClient.getStatus()).isEqualTo(BookingStatus.COMPLETED);
         assertThat(completedByProvider.getStatus()).isEqualTo(BookingStatus.COMPLETED);
-        assertLastTransition(completedByClient, BookingStatus.IN_PROGRESS, BookingStatus.COMPLETED, CLIENT, null);
+        assertLastTransition(completedByClient, BookingStatus.IN_PROGRESS, BookingStatus.COMPLETED, CLIENT,
+                "Session completed");
     }
 
     @Test

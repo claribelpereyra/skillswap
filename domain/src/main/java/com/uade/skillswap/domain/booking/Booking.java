@@ -63,7 +63,8 @@ public class Booking implements BookingSubject {
         }
         requireText(message, "A message is required to request a publication");
         requireText(goal, "A goal is required to request a publication");
-        StateHistory<BookingStatus> history = StateHistory.startingAt(BookingStatus.PENDING, clientId, Instant.now());
+        StateHistory<BookingStatus> history = StateHistory.startingAt(BookingStatus.PENDING, clientId, Instant.now(),
+                "Requested by the client");
         Booking booking = new Booking(publicationId, clientId, providerId, slot, message, goal, price, history);
         booking.unpublished.add(history.last());
         return booking;

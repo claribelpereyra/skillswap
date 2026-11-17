@@ -28,6 +28,14 @@ class StateHistoryTest {
     }
 
     @Test
+    void startsWithTheReasonOfTheCreation() {
+        StateHistory<State> history = StateHistory.startingAt(State.DRAFT, AUTHOR, CREATED_AT, "Draft created");
+
+        assertThat(history.transitions()).singleElement()
+                .satisfies(creation -> assertThat(creation.reason()).isEqualTo("Draft created"));
+    }
+
+    @Test
     void recordsDateActorAndReasonOfEachTransition() {
         StateHistory<State> history = StateHistory.startingAt(State.DRAFT, AUTHOR, CREATED_AT);
         Instant later = CREATED_AT.plusSeconds(60);

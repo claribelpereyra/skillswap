@@ -15,12 +15,12 @@ public class PublishedState extends PublicationStateBase {
 
     @Override
     public void pause(Publication publication, UserId actor, Instant now) {
-        publication.changeState(new PausedState(), actor, now, null);
+        publication.changeState(new PausedState(), actor, now, "Paused by the author");
     }
 
     @Override
     public void close(Publication publication, UserId actor, Instant now) {
-        publication.changeState(new ClosedState(), actor, now, null);
+        publication.changeState(new ClosedState(), actor, now, "Closed by the author");
     }
 
     @Override

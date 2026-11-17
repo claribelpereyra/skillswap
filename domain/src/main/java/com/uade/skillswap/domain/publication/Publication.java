@@ -44,7 +44,8 @@ public class Publication {
         if (!type.canBePublishedBy(authorAccountType)) {
             throw new BusinessRuleException("A " + authorAccountType + " account cannot publish a " + type);
         }
-        StateHistory<PublicationStatus> history = StateHistory.startingAt(PublicationStatus.DRAFT, authorId, now);
+        StateHistory<PublicationStatus> history = StateHistory.startingAt(PublicationStatus.DRAFT, authorId, now,
+                "Draft created by the author");
         return new Publication(null, authorId, type, details, List.of(), history);
     }
 

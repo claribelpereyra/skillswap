@@ -16,7 +16,7 @@ public class DraftState extends PublicationStateBase {
     @Override
     public void publish(Publication publication, UserId actor, Instant now) {
         publication.checkCompleteForPublishing();
-        publication.changeState(new PublishedState(), actor, now, null);
+        publication.changeState(new PublishedState(), actor, now, "Published by the author");
     }
 
     @Override

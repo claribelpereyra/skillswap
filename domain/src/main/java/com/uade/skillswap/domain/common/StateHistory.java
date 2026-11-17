@@ -15,6 +15,13 @@ public final class StateHistory<S extends Enum<S>> {
         return history;
     }
 
+    public static <S extends Enum<S>> StateHistory<S> startingAt(S initialState, UserId actor, Instant occurredAt,
+                                                                 String reason) {
+        StateHistory<S> history = new StateHistory<>();
+        history.transitions.add(new StateTransition<>(null, initialState, actor, occurredAt, reason));
+        return history;
+    }
+
     public static <S extends Enum<S>> StateHistory<S> rebuild(List<StateTransition<S>> stored) {
         if (stored.isEmpty() || stored.get(0).from() != null) {
             throw new IllegalArgumentException("A state history must start with the creation of the entity");

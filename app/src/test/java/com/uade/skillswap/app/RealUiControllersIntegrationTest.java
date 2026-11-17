@@ -68,7 +68,8 @@ class RealUiControllersIntegrationTest {
             mateo.cambiarCanal("user-mateo","INTERNA");
             var category=runtime.controllers().catalog().list(0,100).getData().items().stream().filter(c->c.kind().equals("CATEGORY")).findFirst().orElseThrow();
             var skill=runtime.controllers().catalog().list(0,100).getData().items().stream().filter(c->c.kind().equals("SKILL")).findFirst().orElseThrow();
-            DemoScenario.prepare(runtime.controllers(),CLOCK,category.id(),skill.id());user(runtime,"user-mateo");
+            DemoScenario.prepare(runtime.controllers(),CLOCK);user(runtime,"user-mateo");
+            assertThat(runtime.controllers().catalog().list(0,100).getData().totalItems()).isEqualTo(2);
             assertThat(mateo.consultarSaldo("user-mateo")).isEqualTo(500);
             assertThat(mateo.canal("user-mateo")).isEqualTo("INTERNA");
             for(int i=0;i<13;i++) {

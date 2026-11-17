@@ -24,7 +24,7 @@ mvn clean verify
 java -jar app/target/app-0.1.0-SNAPSHOT.jar --demo
 ```
 
-`--demo` crea datos locales reproducibles: user-mateo y user-sofia, 500 créditos iniciales por usuario, habilidades y ofertas con franjas. Reiniciar no vuelve a acreditar saldo ni duplica ofertas. El selector de sesión permite probar cliente y proveedor sin cambiar de actor automáticamente. Sin --demo no se cargan datos.
+`--demo` crea datos locales reproducibles: user-mateo y user-sofia, 500 créditos iniciales por usuario, habilidades y ofertas con franjas. Reiniciar no vuelve a acreditar saldo ni duplica ofertas. El selector de sesión permite probar cliente y proveedor sin cambiar de actor automáticamente. Sin --demo no se cargan datos: las categorías y habilidades se agregan con `CatalogController.addCategory` y `addSkill`, y crear un borrador con una categoría inexistente devuelve NOT_FOUND.
 
 Para levantar MySQL local alcanza con `docker compose up -d` (puerto 3306). Para ejecutar con datos propios se puede pasar `--user=<userId>` al JAR y crear previamente el perfil correspondiente.
 

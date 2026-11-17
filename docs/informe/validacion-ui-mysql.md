@@ -36,4 +36,4 @@ Se requieren JDK 17 y Maven 3.9+. La conexión por defecto coincide con el compo
 
 ## Límites conservados
 
-Login y canales simulados, sin dinero real. Avisos síncronos después del commit con registro de fallos y sin outbox/reintento automático. El servicio de wallet actual carga el ledger completo; el adaptador calcula sus saldos por movimiento y pagina lo presentado. El kit usa int para montos: valores fuera de ese rango se rechazan explícitamente. Las fechas se muestran en SKILLSWAP_UI_ZONE (Buenos Aires por defecto).
+Login y canales simulados, sin dinero real. Avisos síncronos después del commit con registro de fallos y sin outbox/reintento automático. La consulta de movimientos se pagina en SQL; el adaptador recorre esas páginas para calcular el saldo acumulado de cada fila. El kit usa int para montos: valores fuera de ese rango se rechazan explícitamente. Las fechas se muestran en SKILLSWAP_UI_ZONE (Buenos Aires por defecto).

@@ -33,7 +33,6 @@ import com.uade.skillswap.infrastructure.persistence.booking.JpaBookingRepositor
 import com.uade.skillswap.infrastructure.persistence.booking.JpaBookingLabelsQuery;
 import com.uade.skillswap.infrastructure.persistence.catalog.JpaCategoryTree;
 import com.uade.skillswap.infrastructure.persistence.catalog.JpaCatalogQuery;
-import com.uade.skillswap.infrastructure.persistence.catalog.DemoCatalogData;
 import com.uade.skillswap.infrastructure.persistence.notificaciones.*;
 import com.uade.skillswap.infrastructure.persistence.profile.*;
 import com.uade.skillswap.infrastructure.persistence.publication.*;
@@ -77,7 +76,8 @@ public final class CompositionRoot {
                     new PublicationAvailabilityAdapter(publications), wallets, new PromotionalPricingPolicy(promociones(configuration)),
                     refund, work, clock, new JpaBookingLabelsQuery());
             bookingService.addObserver(new BookingNotificationObserver(processor));
-            var search = new SearchPublicationsService(new JpaPublicationSearchQuery(), new JpaCategoryTree());
+            var catalog = new JpaCategoryTree();
+            var search = new SearchPublicationsService(new JpaPublicationSearchQuery(), catalog);
             var metadata = new JpaRecommendationMetadataQuery();
             var affinity = new SkillAffinityRecommendationStrategy(metadata);
             var popularity = new RecentPopularityRecommendationStrategy(metadata, clock, Duration.ofDays(30));
@@ -97,13 +97,14 @@ public final class CompositionRoot {
                     return user == null ? null : user.value();
                 }
             };
-            var controllers = new ApplicationControllers(session, new CatalogControllerImpl(new ListCatalogService(new JpaCatalogQuery())),
+            var controllers = new ApplicationControllers(session, new CatalogControllerImpl(new ListCatalogService(new JpaCatalogQuery()),
+                            new ManageCatalogService(catalog, work), identity),
                     new ProfileControllerImpl(new CreateProfileService(profiles, work),
                             new UpdateProfileService(profiles, work), new ManageSkillsService(profiles, work),
                             new DeactivateProfileService(profiles, work),
                             new GetPublicProfileFacade(profiles, new JpaActivePublicationsQuery(publications), ratings), identity),
-                    new PublicationControllerImpl(new CreateDraftService(publications, new JpaAuthorProfileQuery(), work, clock),
-                            new EditDraftService(publications, work), new ChangePublicationStatusService(publications, work, clock),
+                    new PublicationControllerImpl(new CreateDraftService(publications, new JpaAuthorProfileQuery(), catalog, work, clock),
+                            new EditDraftService(publications, catalog, work), new ChangePublicationStatusService(publications, work, clock),
                             new GetPublicationService(publications), new ListMyPublicationsService(publications), identity),
                     new SearchControllerImpl(search),
                     new RecommendationControllerImpl(new RecommendPublicationsService(search),
@@ -117,8 +118,7 @@ public final class CompositionRoot {
                     new NotificationControllerImpl(new BandejaNotificacionCasoDeUso(notificationRepository, clock), identity),
                     new NotificationPreferencesControllerImpl(preferences, identity));
             if (Boolean.parseBoolean(environment.getOrDefault("SKILLSWAP_DEMO", "false"))) {
-                var demo = DemoCatalogData.ensure();
-                DemoScenario.prepare(controllers,clock,demo.categoryId(),demo.skillId());
+                DemoScenario.prepare(controllers, clock);
             }
             return new ApplicationRuntime(controllers, factory);
         } catch (RuntimeException | Error error) {

@@ -1,6 +1,6 @@
 # Informe de pruebas: wallet, precio y recomendaciones (casos 56–64)
 
-**Fecha:** 2026-11-16
+**Fecha:** 2026-11-17
 **Alcance:** pruebas de saldo insuficiente, pago duplicado, reintegros, estrategia de recomendación y promociones. El caso 64 agrupa cuatro escenarios que también aparecen individualmente en los casos 56, 58, 59 y 60.
 
 ## Resumen de ejecución
@@ -8,7 +8,7 @@
 | Comando | Resultado |
 |---|---|
 | `mvn verify` | PASS, código de salida 0 |
-| Suite completa | 397 tests (domain 135, application 118, infrastructure 81, controllers 55, app 8); 0 fallos, 0 errores, 0 omitidos |
+| Suite completa | 431 tests (domain 139, application 120, infrastructure 95, controllers 57, app 20); 0 fallos, 0 errores, 0 omitidos |
 
 La suite de persistencia usó H2 en modo MySQL y las migraciones Flyway del proyecto. No se inició una aplicación ni se probaron endpoints: SkillSwap no expone una API HTTP y estos casos corresponden a dominio, aplicación y persistencia.
 

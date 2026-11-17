@@ -83,8 +83,8 @@ Criterios de aceptación:
 
 1. Devuelve una página (`Page<RatingView>`) ordenada cronológicamente de la más reciente a la más antigua.
 
-## Decisiones pendientes
+## Decisiones tomadas
 
-| # | Pregunta | Opciones |
+| # | Pregunta | Decisión |
 | --- | --- | --- |
-| P1 | ¿Un perfil dado de baja lógica puede volver a reactivarse (`reactivate`)? | Mantener la reactivación implementada para que el usuario conserve su `UserId`, reputación e historial sin crear otro perfil, o restringir la baja lógica como irreversible porque el enunciado solo solicita dar de baja sin perder operaciones históricas. |
+| P1 | ¿Un perfil dado de baja lógica puede volver a reactivarse (`reactivate`)? | Sí. Se mantiene la reactivación (`ProfileController.reactivate`) para que el usuario conserve su `UserId`, reputación e historial sin crear otro perfil. |

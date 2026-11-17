@@ -16,7 +16,7 @@ Los controllers validan la identidad mock y la entrada; los casos de uso comprue
 
 ```mermaid
 flowchart LR
-    UI[Mock UI Kit pendiente] --> C[Interfaces de controllers]
+    UI[Mock UI Kit] --> C[Interfaces de controllers]
     C --> IN[Puertos de entrada]
     IN --> UC[Casos de uso]
     UC --> D[Dominio]

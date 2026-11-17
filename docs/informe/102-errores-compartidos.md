@@ -6,4 +6,4 @@ El resultado comparte dato, tipo de error y mensaje. Clasifica permisos (de domi
 
 Notificaciones también recibe el puerto común `IdentityService`, en lugar de una función de sesión propia. Su excepción de recurso inexistente usa la jerarquía común y conserva el mismo resultado para un ID ajeno o inexistente.
 
-Los tests comprueban todas las categorías y la ausencia de información técnica. Esta unificación está aplicada a los controllers presentes en develop y notificaciones. Perfiles y wallet deben conservar este contrato al mergear sus ramas; todavía no se incluyen en esta rama de pendientes.
+Los tests comprueban todas las categorías y la ausencia de información técnica. Esta unificación está aplicada a todos los controllers, incluidos perfiles, wallet y notificaciones.

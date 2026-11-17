@@ -1,6 +1,7 @@
 package com.uade.skillswap.domain.profile;
 
 import com.uade.skillswap.domain.common.UserId;
+import com.uade.skillswap.domain.rating.Rating;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -179,7 +180,15 @@ public class Profile {
         }
     }
 
-    public void registerRating(int score) {
+    public void registerRating(Rating rating) {
+        Objects.requireNonNull(rating, "The rating is required");
+        if (!userId.equals(rating.getRecipientId())) {
+            throw new InvalidProfileException("The rating is not addressed to this profile");
+        }
+        addScore(rating.getScore());
+    }
+
+    private void addScore(int score) {
         if (score < 1 || score > 5) {
             throw new InvalidProfileException("The rating score must be between 1 and 5");
         }

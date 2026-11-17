@@ -1,6 +1,7 @@
 package com.uade.skillswap.infrastructure.persistence.profile;
 
 import com.uade.skillswap.domain.common.UserId;
+import com.uade.skillswap.domain.rating.Rating;
 import com.uade.skillswap.domain.profile.AccountType;
 import com.uade.skillswap.domain.profile.Availability;
 import com.uade.skillswap.domain.profile.Profile;
@@ -31,7 +32,7 @@ class JpaProfileRepositoryTest extends PersistenceTestBase {
         profile.addInterest("Architecture");
         profile.updateAvailability(new Availability("Weekdays 19-21"));
         for (int score : new int[]{1, 1, 1, 1, 1, 2, 1}) {
-            profile.registerRating(score);
+            profile.registerRating(Rating.create(1L, new UserId("author"), ANA, score, null));
         }
 
         Profile saved = unitOfWork.execute(() -> repository.save(profile));

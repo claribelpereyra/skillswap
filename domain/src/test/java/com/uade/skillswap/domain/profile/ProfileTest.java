@@ -1,6 +1,7 @@
 package com.uade.skillswap.domain.profile;
 
 import com.uade.skillswap.domain.common.UserId;
+import com.uade.skillswap.domain.rating.Rating;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
@@ -196,24 +197,26 @@ class ProfileTest {
         profile.requireActive();
     }
 
+    private static Rating ratingFor(UserId recipient, int score) {
+        return Rating.create(1L, new UserId("author"), recipient, score, null);
+    }
+
     @Test
     void registeringRatingsCalculatesExactAverageWithoutCumulativeRoundingDrift() {
         Profile profile = Profile.create(USER_ID, "Ana", "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL);
 
         for (int score : List.of(1, 1, 1, 1, 1, 2, 1)) {
-            profile.registerRating(score);
+            profile.registerRating(ratingFor(USER_ID, score));
         }
 
         assertThat(profile.getRatingSum()).isEqualTo(8);
         assertThat(profile.getRatingCount()).isEqualTo(7);
         assertThat(profile.getReputation()).isEqualTo(1.14);
 
-        assertThatThrownBy(() -> profile.registerRating(0))
+        assertThatThrownBy(() -> profile.registerRating(ratingFor(new UserId("someone-else"), 5)))
                 .isExactlyInstanceOf(InvalidProfileException.class)
-                .hasMessage("The rating score must be between 1 and 5");
-        assertThatThrownBy(() -> profile.registerRating(6))
-                .isExactlyInstanceOf(InvalidProfileException.class)
-                .hasMessage("The rating score must be between 1 and 5");
+                .hasMessage("The rating is not addressed to this profile");
+        assertThat(profile.getRatingCount()).isEqualTo(7);
     }
 
     @Test
@@ -221,7 +224,7 @@ class ProfileTest {
         Profile profile = Profile.create(USER_ID, "Ana", "Backend dev", BUENOS_AIRES, AccountType.PROFESSIONAL);
         profile.addSkill(101L);
         profile.updateAvailability(new Availability("Evenings"));
-        profile.registerRating(5);
+        profile.registerRating(ratingFor(USER_ID, 5));
 
         PublicProfileSummary summary = profile.toPublicSummary();
 

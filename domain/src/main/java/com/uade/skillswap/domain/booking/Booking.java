@@ -147,6 +147,16 @@ public class Booking implements BookingSubject {
         }
     }
 
+    // Solo una contratación completada se califica, y cada participante califica a la otra parte.
+    public UserId ratingRecipientFor(UserId author) {
+        return state.ratingRecipientFor(this, author);
+    }
+
+    public UserId counterpartOf(UserId participant) {
+        requireParticipant(participant, "find the counterpart of");
+        return clientId.equals(participant) ? providerId : clientId;
+    }
+
     public void requireParticipant(UserId actor, String action) {
         if (!isParticipant(actor)) {
             throw new PermissionDeniedException("Only the client or the provider can " + action + " a booking");

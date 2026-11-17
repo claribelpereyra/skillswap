@@ -14,6 +14,6 @@ public class InProgressState extends BookingStateBase {
     @Override
     public void complete(Booking booking, UserId actor) {
         booking.requireParticipant(actor, "complete");
-        booking.changeState(new CompletedState(), actor, null);
+        booking.changeState(new CompletedState(), actor, "Session completed");
     }
 }

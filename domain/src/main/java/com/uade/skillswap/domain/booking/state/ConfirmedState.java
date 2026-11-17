@@ -16,7 +16,7 @@ public class ConfirmedState extends BookingStateBase {
     public void start(Booking booking, UserId actor) {
         booking.requireProvider(actor, "start");
         booking.discardReschedule();
-        booking.changeState(new InProgressState(), actor, null);
+        booking.changeState(new InProgressState(), actor, "Session started by the provider");
     }
 
     @Override

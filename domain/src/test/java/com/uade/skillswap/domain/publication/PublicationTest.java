@@ -57,7 +57,26 @@ class PublicationTest {
 
         assertThat(publication.getStatus()).isEqualTo(PublicationStatus.DRAFT);
         assertThat(publication.getHistory()).containsExactly(
-                new StateTransition<>(null, PublicationStatus.DRAFT, AUTHOR, NOW, null));
+                new StateTransition<>(null, PublicationStatus.DRAFT, AUTHOR, NOW, "Draft created by the author"));
+    }
+
+    @Test
+    void everyTransitionWithoutAUserReasonRecordsADefaultOne() {
+        Publication resumedThenClosed = published(1, 1);
+        resumedThenClosed.pause(AUTHOR, NOW);
+        resumedThenClosed.resume(AUTHOR, NOW);
+        resumedThenClosed.close(AUTHOR, NOW);
+
+        Publication pausedThenClosed = published(1, 1);
+        pausedThenClosed.pause(AUTHOR, NOW);
+        pausedThenClosed.close(AUTHOR, NOW);
+
+        assertThat(resumedThenClosed.getHistory()).extracting(StateTransition::reason).containsExactly(
+                "Draft created by the author", "Published by the author", "Paused by the author",
+                "Resumed by the author", "Closed by the author");
+        assertThat(pausedThenClosed.getHistory()).extracting(StateTransition::reason).containsExactly(
+                "Draft created by the author", "Published by the author", "Paused by the author",
+                "Closed by the author");
     }
 
     @Test

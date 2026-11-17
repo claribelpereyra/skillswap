@@ -14,7 +14,7 @@ public class PendingState extends BookingStateBase {
     @Override
     public void accept(Booking booking, UserId actor) {
         booking.requireProvider(actor, "accept");
-        booking.changeState(new AcceptedState(), actor, null);
+        booking.changeState(new AcceptedState(), actor, "Accepted by the provider");
     }
 
     @Override

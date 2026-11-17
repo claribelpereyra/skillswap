@@ -106,7 +106,7 @@ public final class CompositionRoot {
                             new EditDraftService(publications, work), new ChangePublicationStatusService(publications, work, clock),
                             new GetPublicationService(publications), new ListMyPublicationsService(publications), identity),
                     new SearchControllerImpl(search),
-                    new RecommendationControllerImpl(new RecommendPublicationsService(search),
+                    new RecommendationControllerImpl(new RecommendPublicationsService(search, configuration.candidatosRecomendacion()),
                             Map.of("SKILL_AFFINITY", affinity, "RECENT_POPULARITY", popularity), selected, identity),
                     new BookingControllerImpl(bookingService, identity),
                     new BookingReceiptControllerImpl(new GetBookingReceiptService(bookings, wallets), identity),

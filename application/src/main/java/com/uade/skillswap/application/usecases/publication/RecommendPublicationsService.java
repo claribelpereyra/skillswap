@@ -4,6 +4,7 @@ import com.uade.skillswap.application.common.Page;
 import com.uade.skillswap.application.common.PageRequest;
 import com.uade.skillswap.application.dto.publication.PublicationSummary;
 import com.uade.skillswap.application.dto.publication.SearchFilters;
+import com.uade.skillswap.application.dto.publication.SearchSort;
 import com.uade.skillswap.application.ports.in.publication.RecommendPublicationsUseCase;
 import com.uade.skillswap.application.ports.in.publication.RecommendationStrategy;
 import com.uade.skillswap.application.ports.in.publication.SearchPublicationsUseCase;
@@ -15,10 +16,21 @@ import java.util.Objects;
 
 public class RecommendPublicationsService implements RecommendPublicationsUseCase {
 
+    public static final int DEFAULT_MAX_CANDIDATES = 200;
+
     private final SearchPublicationsUseCase search;
+    private final int maxCandidates;
 
     public RecommendPublicationsService(SearchPublicationsUseCase search) {
+        this(search, DEFAULT_MAX_CANDIDATES);
+    }
+
+    public RecommendPublicationsService(SearchPublicationsUseCase search, int maxCandidates) {
         this.search = Objects.requireNonNull(search, "The search use case is required");
+        if (maxCandidates < 1) {
+            throw new IllegalArgumentException("The maximum number of candidates must be positive");
+        }
+        this.maxCandidates = maxCandidates;
     }
 
     @Override
@@ -28,13 +40,19 @@ public class RecommendPublicationsService implements RecommendPublicationsUseCas
         Objects.requireNonNull(activeUserId, "The active user is required");
         Objects.requireNonNull(strategy, "The recommendation strategy is required");
 
-        PageRequest candidatePageRequest = new PageRequest(0, PageRequest.MAX_SIZE);
-        Page<PublicationSummary> firstPage = search.search(filters.withPage(candidatePageRequest));
-        List<PublicationSummary> candidates = new ArrayList<>(firstPage.items());
-        for (int pageNumber = 1; pageNumber < firstPage.totalPages(); pageNumber++) {
-            Page<PublicationSummary> page = search.search(filters.withPage(
-                    new PageRequest(pageNumber, PageRequest.MAX_SIZE)));
+        // Solo se ordenan los candidatos más recientes, hasta el tope configurado: la memoria queda acotada.
+        SearchFilters newestFirst = filters.withSort(SearchSort.MOST_RECENT);
+        int pageSize = Math.min(PageRequest.MAX_SIZE, maxCandidates);
+        List<PublicationSummary> candidates = new ArrayList<>();
+        for (int pageNumber = 0; candidates.size() < maxCandidates; pageNumber++) {
+            Page<PublicationSummary> page = search.search(newestFirst.withPage(new PageRequest(pageNumber, pageSize)));
             candidates.addAll(page.items());
+            if (!page.hasNext()) {
+                break;
+            }
+        }
+        if (candidates.size() > maxCandidates) {
+            candidates = new ArrayList<>(candidates.subList(0, maxCandidates));
         }
 
         List<PublicationSummary> ordered = strategy.order(candidates.stream()

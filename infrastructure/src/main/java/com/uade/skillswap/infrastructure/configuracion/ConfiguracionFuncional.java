@@ -7,7 +7,8 @@ import java.util.*;
 public record ConfiguracionFuncional(Duration anticipacionReintegroTotal,
                                     Duration anticipacionReintegroParcial,
                                     EstrategiaRecomendacion estrategiaRecomendacion,
-                                    Map<String, List<PromocionConfigurada>> promocionesPorProveedor) {
+                                    Map<String, List<PromocionConfigurada>> promocionesPorProveedor,
+                                    int candidatosRecomendacion) {
     public enum EstrategiaRecomendacion { AFINIDAD, POPULARIDAD }
 
     public enum TipoPromocion { PORCENTAJE, FIJO }
@@ -49,7 +50,8 @@ public record ConfiguracionFuncional(Duration anticipacionReintegroTotal,
         } catch (IllegalArgumentException fallo) {
             throw new IllegalArgumentException("SKILLSWAP_RECOMENDACION debe ser AFINIDAD o POPULARIDAD");
         }
-        return new ConfiguracionFuncional(total, parcial, estrategia, promociones(variables));
+        return new ConfiguracionFuncional(total, parcial, estrategia, promociones(variables),
+                candidatos(variables));
     }
 
     // Formato: proveedor=TIPO:valor,TIPO:valor;otroProveedor=TIPO:valor. Las promociones se aplican en ese orden.
@@ -94,6 +96,19 @@ public record ConfiguracionFuncional(Duration anticipacionReintegroTotal,
     private static IllegalArgumentException formatoDePromocionInvalido() {
         return new IllegalArgumentException(
                 "SKILLSWAP_PROMOCIONES debe tener el formato proveedor=PORCENTAJE:10,FIJO:5;otroProveedor=FIJO:20");
+    }
+
+    private static int candidatos(Map<String, String> variables) {
+        int candidatos;
+        try {
+            candidatos = Integer.parseInt(valor(variables, "SKILLSWAP_RECOMENDACION_CANDIDATOS", "200"));
+        } catch (NumberFormatException fallo) {
+            candidatos = 0;
+        }
+        if (candidatos < 1) {
+            throw new IllegalArgumentException("SKILLSWAP_RECOMENDACION_CANDIDATOS debe ser un entero positivo");
+        }
+        return candidatos;
     }
 
     private static Duration horas(Map<String, String> variables, String nombre, String defecto) {

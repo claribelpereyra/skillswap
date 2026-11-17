@@ -1,5 +1,6 @@
 package com.uade.skillswap.infrastructure.adapters;
 
+import java.time.Instant;
 import com.uade.skillswap.application.common.ConcurrentUpdateException;
 import com.uade.skillswap.application.common.Page;
 import com.uade.skillswap.application.common.PageRequest;
@@ -41,6 +42,7 @@ import static org.mockito.Mockito.mock;
 
 // Caso de aceptación 4: dos aceptaciones simultáneas no consumen el último cupo.
 class AcceptBookingConcurrencyTest extends PersistenceTestBase {
+    private static final Instant AT = Instant.parse("2026-11-16T10:00:00Z");
 
     private final JpaPublicationRepository publications = new JpaPublicationRepository();
     private final JpaBookingRepository bookings = new JpaBookingRepository();
@@ -94,7 +96,7 @@ class AcceptBookingConcurrencyTest extends PersistenceTestBase {
     private long pendingBooking(Publication publication, UserId client, long slotId) {
         TimeSlot slot = publication.getSlots().stream().filter(s -> s.getId() == slotId).findFirst().orElseThrow();
         return unitOfWork.execute(() -> bookings.save(Booking.request(publication.getId(), client, PROVIDER, slot,
-                "Hola", "Entrevista", new SkillCoins(100)))).getId();
+                "Hola", "Entrevista", new SkillCoins(100), AT))).getId();
     }
 
     private BookingStatus status(long bookingId) {

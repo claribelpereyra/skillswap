@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JpaRatingRepositoryTest extends PersistenceTestBase {
+    private static final Instant AT = Instant.parse("2026-11-16T10:00:00Z");
 
     private static final UserId ANA = new UserId("ana");
     private static final UserId BRUNO = new UserId("bruno");
@@ -67,10 +68,10 @@ class JpaRatingRepositoryTest extends PersistenceTestBase {
 
     @Test
     void translatesDuplicateBookingAndAuthorIntoInvalidRatingException() {
-        unitOfWork.execute(() -> repository.save(Rating.create(9L, ANA, BRUNO, 5, "Great")));
+        unitOfWork.execute(() -> repository.save(Rating.create(9L, ANA, BRUNO, 5, "Great", AT)));
 
         assertThatThrownBy(() -> unitOfWork.execute(
-                () -> repository.save(Rating.create(9L, ANA, BRUNO, 3, "Duplicate"))))
+                () -> repository.save(Rating.create(9L, ANA, BRUNO, 3, "Duplicate", AT))))
                 .isExactlyInstanceOf(InvalidRatingException.class)
                 .hasMessage("Booking 9 has already been rated by user ana");
         assertThat(count("rating")).isEqualTo(1L);
@@ -79,7 +80,7 @@ class JpaRatingRepositoryTest extends PersistenceTestBase {
     @Test
     void databaseEnforcesBookingForeignKeyAndSelfRatingCheck() {
         assertThatThrownBy(() -> unitOfWork.execute(
-                () -> repository.save(Rating.create(999L, ANA, BRUNO, 5, "Missing booking"))))
+                () -> repository.save(Rating.create(999L, ANA, BRUNO, 5, "Missing booking", AT))))
                 .isInstanceOf(PersistenceException.class);
 
         assertThatThrownBy(() -> sql("""

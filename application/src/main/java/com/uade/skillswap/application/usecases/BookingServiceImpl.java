@@ -78,7 +78,7 @@ public class BookingServiceImpl implements BookingService {
                     pricingPolicy.priceFor(command.clientId(), publication),
                     "The booking price is required");
             Booking booking = Booking.request(publication.id(), command.clientId(), publication.authorId(), slot,
-                    command.message(), command.goal(), finalPrice);
+                    command.message(), command.goal(), finalPrice, clock.instant());
             Changed changed = new Changed(booking, bookings.save(booking));
             unitOfWork.afterCommit(() -> publish(changed));
             return withLabels(changed.saved());
@@ -89,7 +89,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     public BookingView accept(Long bookingId, UserId actor) {
         return change(bookingId, booking -> {
-            booking.accept(actor);
+            booking.accept(actor, clock.instant());
             availability.reserve(booking.getPublicationId(), booking.getSlot().getId());
         });
     }
@@ -111,7 +111,7 @@ public class BookingServiceImpl implements BookingService {
                 wallets.save(provider);
             }
 
-            booking.confirmPayment(actor);
+            booking.confirmPayment(actor, clock.instant());
             return saveAndScheduleEvents(booking);
         });
     }
@@ -120,7 +120,7 @@ public class BookingServiceImpl implements BookingService {
     public BookingView cancel(Long bookingId, UserId actor, String reason) {
         return unitOfWork.execute(() -> {
             Booking booking = findBooking(bookingId);
-            CancellationOutcome outcome = booking.cancel(actor, reason);
+            CancellationOutcome outcome = booking.cancel(actor, reason, clock.instant());
 
             if (outcome.refundable()) {
                 SkillCoins refundAmount = refundStrategy.refundAmount(
@@ -143,17 +143,17 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingView reject(Long bookingId, UserId actor, String reason) {
-        return change(bookingId, booking -> booking.reject(actor, reason));
+        return change(bookingId, booking -> booking.reject(actor, reason, clock.instant()));
     }
 
     @Override
     public BookingView start(Long bookingId, UserId actor) {
-        return change(bookingId, booking -> booking.start(actor));
+        return change(bookingId, booking -> booking.start(actor, clock.instant()));
     }
 
     @Override
     public BookingView complete(Long bookingId, UserId actor) {
-        return change(bookingId, booking -> booking.complete(actor));
+        return change(bookingId, booking -> booking.complete(actor, clock.instant()));
     }
 
     @Override
@@ -170,7 +170,7 @@ public class BookingServiceImpl implements BookingService {
     public BookingView acceptReschedule(Long bookingId, UserId actor) {
         return change(bookingId, booking -> {
             long previousSlotId = booking.getSlot().getId();
-            booking.acceptReschedule(actor);
+            booking.acceptReschedule(actor, clock.instant());
             availability.release(booking.getPublicationId(), previousSlotId);
             availability.reserve(booking.getPublicationId(), booking.getSlot().getId());
         });
@@ -178,7 +178,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public BookingView rejectReschedule(Long bookingId, UserId actor) {
-        return change(bookingId, booking -> booking.rejectReschedule(actor));
+        return change(bookingId, booking -> booking.rejectReschedule(actor, clock.instant()));
     }
 
     @Override

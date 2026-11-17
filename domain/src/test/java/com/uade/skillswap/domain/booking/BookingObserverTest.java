@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.tuple;
 
 class BookingObserverTest {
+    private static final Instant AT = Instant.parse("2026-11-16T10:00:00Z");
 
     private static final UserId CLIENT = new UserId("ana");
     private static final UserId PROVIDER = new UserId("bruno");
@@ -64,9 +65,9 @@ class BookingObserverTest {
                         CLIENT, persistedTime, null)), null);
         booking.addObserver(recorder);
 
-        booking.accept(PROVIDER);
+        booking.accept(PROVIDER, AT);
         booking.proposeReschedule(PROVIDER, OTHER_SLOT);
-        booking.acceptReschedule(CLIENT);
+        booking.acceptReschedule(CLIENT, AT);
         booking.publishPendingEvents(BOOKING_ID);
 
         assertThat(received).hasSize(2).allSatisfy(event ->
@@ -79,7 +80,7 @@ class BookingObserverTest {
         Booking booking = newBooking();
         booking.addObserver(recorder);
 
-        booking.accept(PROVIDER);
+        booking.accept(PROVIDER, AT);
 
         assertThat(received).isEmpty();
     }
@@ -87,7 +88,7 @@ class BookingObserverTest {
     @Test
     void publishingNotifiesEveryTransitionInOrderWithTheGivenId() {
         Booking booking = newBooking();
-        booking.accept(PROVIDER);
+        booking.accept(PROVIDER, AT);
         booking.addObserver(recorder);
 
         booking.publishPendingEvents(BOOKING_ID);
@@ -110,7 +111,7 @@ class BookingObserverTest {
         booking.addObserver(recorder);
         booking.publishPendingEvents(BOOKING_ID);
 
-        booking.accept(PROVIDER);
+        booking.accept(PROVIDER, AT);
         booking.publishPendingEvents(BOOKING_ID);
         booking.publishPendingEvents(BOOKING_ID);
 
@@ -121,12 +122,12 @@ class BookingObserverTest {
     @Test
     void anAcceptedRescheduleIsNotifiedWithoutChangingTheStatus() {
         Booking booking = newBooking();
-        booking.accept(PROVIDER);
+        booking.accept(PROVIDER, AT);
         booking.proposeReschedule(PROVIDER, OTHER_SLOT);
         booking.publishPendingEvents(BOOKING_ID);
         booking.addObserver(recorder);
 
-        booking.acceptReschedule(CLIENT);
+        booking.acceptReschedule(CLIENT, AT);
         booking.publishPendingEvents(BOOKING_ID);
 
         assertThat(received).singleElement().satisfies(event -> {
@@ -141,12 +142,12 @@ class BookingObserverTest {
     @Test
     void aRejectedRescheduleIsPublishedWithoutTheRescheduleMark() {
         Booking booking = newBooking();
-        booking.accept(PROVIDER);
+        booking.accept(PROVIDER, AT);
         booking.proposeReschedule(PROVIDER, OTHER_SLOT);
         booking.publishPendingEvents(BOOKING_ID);
         booking.addObserver(recorder);
 
-        booking.rejectReschedule(CLIENT);
+        booking.rejectReschedule(CLIENT, AT);
         booking.publishPendingEvents(BOOKING_ID);
 
         assertThat(received).singleElement().satisfies(event -> {
@@ -158,7 +159,7 @@ class BookingObserverTest {
     @Test
     void aBookingLoadedFromStorageHasNothingToNotify() {
         Booking original = newBooking();
-        original.accept(PROVIDER);
+        original.accept(PROVIDER, AT);
         Booking loaded = Booking.rebuild(BOOKING_ID, 10L, CLIENT, PROVIDER, SLOT, "Hola", "Aprender",
                 new SkillCoins(100), original.getHistory(), null);
         loaded.addObserver(recorder);
@@ -176,7 +177,7 @@ class BookingObserverTest {
                 null);
         booking.addObserver(recorder);
 
-        booking.accept(PROVIDER);
+        booking.accept(PROVIDER, AT);
         booking.publishPendingEvents(BOOKING_ID);
 
         assertThat(booking.getHistory()).last().satisfies(transition ->
@@ -199,6 +200,6 @@ class BookingObserverTest {
     }
 
     private static Booking newBooking() {
-        return Booking.request(10L, CLIENT, PROVIDER, SLOT, "Hola", "Aprender", new SkillCoins(100));
+        return Booking.request(10L, CLIENT, PROVIDER, SLOT, "Hola", "Aprender", new SkillCoins(100), AT);
     }
 }

@@ -8,6 +8,7 @@ import com.uade.skillswap.application.dto.publication.PublicationAction;
 import com.uade.skillswap.application.dto.publication.PublicationView;
 import com.uade.skillswap.application.dto.publication.SlotInput;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
+import com.uade.skillswap.application.ports.out.publication.CategoryTree;
 import com.uade.skillswap.application.ports.out.publication.AuthorProfileQuery;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.InvalidTransitionException;
@@ -53,8 +54,9 @@ class PublicationUseCasesTest {
     private final UnitOfWork unitOfWork = Supplier::get;
     private final Clock clock = Clock.fixed(NOW, ZoneOffset.UTC);
 
-    private final CreateDraftService createDraft = new CreateDraftService(repository, profiles, unitOfWork, clock);
-    private final EditDraftService editDraft = new EditDraftService(repository, unitOfWork);
+    private final CategoryTree categories = id -> id == 1L ? Optional.of(Set.of(1L)) : Optional.empty();
+    private final CreateDraftService createDraft = new CreateDraftService(repository, profiles, categories, unitOfWork, clock);
+    private final EditDraftService editDraft = new EditDraftService(repository, categories, unitOfWork);
     private final ChangePublicationStatusService changeStatus =
             new ChangePublicationStatusService(repository, unitOfWork, clock);
 
@@ -94,6 +96,20 @@ class PublicationUseCasesTest {
         assertThat(view.slots()).extracting(PublicationView.SlotView::startsAt)
                 .containsExactly(MONDAY_SLOT.startsAt(), TUESDAY_SLOT.startsAt());
         assertThat(repository.findById(view.id())).isPresent();
+    }
+
+    @Test
+    void aDraftCannotPointToACategoryThatDoesNotExist() {
+        PublicationDetails unknownCategory = new PublicationDetails("Mock interview", null, 99L, Modality.REMOTE,
+                Duration.ofMinutes(60), 1, new SkillCoins(100), Set.of());
+        long id = draftWithSlots(MONDAY_SLOT).id();
+
+        assertThatThrownBy(() -> createDraft.createDraft(new CreateDraftCommand(AUTHOR, PublicationType.MENTORING,
+                unknownCategory, List.of()))).isExactlyInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Category not found with id 99");
+        assertThatThrownBy(() -> editDraft.editDraft(new EditDraftCommand(AUTHOR, id, unknownCategory, List.of())))
+                .isExactlyInstanceOf(ResourceNotFoundException.class);
+        assertThat(repository.saves).isEqualTo(1);
     }
 
     @Test

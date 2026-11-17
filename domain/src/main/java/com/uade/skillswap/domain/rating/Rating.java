@@ -29,7 +29,7 @@ public class Rating {
         this.recipientId = recipientId;
         this.score = score;
         this.comment = comment != null ? comment.trim() : "";
-        this.ratedAt = ratedAt != null ? ratedAt : Instant.now();
+        this.ratedAt = Objects.requireNonNull(ratedAt, "The rating date is required");
     }
 
     public static Rating create(long bookingId,
@@ -41,13 +41,6 @@ public class Rating {
         return new Rating(null, bookingId, authorId, recipientId, score, comment, ratedAt);
     }
 
-    public static Rating create(long bookingId,
-                                UserId authorId,
-                                UserId recipientId,
-                                int score,
-                                String comment) {
-        return create(bookingId, authorId, recipientId, score, comment, Instant.now());
-    }
 
     public static Rating rebuild(Long id,
                                  long bookingId,

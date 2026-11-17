@@ -1,5 +1,6 @@
 package com.uade.skillswap.domain.booking.state;
 
+import java.time.Instant;
 import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.booking.CancellationOutcome;
 import com.uade.skillswap.domain.booking.BookingStatus;
@@ -19,15 +20,15 @@ public class AcceptedState extends BookingStateBase {
     }
 
     @Override
-    public void confirmPayment(Booking booking, UserId actor) {
+    public void confirmPayment(Booking booking, UserId actor, Instant now) {
         validatePayment(booking, actor);
-        booking.changeState(new ConfirmedState(), actor, "Payment confirmed by the client");
+        booking.changeState(new ConfirmedState(), actor, "Payment confirmed by the client", now);
     }
 
     @Override
-    public CancellationOutcome cancel(Booking booking, UserId actor, String reason) {
+    public CancellationOutcome cancel(Booking booking, UserId actor, String reason, Instant now) {
         booking.prepareCancellation(actor, reason);
-        booking.changeState(new CancelledState(), actor, reason);
+        booking.changeState(new CancelledState(), actor, reason, now);
         return new CancellationOutcome(false, true);
     }
 
@@ -38,14 +39,14 @@ public class AcceptedState extends BookingStateBase {
     }
 
     @Override
-    public void acceptReschedule(Booking booking, UserId actor) {
+    public void acceptReschedule(Booking booking, UserId actor, Instant now) {
         booking.requireParticipant(actor, "accept a reschedule of");
-        booking.acceptPendingReschedule(actor);
+        booking.acceptPendingReschedule(actor, now);
     }
 
     @Override
-    public void rejectReschedule(Booking booking, UserId actor) {
+    public void rejectReschedule(Booking booking, UserId actor, Instant now) {
         booking.requireParticipant(actor, "reject a reschedule of");
-        booking.rejectPendingReschedule(actor);
+        booking.rejectPendingReschedule(actor, now);
     }
 }

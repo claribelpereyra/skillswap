@@ -1,5 +1,6 @@
 package com.uade.skillswap.domain.booking.state;
 
+import java.time.Instant;
 import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.booking.CancellationOutcome;
 import com.uade.skillswap.domain.booking.BookingStatus;
@@ -11,25 +12,25 @@ public interface BookingState {
 
     BookingStatus getStatus();
 
-    void accept(Booking booking, UserId actor);
+    void accept(Booking booking, UserId actor, Instant now);
 
-    void reject(Booking booking, UserId actor, String reason);
+    void reject(Booking booking, UserId actor, String reason, Instant now);
 
     void validatePayment(Booking booking, UserId actor);
 
-    void confirmPayment(Booking booking, UserId actor);
+    void confirmPayment(Booking booking, UserId actor, Instant now);
 
-    void start(Booking booking, UserId actor);
+    void start(Booking booking, UserId actor, Instant now);
 
-    void complete(Booking booking, UserId actor);
+    void complete(Booking booking, UserId actor, Instant now);
 
     UserId ratingRecipientFor(Booking booking, UserId author);
 
-    CancellationOutcome cancel(Booking booking, UserId actor, String reason);
+    CancellationOutcome cancel(Booking booking, UserId actor, String reason, Instant now);
 
     void proposeReschedule(Booking booking, UserId actor, TimeSlot newSlot);
 
-    void acceptReschedule(Booking booking, UserId actor);
+    void acceptReschedule(Booking booking, UserId actor, Instant now);
 
-    void rejectReschedule(Booking booking, UserId actor);
+    void rejectReschedule(Booking booking, UserId actor, Instant now);
 }

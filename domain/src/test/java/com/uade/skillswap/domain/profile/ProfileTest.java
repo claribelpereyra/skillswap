@@ -14,6 +14,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ProfileTest {
+    private static final Instant AT = Instant.parse("2026-11-16T10:00:00Z");
 
     private static final UserId USER_ID = new UserId("ana");
     private static final ZoneId BUENOS_AIRES = ZoneId.of("America/Argentina/Buenos_Aires");
@@ -42,7 +43,7 @@ class ProfileTest {
 
     @Test
     void creatingAProfileDefaultsNullBioTimeZoneAndTimestamp() {
-        Profile profile = Profile.create(USER_ID, "Org Tech", null, null, AccountType.ORGANIZATION);
+        Profile profile = Profile.create(USER_ID, "Org Tech", null, null, AccountType.ORGANIZATION, AT);
 
         assertThat(profile.getBio()).isEmpty();
         assertThat(profile.getTimeZone()).isEqualTo(ZoneId.systemDefault());
@@ -52,16 +53,16 @@ class ProfileTest {
 
     @Test
     void creatingAProfileWithInvalidInitialDataThrowsInvalidProfileException() {
-        assertThatThrownBy(() -> Profile.create(null, "Ana", "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL))
+        assertThatThrownBy(() -> Profile.create(null, "Ana", "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL, AT))
                 .isExactlyInstanceOf(InvalidProfileException.class)
                 .hasMessage("The userId cannot be null");
-        assertThatThrownBy(() -> Profile.create(USER_ID, "  ", "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL))
+        assertThatThrownBy(() -> Profile.create(USER_ID, "  ", "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL, AT))
                 .isExactlyInstanceOf(InvalidProfileException.class)
                 .hasMessage("The display name cannot be null or blank");
-        assertThatThrownBy(() -> Profile.create(USER_ID, null, "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL))
+        assertThatThrownBy(() -> Profile.create(USER_ID, null, "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL, AT))
                 .isExactlyInstanceOf(InvalidProfileException.class)
                 .hasMessage("The display name cannot be null or blank");
-        assertThatThrownBy(() -> Profile.create(USER_ID, "Ana", "Bio", BUENOS_AIRES, null))
+        assertThatThrownBy(() -> Profile.create(USER_ID, "Ana", "Bio", BUENOS_AIRES, null, AT))
                 .isExactlyInstanceOf(InvalidProfileException.class)
                 .hasMessage("The account type cannot be null");
     }
@@ -81,11 +82,15 @@ class ProfileTest {
         assertThat(rebuilt.getAvailability()).isEqualTo(new Availability("Weeknights"));
 
         Profile nullSets = Profile.rebuild(43L, USER_ID, "Ana", null, null,
-                AccountType.ORGANIZATION, 0, 0, null, null, null, false, null);
+                AccountType.ORGANIZATION, 0, 0, null, null, null, false, CREATED_AT);
         assertThat(nullSets.getSkillIds()).isEmpty();
         assertThat(nullSets.getInterests()).isEmpty();
         assertThat(nullSets.getAvailability()).isEqualTo(Availability.UNSPECIFIED);
         assertThat(nullSets.isActive()).isFalse();
+        assertThatThrownBy(() -> Profile.rebuild(44L, USER_ID, "Ana", null, null,
+                AccountType.ORGANIZATION, 0, 0, null, null, null, false, null))
+                .isExactlyInstanceOf(NullPointerException.class)
+                .hasMessage("The creation date is required");
 
         assertThatThrownBy(() -> Profile.rebuild(null, USER_ID, "Ana", "Bio", BUENOS_AIRES,
                 AccountType.PROFESSIONAL, 0, 0, Set.of(), Set.of(), Availability.UNSPECIFIED, true, CREATED_AT))
@@ -118,7 +123,7 @@ class ProfileTest {
 
     @Test
     void activeProfileSupportsUpdatingDetailsSkillIdsInterestsAndAvailability() {
-        Profile profile = Profile.create(USER_ID, "Ana", "Old", BUENOS_AIRES, AccountType.PROFESSIONAL);
+        Profile profile = Profile.create(USER_ID, "Ana", "Old", BUENOS_AIRES, AccountType.PROFESSIONAL, AT);
         ZoneId madrid = ZoneId.of("Europe/Madrid");
 
         profile.updateDetails("  Ana M  ", "  New bio  ", madrid);
@@ -166,7 +171,7 @@ class ProfileTest {
 
     @Test
     void inactiveProfileRejectsMutationsAndCanBeReactivated() {
-        Profile profile = Profile.create(USER_ID, "Ana", "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL);
+        Profile profile = Profile.create(USER_ID, "Ana", "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL, AT);
         profile.deactivate();
 
         assertThat(profile.isActive()).isFalse();
@@ -198,12 +203,12 @@ class ProfileTest {
     }
 
     private static Rating ratingFor(UserId recipient, int score) {
-        return Rating.create(1L, new UserId("author"), recipient, score, null);
+        return Rating.create(1L, new UserId("author"), recipient, score, null, AT);
     }
 
     @Test
     void registeringRatingsCalculatesExactAverageWithoutCumulativeRoundingDrift() {
-        Profile profile = Profile.create(USER_ID, "Ana", "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL);
+        Profile profile = Profile.create(USER_ID, "Ana", "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL, AT);
 
         for (int score : List.of(1, 1, 1, 1, 1, 2, 1)) {
             profile.registerRating(ratingFor(USER_ID, score));
@@ -221,7 +226,7 @@ class ProfileTest {
 
     @Test
     void toPublicSummaryExposesExpectedPublicFieldsOnly() {
-        Profile profile = Profile.create(USER_ID, "Ana", "Backend dev", BUENOS_AIRES, AccountType.PROFESSIONAL);
+        Profile profile = Profile.create(USER_ID, "Ana", "Backend dev", BUENOS_AIRES, AccountType.PROFESSIONAL, AT);
         profile.addSkill(101L);
         profile.updateAvailability(new Availability("Evenings"));
         profile.registerRating(ratingFor(USER_ID, 5));
@@ -252,9 +257,9 @@ class ProfileTest {
 
     @Test
     void profileEqualityIsBasedOnUserId() {
-        Profile p1 = Profile.create(USER_ID, "Ana", "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL);
-        Profile p2 = Profile.create(USER_ID, "Ana Other", "Other", BUENOS_AIRES, AccountType.ORGANIZATION);
-        Profile other = Profile.create(new UserId("bruno"), "Bruno", "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL);
+        Profile p1 = Profile.create(USER_ID, "Ana", "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL, AT);
+        Profile p2 = Profile.create(USER_ID, "Ana Other", "Other", BUENOS_AIRES, AccountType.ORGANIZATION, AT);
+        Profile other = Profile.create(new UserId("bruno"), "Bruno", "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL, AT);
 
         assertThat(p1).isEqualTo(p1);
         assertThat(p1).isEqualTo(p2);

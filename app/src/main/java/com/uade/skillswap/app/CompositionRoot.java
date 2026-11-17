@@ -99,7 +99,7 @@ public final class CompositionRoot {
             };
             var controllers = new ApplicationControllers(session, new CatalogControllerImpl(new ListCatalogService(new JpaCatalogQuery()),
                             new ManageCatalogService(catalog, work), identity),
-                    new ProfileControllerImpl(new CreateProfileService(profiles, work),
+                    new ProfileControllerImpl(new CreateProfileService(profiles, work, clock),
                             new UpdateProfileService(profiles, work), new ManageSkillsService(profiles, work),
                             new DeactivateProfileService(profiles, work),
                             new GetPublicProfileFacade(profiles, new JpaActivePublicationsQuery(publications), ratings), identity),
@@ -114,7 +114,7 @@ public final class CompositionRoot {
                     new WalletControllerImpl(new LoadWalletService(wallets, new SimulatedSkillCoinGateway(), work, clock), identity),
                     new WalletQueryControllerImpl(new GetWalletService(wallets), identity),
                     new RatingControllerImpl(new RegisterRatingService(ratings, profiles,
-                            bookings, work), new ListRatingsService(ratings, profiles), identity),
+                            bookings, work, clock), new ListRatingsService(ratings, profiles), identity),
                     new NotificationControllerImpl(new BandejaNotificacionCasoDeUso(notificationRepository, clock), identity),
                     new NotificationPreferencesControllerImpl(preferences, identity));
             if (Boolean.parseBoolean(environment.getOrDefault("SKILLSWAP_DEMO", "false"))) {

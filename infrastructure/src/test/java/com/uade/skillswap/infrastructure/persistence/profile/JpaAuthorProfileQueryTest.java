@@ -1,5 +1,6 @@
 package com.uade.skillswap.infrastructure.persistence.profile;
 
+import java.time.Instant;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.profile.AccountType;
 import com.uade.skillswap.domain.profile.Profile;
@@ -11,6 +12,7 @@ import java.time.ZoneId;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class JpaAuthorProfileQueryTest extends PersistenceTestBase {
+    private static final Instant AT = Instant.parse("2026-11-16T10:00:00Z");
 
     private final JpaProfileRepository profileRepository = new JpaProfileRepository();
     private final JpaAuthorProfileQuery query = new JpaAuthorProfileQuery();
@@ -20,8 +22,8 @@ class JpaAuthorProfileQueryTest extends PersistenceTestBase {
         UserId org = new UserId("techlab");
         UserId pro = new UserId("ana");
 
-        Profile orgProfile = Profile.create(org, "TechLab", "Workshops", ZoneId.of("UTC"), AccountType.ORGANIZATION);
-        Profile proProfile = Profile.create(pro, "Ana", "Mentor", ZoneId.of("UTC"), AccountType.PROFESSIONAL);
+        Profile orgProfile = Profile.create(org, "TechLab", "Workshops", ZoneId.of("UTC"), AccountType.ORGANIZATION, AT);
+        Profile proProfile = Profile.create(pro, "Ana", "Mentor", ZoneId.of("UTC"), AccountType.PROFESSIONAL, AT);
 
         unitOfWork.execute(() -> {
             profileRepository.save(orgProfile);

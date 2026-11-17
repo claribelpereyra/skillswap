@@ -17,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JpaProfileRepositoryTest extends PersistenceTestBase {
+    private static final Instant AT = Instant.parse("2026-11-16T10:00:00Z");
 
     private static final UserId ANA = new UserId("ana");
     private static final ZoneId BUENOS_AIRES = ZoneId.of("America/Argentina/Buenos_Aires");
@@ -32,7 +33,7 @@ class JpaProfileRepositoryTest extends PersistenceTestBase {
         profile.addInterest("Architecture");
         profile.updateAvailability(new Availability("Weekdays 19-21"));
         for (int score : new int[]{1, 1, 1, 1, 1, 2, 1}) {
-            profile.registerRating(Rating.create(1L, new UserId("author"), ANA, score, null));
+            profile.registerRating(Rating.create(1L, new UserId("author"), ANA, score, null, AT));
         }
 
         Profile saved = unitOfWork.execute(() -> repository.save(profile));
@@ -69,9 +70,9 @@ class JpaProfileRepositoryTest extends PersistenceTestBase {
     @Test
     void databaseEnforcesUniqueUserIdPerProfile() {
         unitOfWork.execute(() -> repository.save(
-                Profile.create(ANA, "Ana", "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL)));
+                Profile.create(ANA, "Ana", "Bio", BUENOS_AIRES, AccountType.PROFESSIONAL, AT)));
 
-        Profile duplicate = Profile.create(ANA, "Ana 2", "Bio 2", BUENOS_AIRES, AccountType.ORGANIZATION);
+        Profile duplicate = Profile.create(ANA, "Ana 2", "Bio 2", BUENOS_AIRES, AccountType.ORGANIZATION, AT);
         assertThatThrownBy(() -> unitOfWork.execute(() -> repository.save(duplicate)))
                 .isInstanceOf(PersistenceException.class);
         assertThat(count("profile")).isEqualTo(1L);

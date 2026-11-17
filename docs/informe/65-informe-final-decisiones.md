@@ -64,7 +64,7 @@ Las decisiones se respaldan, entre otras, en:
 - Persistencia: [BookingWalletIntegrationTest](../../infrastructure/src/test/java/com/uade/skillswap/infrastructure/adapters/BookingWalletIntegrationTest.java), [JpaWalletRepositoryTest](../../infrastructure/src/test/java/com/uade/skillswap/infrastructure/persistence/wallet/JpaWalletRepositoryTest.java) y [JpaRecommendationMetadataQueryTest](../../infrastructure/src/test/java/com/uade/skillswap/infrastructure/persistence/publication/JpaRecommendationMetadataQueryTest.java).
 - Controllers: [RecommendationControllerTest](../../controllers/src/test/java/com/uade/skillswap/controllers/publication/RecommendationControllerTest.java) y [WalletControllerTest](../../controllers/src/test/java/com/uade/skillswap/controllers/wallet/WalletControllerTest.java).
 
-La última verificación completa registrada fue `mvn verify`: **397 tests ejecutados, 0 fallos, 0 errores y 0 omitidos**. Los tests de persistencia usan H2 en modo MySQL y las migraciones Flyway.
+La última verificación completa registrada fue `mvn verify`: **431 tests ejecutados, 0 fallos, 0 errores y 0 omitidos**. Los tests de persistencia usan H2 en modo MySQL y las migraciones Flyway.
 
 ## 6. Límites conocidos
 

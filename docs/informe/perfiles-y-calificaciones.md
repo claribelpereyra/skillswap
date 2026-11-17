@@ -36,7 +36,7 @@ El área modela la identidad de dominio de los participantes de **SkillSwap** (`
 
 ## 4. Diseño de persistencia relacional, concurrencia y prevención de $N+1$
 
-La migración **`V5__profiles_and_ratings.sql`** (numerada después de `V4__booking_foreign_keys.sql`, a coordinar solo si otro módulo pendiente como billetera `#33` usa `V4`) sigue la convención de tablas en singular e inglés (`booking`, `publication`):
+La migración **`V5__profiles_and_ratings.sql`** (numerada después de `V4__booking_foreign_keys.sql`) sigue la convención de tablas en singular e inglés (`booking`, `publication`):
 
 1. **`profile`**: `id`, `user_id` (`UNIQUE`), `display_name`, `bio`, `time_zone`, `account_type`, `reputation`, `rating_sum`, `rating_count`, `availability`, `active`, `created_at`, `version`.
    - Incorpora `@Version` (`version`) y bloqueo optimista (`LockModeType.OPTIMISTIC_FORCE_INCREMENT` en `JpaProfileRepository.save`) para evitar pérdida de actualizaciones cuando dos calificaciones simultáneas actualizan el mismo perfil (`ConcurrentUpdateException` -> `ErrorType.CONFLICT`).

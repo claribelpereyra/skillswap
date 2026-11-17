@@ -49,7 +49,6 @@ import com.uade.skillswap.infrastructure.persistence.profile.JpaActivePublicatio
 import com.uade.skillswap.infrastructure.persistence.profile.JpaAuthorProfileQuery;
 import com.uade.skillswap.infrastructure.persistence.profile.JpaProfileRepository;
 import com.uade.skillswap.infrastructure.persistence.publication.JpaPublicationRepository;
-import com.uade.skillswap.infrastructure.persistence.rating.JpaEligibleBookingQuery;
 import com.uade.skillswap.infrastructure.persistence.rating.JpaRatingRepository;
 import com.uade.skillswap.infrastructure.persistence.wallet.JpaWalletRepository;
 import jakarta.persistence.EntityManagerFactory;
@@ -125,7 +124,6 @@ class ProfileAndRatingIntegrationTest {
         bookingRepo = new JpaBookingRepository();
         publicationRepository = new JpaPublicationRepository();
         authorProfileQuery = new JpaAuthorProfileQuery();
-        JpaEligibleBookingQuery eligibleBookingQuery = new JpaEligibleBookingQuery(bookingRepo);
         JpaActivePublicationsQuery activePublicationsQuery = new JpaActivePublicationsQuery(publicationRepository);
 
         PublicationCatalog catalog = publicationId -> publicationRepository.findById(publicationId)
@@ -178,7 +176,7 @@ class ProfileAndRatingIntegrationTest {
                 identityAdapter
         );
         ratingController = new RatingControllerImpl(
-                new RegisterRatingService(ratingRepo, profileRepo, eligibleBookingQuery, unitOfWork),
+                new RegisterRatingService(ratingRepo, profileRepo, bookingRepo, unitOfWork),
                 new ListRatingsService(ratingRepo, profileRepo),
                 identityAdapter
         );
@@ -234,7 +232,7 @@ class ProfileAndRatingIntegrationTest {
         ControllerResult<RatingView> beforeCompletion = ratingController.registerRating(
                 "techlab", new RatingForm(bookingId, "ana", 5, "Too early"));
         assertThat(beforeCompletion.getErrorType()).isEqualTo(ErrorType.BUSINESS_RULE);
-        assertThat(beforeCompletion.getMessage()).isEqualTo("Only completed bookings can be rated");
+        assertThat(beforeCompletion.getMessage()).isEqualTo("Cannot rate in state CONFIRMED");
 
         identityAdapter.signIn(new UserId("ana"));
         assertThat(bookingController.start("ana", bookingId).getData().status())

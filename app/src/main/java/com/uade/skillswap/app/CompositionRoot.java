@@ -114,7 +114,7 @@ public final class CompositionRoot {
                     new WalletControllerImpl(new LoadWalletService(wallets, new SimulatedSkillCoinGateway(), work, clock), identity),
                     new WalletQueryControllerImpl(new GetWalletService(wallets), identity),
                     new RatingControllerImpl(new RegisterRatingService(ratings, profiles,
-                            new JpaEligibleBookingQuery(bookings), work), new ListRatingsService(ratings, profiles), identity),
+                            bookings, work), new ListRatingsService(ratings, profiles), identity),
                     new NotificationControllerImpl(new BandejaNotificacionCasoDeUso(notificationRepository, clock), identity),
                     new NotificationPreferencesControllerImpl(preferences, identity));
             if (Boolean.parseBoolean(environment.getOrDefault("SKILLSWAP_DEMO", "false"))) {

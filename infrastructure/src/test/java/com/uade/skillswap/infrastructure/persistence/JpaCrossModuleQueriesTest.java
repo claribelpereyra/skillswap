@@ -3,8 +3,8 @@ package com.uade.skillswap.infrastructure.persistence;
 import com.uade.skillswap.application.common.Page;
 import com.uade.skillswap.application.common.PageRequest;
 import com.uade.skillswap.application.dto.publication.PublicationView;
-import com.uade.skillswap.application.ports.out.rating.EligibleBookingQuery.BookingTarget;
 import com.uade.skillswap.domain.booking.Booking;
+import com.uade.skillswap.domain.common.InvalidTransitionException;
 import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.profile.AccountType;
@@ -16,16 +16,15 @@ import com.uade.skillswap.domain.publication.TimeSlot;
 import com.uade.skillswap.infrastructure.persistence.booking.JpaBookingRepository;
 import com.uade.skillswap.infrastructure.persistence.profile.JpaActivePublicationsQuery;
 import com.uade.skillswap.infrastructure.persistence.publication.JpaPublicationRepository;
-import com.uade.skillswap.infrastructure.persistence.rating.JpaEligibleBookingQuery;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JpaCrossModuleQueriesTest extends PersistenceTestBase {
 
@@ -71,7 +70,6 @@ class JpaCrossModuleQueriesTest extends PersistenceTestBase {
         Booking savedConfirmed = unitOfWork.execute(() -> bookingRepository.save(confirmedBooking));
 
         JpaActivePublicationsQuery publicationsQuery = new JpaActivePublicationsQuery(publicationRepository);
-        JpaEligibleBookingQuery bookingQuery = new JpaEligibleBookingQuery(bookingRepository);
 
         Page<PublicationView> anaPage = publicationsQuery.findActiveByUserId(ANA, PageRequest.first());
         assertThat(anaPage.totalItems()).isEqualTo(2L);
@@ -80,13 +78,15 @@ class JpaCrossModuleQueriesTest extends PersistenceTestBase {
         assertThat(publicationsQuery.findActiveByUserId(BRUNO, PageRequest.first()).items()).isEmpty();
         assertThat(publicationsQuery.findActiveByUserId(null, PageRequest.first()).items()).isEmpty();
 
-        Optional<BookingTarget> completed = bookingQuery.findBooking(savedCompleted.getId());
-        assertThat(completed).contains(new BookingTarget(savedCompleted.getId(), ANA, BRUNO, true));
+        Booking loadedCompleted = bookingRepository.findById(savedCompleted.getId()).orElseThrow();
+        assertThat(loadedCompleted.ratingRecipientFor(ANA)).isEqualTo(BRUNO);
+        assertThat(loadedCompleted.ratingRecipientFor(BRUNO)).isEqualTo(ANA);
 
-        Optional<BookingTarget> confirmed = bookingQuery.findBooking(savedConfirmed.getId());
-        assertThat(confirmed).contains(new BookingTarget(savedConfirmed.getId(), ANA, CARLA, false));
+        Booking loadedConfirmed = bookingRepository.findById(savedConfirmed.getId()).orElseThrow();
+        assertThatThrownBy(() -> loadedConfirmed.ratingRecipientFor(ANA))
+                .isInstanceOf(InvalidTransitionException.class);
 
-        assertThat(bookingQuery.findBooking(9999L)).isEmpty();
+        assertThat(bookingRepository.findById(9999L)).isEmpty();
     }
 
     @Test

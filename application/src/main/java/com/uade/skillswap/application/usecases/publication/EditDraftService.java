@@ -5,6 +5,7 @@ import com.uade.skillswap.application.dto.publication.EditDraftCommand;
 import com.uade.skillswap.application.ports.in.publication.EditDraftUseCase;
 import com.uade.skillswap.application.dto.publication.PublicationView;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
+import com.uade.skillswap.application.ports.out.publication.CategoryTree;
 import com.uade.skillswap.application.ports.out.publication.PublicationRepository;
 import com.uade.skillswap.domain.publication.Publication;
 import com.uade.skillswap.domain.publication.TimeSlot;
@@ -15,15 +16,18 @@ import java.util.Objects;
 public class EditDraftService implements EditDraftUseCase {
 
     private final PublicationRepository publications;
+    private final CategoryTree categories;
     private final UnitOfWork unitOfWork;
 
-    public EditDraftService(PublicationRepository publications, UnitOfWork unitOfWork) {
+    public EditDraftService(PublicationRepository publications, CategoryTree categories, UnitOfWork unitOfWork) {
         this.publications = Objects.requireNonNull(publications);
+        this.categories = Objects.requireNonNull(categories);
         this.unitOfWork = Objects.requireNonNull(unitOfWork);
     }
 
     @Override
     public PublicationView editDraft(EditDraftCommand command) {
+        CreateDraftService.requireExistingCategory(categories, command.details().categoryId());
         return unitOfWork.execute(() -> {
             Publication publication = publications.findById(command.publicationId())
                     .orElseThrow(() -> new ResourceNotFoundException("Publication", command.publicationId()));

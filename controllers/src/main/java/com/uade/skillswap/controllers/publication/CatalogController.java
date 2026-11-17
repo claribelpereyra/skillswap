@@ -6,4 +6,8 @@ import com.uade.skillswap.controllers.ControllerResult;
 
 public interface CatalogController {
     ControllerResult<Page<CatalogEntryView>> list(int page, int size);
+
+    ControllerResult<CatalogEntryView> addCategory(String userId, Long parentId, String name);
+
+    ControllerResult<CatalogEntryView> addSkill(String userId, long categoryId, String name);
 }

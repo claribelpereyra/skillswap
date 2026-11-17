@@ -11,7 +11,10 @@ import java.util.*;
 /** Escenario persistente e idempotente; crea datos por controllers, sin reemplazar reglas de negocio. */
 final class DemoScenario {
     private DemoScenario() { }
-    static void prepare(ApplicationControllers app, Clock clock, long category, long skill) {
+    static void prepare(ApplicationControllers app, Clock clock) {
+        require(app.session().signIn("user-mateo"));
+        long category = ensureCatalogItem(app, "Tecnología", "CATEGORY", null);
+        long skill = ensureCatalogItem(app, "Java", "SKILL", category);
         for (String user : List.of("user-mateo", "user-sofia")) {
             require(app.session().signIn(user));
             var profile = app.profiles().getPublicProfile(user,0,1);
@@ -39,6 +42,16 @@ final class DemoScenario {
         }
         app.session().signOut();
     }
+    // El catálogo se carga por el caso de uso, igual que el resto de la demo: las migraciones son solo esquema.
+    private static long ensureCatalogItem(ApplicationControllers app, String name, String kind, Long parent) {
+        var existing = require(app.catalog().list(0, 100)).items().stream()
+                .filter(entry -> entry.kind().equals(kind) && entry.name().equals(name)).findFirst();
+        if (existing.isPresent()) return existing.get().id();
+        String user = app.session().currentUserId();
+        return require(parent == null ? app.catalog().addCategory(user, null, name)
+                : app.catalog().addSkill(user, parent, name)).id();
+    }
+
     private static <T> T require(ControllerResult<T> result) {
         if (!result.isSuccess()) throw new IllegalStateException("Demo setup failed: " + result.getMessage());
         return result.getData();

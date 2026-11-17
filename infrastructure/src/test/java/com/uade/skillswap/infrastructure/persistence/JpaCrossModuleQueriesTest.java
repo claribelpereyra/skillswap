@@ -27,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JpaCrossModuleQueriesTest extends PersistenceTestBase {
+    private static final Instant AT = Instant.parse("2026-11-16T10:00:00Z");
 
     private static final UserId ANA = new UserId("ana");
     private static final UserId BRUNO = new UserId("bruno");
@@ -55,18 +56,18 @@ class JpaCrossModuleQueriesTest extends PersistenceTestBase {
 
         Booking completedBooking = Booking.request(savedFirst.getId(), ANA, BRUNO,
                 savedFirst.getSlots().get(0),
-                "Hola Bruno", "Mentoria", new SkillCoins(100));
-        completedBooking.accept(BRUNO);
-        completedBooking.confirmPayment(ANA);
-        completedBooking.start(BRUNO);
-        completedBooking.complete(ANA);
+                "Hola Bruno", "Mentoria", new SkillCoins(100), AT);
+        completedBooking.accept(BRUNO, AT);
+        completedBooking.confirmPayment(ANA, AT);
+        completedBooking.start(BRUNO, AT);
+        completedBooking.complete(ANA, AT);
         Booking savedCompleted = unitOfWork.execute(() -> bookingRepository.save(completedBooking));
 
         Booking confirmedBooking = Booking.request(savedSecond.getId(), ANA, CARLA,
                 savedSecond.getSlots().get(0),
-                "Hola Carla", "Code review", new SkillCoins(100));
-        confirmedBooking.accept(CARLA);
-        confirmedBooking.confirmPayment(ANA);
+                "Hola Carla", "Code review", new SkillCoins(100), AT);
+        confirmedBooking.accept(CARLA, AT);
+        confirmedBooking.confirmPayment(ANA, AT);
         Booking savedConfirmed = unitOfWork.execute(() -> bookingRepository.save(confirmedBooking));
 
         JpaActivePublicationsQuery publicationsQuery = new JpaActivePublicationsQuery(publicationRepository);

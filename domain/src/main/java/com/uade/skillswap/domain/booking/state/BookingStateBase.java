@@ -1,5 +1,6 @@
 package com.uade.skillswap.domain.booking.state;
 
+import java.time.Instant;
 import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.booking.CancellationOutcome;
 import com.uade.skillswap.domain.common.InvalidTransitionException;
@@ -10,12 +11,12 @@ import com.uade.skillswap.domain.publication.TimeSlot;
 public abstract class BookingStateBase implements BookingState {
 
     @Override
-    public void accept(Booking booking, UserId actor) {
+    public void accept(Booking booking, UserId actor, Instant now) {
         throw invalid("accept");
     }
 
     @Override
-    public void reject(Booking booking, UserId actor, String reason) {
+    public void reject(Booking booking, UserId actor, String reason, Instant now) {
         throw invalid("reject");
     }
 
@@ -25,17 +26,17 @@ public abstract class BookingStateBase implements BookingState {
     }
 
     @Override
-    public void confirmPayment(Booking booking, UserId actor) {
+    public void confirmPayment(Booking booking, UserId actor, Instant now) {
         throw invalid("pay");
     }
 
     @Override
-    public void start(Booking booking, UserId actor) {
+    public void start(Booking booking, UserId actor, Instant now) {
         throw invalid("start");
     }
 
     @Override
-    public void complete(Booking booking, UserId actor) {
+    public void complete(Booking booking, UserId actor, Instant now) {
         throw invalid("complete");
     }
 
@@ -45,7 +46,7 @@ public abstract class BookingStateBase implements BookingState {
     }
 
     @Override
-    public CancellationOutcome cancel(Booking booking, UserId actor, String reason) {
+    public CancellationOutcome cancel(Booking booking, UserId actor, String reason, Instant now) {
         throw invalid("cancel");
     }
 
@@ -55,12 +56,12 @@ public abstract class BookingStateBase implements BookingState {
     }
 
     @Override
-    public void acceptReschedule(Booking booking, UserId actor) {
+    public void acceptReschedule(Booking booking, UserId actor, Instant now) {
         throw invalid("accept a reschedule");
     }
 
     @Override
-    public void rejectReschedule(Booking booking, UserId actor) {
+    public void rejectReschedule(Booking booking, UserId actor, Instant now) {
         throw invalid("reject a reschedule");
     }
 

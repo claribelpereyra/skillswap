@@ -28,6 +28,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class BookingReceiptServiceTest {
+    private static final Instant AT = Instant.parse("2026-11-16T10:00:00Z");
 
     private static final UserId CLIENT = new UserId("ana");
     private static final UserId PROVIDER = new UserId("bruno");
@@ -99,19 +100,19 @@ class BookingReceiptServiceTest {
 
     private static Booking confirmedBooking() {
         Booking booking = requestedBooking();
-        booking.accept(PROVIDER);
-        booking.confirmPayment(CLIENT);
+        booking.accept(PROVIDER, AT);
+        booking.confirmPayment(CLIENT, AT);
         return booking;
     }
 
     private static Booking completedBooking() {
         Booking booking = confirmedBooking();
-        booking.start(PROVIDER);
-        booking.complete(PROVIDER);
+        booking.start(PROVIDER, AT);
+        booking.complete(PROVIDER, AT);
         return booking;
     }
 
     private static Booking requestedBooking() {
-        return Booking.request(10L, CLIENT, PROVIDER, SLOT, "Hola", "Aprender", PRICE);
+        return Booking.request(10L, CLIENT, PROVIDER, SLOT, "Hola", "Aprender", PRICE, AT);
     }
 }

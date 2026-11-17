@@ -8,16 +8,19 @@ import com.uade.skillswap.application.ports.out.profile.ProfileRepository;
 import com.uade.skillswap.domain.profile.InvalidProfileException;
 import com.uade.skillswap.domain.profile.Profile;
 
+import java.time.Clock;
 import java.util.Objects;
 
 public class CreateProfileService implements CreateProfileUseCase {
 
     private final ProfileRepository profileRepository;
     private final UnitOfWork unitOfWork;
+    private final Clock clock;
 
-    public CreateProfileService(ProfileRepository profileRepository, UnitOfWork unitOfWork) {
+    public CreateProfileService(ProfileRepository profileRepository, UnitOfWork unitOfWork, Clock clock) {
         this.profileRepository = Objects.requireNonNull(profileRepository, "profileRepository must not be null");
         this.unitOfWork = Objects.requireNonNull(unitOfWork, "unitOfWork must not be null");
+        this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
     @Override
@@ -35,7 +38,8 @@ public class CreateProfileService implements CreateProfileUseCase {
                     command.displayName(),
                     command.bio(),
                     command.timeZone(),
-                    command.accountType()
+                    command.accountType(),
+                    clock.instant()
             );
             return ProfileView.from(profileRepository.save(profile));
         });

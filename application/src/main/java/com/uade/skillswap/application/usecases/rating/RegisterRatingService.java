@@ -14,6 +14,7 @@ import com.uade.skillswap.domain.profile.Profile;
 import com.uade.skillswap.domain.rating.InvalidRatingException;
 import com.uade.skillswap.domain.rating.Rating;
 
+import java.time.Clock;
 import java.util.Objects;
 
 public class RegisterRatingService implements RegisterRatingUseCase {
@@ -22,15 +23,18 @@ public class RegisterRatingService implements RegisterRatingUseCase {
     private final ProfileRepository profileRepository;
     private final BookingRepository bookings;
     private final UnitOfWork unitOfWork;
+    private final Clock clock;
 
     public RegisterRatingService(RatingRepository ratingRepository,
                                  ProfileRepository profileRepository,
                                  BookingRepository bookings,
-                                 UnitOfWork unitOfWork) {
+                                 UnitOfWork unitOfWork,
+                                 Clock clock) {
         this.ratingRepository = Objects.requireNonNull(ratingRepository, "ratingRepository must not be null");
         this.profileRepository = Objects.requireNonNull(profileRepository, "profileRepository must not be null");
         this.bookings = Objects.requireNonNull(bookings, "bookings must not be null");
         this.unitOfWork = Objects.requireNonNull(unitOfWork, "unitOfWork must not be null");
+        this.clock = Objects.requireNonNull(clock, "clock must not be null");
     }
 
     @Override
@@ -68,7 +72,8 @@ public class RegisterRatingService implements RegisterRatingUseCase {
                     authorId,
                     counterparty,
                     command.score(),
-                    command.comment()
+                    command.comment(),
+                    clock.instant()
             );
             Rating saved = ratingRepository.save(rating);
             recipientProfile.registerRating(saved);

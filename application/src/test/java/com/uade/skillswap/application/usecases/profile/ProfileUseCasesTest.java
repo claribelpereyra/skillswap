@@ -54,7 +54,7 @@ class ProfileUseCasesTest {
 
     @BeforeEach
     void setUp() {
-        createService = new CreateProfileService(profileRepository, immediateUnitOfWork);
+        createService = new CreateProfileService(profileRepository, immediateUnitOfWork, java.time.Clock.systemUTC());
         updateService = new UpdateProfileService(profileRepository, immediateUnitOfWork);
         manageSkillsService = new ManageSkillsService(profileRepository, immediateUnitOfWork);
         deactivateService = new DeactivateProfileService(profileRepository, immediateUnitOfWork);

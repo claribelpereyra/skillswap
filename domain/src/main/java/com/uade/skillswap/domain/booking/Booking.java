@@ -56,7 +56,8 @@ public class Booking implements BookingSubject {
     }
 
     public static Booking request(long publicationId, UserId clientId, UserId providerId, TimeSlot slot,
-                                  String message, String goal, SkillCoins price) {
+                                  String message, String goal, SkillCoins price,
+                                  Instant requestedAt) {
         Objects.requireNonNull(clientId, "The client is required");
         if (clientId.equals(providerId)) {
             throw new BusinessRuleException("The author cannot request their own publication");
@@ -66,7 +67,7 @@ public class Booking implements BookingSubject {
         }
         requireText(message, "A message is required to request a publication");
         requireText(goal, "A goal is required to request a publication");
-        StateHistory<BookingStatus> history = StateHistory.startingAt(BookingStatus.PENDING, clientId, Instant.now(),
+        StateHistory<BookingStatus> history = StateHistory.startingAt(BookingStatus.PENDING, clientId, requestedAt,
                 "Requested by the client");
         Booking booking = new Booking(publicationId, clientId, providerId, slot, message, goal, price, history);
         booking.unpublished.add(new PendingEvent(history.last(), false));
@@ -85,48 +86,48 @@ public class Booking implements BookingSubject {
     }
 
     // State Pattern: la reserva delega cada acción en su estado actual.
-    public void accept(UserId actor) {
-        state.accept(this, actor);
+    public void accept(UserId actor, Instant now) {
+        state.accept(this, actor, now);
     }
 
-    public void reject(UserId actor, String reason) {
-        state.reject(this, actor, reason);
+    public void reject(UserId actor, String reason, Instant now) {
+        state.reject(this, actor, reason, now);
     }
 
-    public void confirmPayment(UserId actor) {
-        state.confirmPayment(this, actor);
+    public void confirmPayment(UserId actor, Instant now) {
+        state.confirmPayment(this, actor, now);
     }
 
     public void validatePayment(UserId actor) {
         state.validatePayment(this, actor);
     }
 
-    public void start(UserId actor) {
-        state.start(this, actor);
+    public void start(UserId actor, Instant now) {
+        state.start(this, actor, now);
     }
 
-    public void complete(UserId actor) {
-        state.complete(this, actor);
+    public void complete(UserId actor, Instant now) {
+        state.complete(this, actor, now);
     }
 
-    public CancellationOutcome cancel(UserId actor, String reason) {
-        return state.cancel(this, actor, reason);
+    public CancellationOutcome cancel(UserId actor, String reason, Instant now) {
+        return state.cancel(this, actor, reason, now);
     }
 
     public void proposeReschedule(UserId actor, TimeSlot newSlot) {
         state.proposeReschedule(this, actor, newSlot);
     }
 
-    public void acceptReschedule(UserId actor) {
-        state.acceptReschedule(this, actor);
+    public void acceptReschedule(UserId actor, Instant now) {
+        state.acceptReschedule(this, actor, now);
     }
 
-    public void rejectReschedule(UserId actor) {
-        state.rejectReschedule(this, actor);
+    public void rejectReschedule(UserId actor, Instant now) {
+        state.rejectReschedule(this, actor, now);
     }
 
-    public void changeState(BookingState next, UserId actor, String reason) {
-        history.record(state.getStatus(), next.getStatus(), actor, nextHistoryTime(), reason);
+    public void changeState(BookingState next, UserId actor, String reason, Instant now) {
+        history.record(state.getStatus(), next.getStatus(), actor, nextHistoryTime(now), reason);
         unpublished.add(new PendingEvent(history.last(), false));
         state = next;
     }
@@ -191,16 +192,16 @@ public class Booking implements BookingSubject {
         pendingReschedule = new RescheduleProposal(newSlot, actor);
     }
 
-    public void acceptPendingReschedule(UserId actor) {
+    public void acceptPendingReschedule(UserId actor, Instant now) {
         RescheduleProposal proposal = requirePendingRescheduleAnsweredBy(actor);
         slot = proposal.newSlot();
-        recordInCurrentState(actor, "Rescheduled to slot " + slot.getId(), true);
+        recordInCurrentState(actor, "Rescheduled to slot " + slot.getId(), true, now);
         pendingReschedule = null;
     }
 
-    public void rejectPendingReschedule(UserId actor) {
+    public void rejectPendingReschedule(UserId actor, Instant now) {
         RescheduleProposal proposal = requirePendingRescheduleAnsweredBy(actor);
-        recordInCurrentState(actor, "Reschedule to slot " + proposal.newSlot().getId() + " rejected", false);
+        recordInCurrentState(actor, "Reschedule to slot " + proposal.newSlot().getId() + " rejected", false, now);
         pendingReschedule = null;
     }
 
@@ -219,15 +220,15 @@ public class Booking implements BookingSubject {
     }
 
     // La reprogramación no cambia el estado: queda en el historial como transición al mismo estado.
-    private void recordInCurrentState(UserId actor, String reason, boolean rescheduled) {
+    private void recordInCurrentState(UserId actor, String reason, boolean rescheduled, Instant now) {
         BookingStatus current = state.getStatus();
-        history.record(current, current, actor, nextHistoryTime(), reason);
+        history.record(current, current, actor, nextHistoryTime(now), reason);
         unpublished.add(new PendingEvent(history.last(), rescheduled));
     }
 
-    private Instant nextHistoryTime() {
+    private Instant nextHistoryTime(Instant now) {
         // La precisión de TIMESTAMP(6) puede redondear hacia adelante la fecha persistida.
-        Instant now = Instant.now();
+        Objects.requireNonNull(now, "The transition date is required");
         Instant last = history.last().occurredAt();
         return now.isBefore(last) ? last : now;
     }

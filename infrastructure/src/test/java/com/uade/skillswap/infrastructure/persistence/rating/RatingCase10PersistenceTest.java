@@ -39,6 +39,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RatingCase10PersistenceTest extends PersistenceTestBase {
+    private static final Instant AT = Instant.parse("2026-11-16T10:00:00Z");
 
     private static final UserId ANA = new UserId("ana");
     private static final UserId BRUNO = new UserId("bruno");
@@ -67,11 +68,11 @@ class RatingCase10PersistenceTest extends PersistenceTestBase {
                 profileRepository,
                 bookingRepository,
                 unitOfWork
-        );
+        , java.time.Clock.systemUTC());
 
         unitOfWork.execute(() -> {
-            profileRepository.save(Profile.create(ANA, "Ana", "Java mentor", ZoneId.of("UTC"), AccountType.PROFESSIONAL));
-            profileRepository.save(Profile.create(BRUNO, "Bruno", "Frontend dev", ZoneId.of("UTC"), AccountType.PROFESSIONAL));
+            profileRepository.save(Profile.create(ANA, "Ana", "Java mentor", ZoneId.of("UTC"), AccountType.PROFESSIONAL, AT));
+            profileRepository.save(Profile.create(BRUNO, "Bruno", "Frontend dev", ZoneId.of("UTC"), AccountType.PROFESSIONAL, AT));
         });
 
         firstCompletedBookingId = createBooking(ANA, BRUNO, true);
@@ -155,7 +156,7 @@ class RatingCase10PersistenceTest extends PersistenceTestBase {
             }
         };
         RegisterRatingService synchronizedService = new RegisterRatingService(
-                ratingRepository, synchronizedProfileRepo, bookingRepository, unitOfWork);
+                ratingRepository, synchronizedProfileRepo, bookingRepository, unitOfWork, java.time.Clock.systemUTC());
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
@@ -202,7 +203,7 @@ class RatingCase10PersistenceTest extends PersistenceTestBase {
             }
         };
         RegisterRatingService synchronizedService = new RegisterRatingService(
-                synchronizedRatingRepo, profileRepository, bookingRepository, unitOfWork);
+                synchronizedRatingRepo, profileRepository, bookingRepository, unitOfWork, java.time.Clock.systemUTC());
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
@@ -226,12 +227,12 @@ class RatingCase10PersistenceTest extends PersistenceTestBase {
     }
 
     private long createBooking(UserId client, UserId provider, boolean completed) {
-        Booking booking = Booking.request(1L, client, provider, SLOT, "Hola", "Mentoria", new SkillCoins(100));
-        booking.accept(provider);
-        booking.confirmPayment(client);
+        Booking booking = Booking.request(1L, client, provider, SLOT, "Hola", "Mentoria", new SkillCoins(100), AT);
+        booking.accept(provider, AT);
+        booking.confirmPayment(client, AT);
         if (completed) {
-            booking.start(provider);
-            booking.complete(client);
+            booking.start(provider, AT);
+            booking.complete(client, AT);
         }
         return unitOfWork.execute(() -> bookingRepository.save(booking)).getId();
     }

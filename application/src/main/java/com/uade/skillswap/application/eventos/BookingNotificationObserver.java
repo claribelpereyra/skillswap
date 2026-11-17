@@ -1,6 +1,6 @@
 package com.uade.skillswap.application.eventos;
 
-import com.uade.skillswap.application.ports.out.PublicadorEventos;
+import com.uade.skillswap.application.ports.in.ProcesarEventoNotificableEntrada;
 import com.uade.skillswap.domain.booking.BookingStatus;
 import com.uade.skillswap.domain.booking.observer.BookingEvent;
 import com.uade.skillswap.domain.booking.observer.BookingObserver;
@@ -14,10 +14,10 @@ import java.util.UUID;
 
 /** Adapta transiciones confirmadas a los seis eventos del contrato de notificaciones. */
 public final class BookingNotificationObserver implements BookingObserver {
-    private final PublicadorEventos publisher;
+    private final ProcesarEventoNotificableEntrada processor;
 
-    public BookingNotificationObserver(PublicadorEventos publisher) {
-        this.publisher = Objects.requireNonNull(publisher);
+    public BookingNotificationObserver(ProcesarEventoNotificableEntrada processor) {
+        this.processor = Objects.requireNonNull(processor);
     }
 
     @Override
@@ -29,7 +29,7 @@ public final class BookingNotificationObserver implements BookingObserver {
         String key = reference + "|" + event.from() + "|" + event.to() + "|" + event.actor().value()
                 + "|" + event.occurredAt() + "|" + event.reason();
         UUID id = UUID.nameUUIDFromBytes(key.getBytes(StandardCharsets.UTF_8));
-        publisher.publicar(new EventoNotificable(id, event.occurredAt(), type, reference,
+        processor.procesar(new EventoNotificable(id, event.occurredAt(), type, reference,
                 List.of(event.clientId().value(), event.providerId().value()),
                 type.name() + ": " + reference + (event.reason() == null ? "" : " - " + event.reason())));
     }

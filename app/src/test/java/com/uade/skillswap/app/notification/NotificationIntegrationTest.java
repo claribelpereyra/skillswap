@@ -31,13 +31,11 @@ class NotificationIntegrationTest {
             var internal = new InternaMock();
             var processor = new ProcesarEventoNotificableCasoDeUso(preferences, repository,
                     new FabricaCanalNotificacion(List.of(email, push, internal)));
-            var publisher = new PublicadorEventosEnMemoria();
-            publisher.suscribir(new SuscriptorNotificaciones(processor));
             var now = Instant.parse("2026-11-15T12:00:00Z");
             var event = new EventoNotificable(UUID.randomUUID(), now, TipoEventoNotificable.PAGO_CONFIRMADO,
                     "booking-1", List.of("client", "provider"), "Pago confirmado: 100 SkillCoins");
-            publisher.publicar(event);
-            publisher.publicar(event);
+            processor.procesar(event);
+            processor.procesar(event);
             assertThat(email.enviados()).hasSize(1);
             assertThat(push.enviados()).hasSize(1);
             assertThat(internal.enviados()).isEmpty();

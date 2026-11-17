@@ -101,5 +101,5 @@ Estas precisiones completan aspectos que la consigna no define; deben mantenerse
 
 - Las tareas 93 a 100 implementarán eventos, Observer, preferencias, fábrica, bandeja, persistencia y adaptadores.
 - El equipo debe emitir los seis eventos desde los casos de uso reales; las pruebas aisladas con eventos simulados no sustituyen esa integración.
-- Las tareas 103, 105 y 107 conectarán controller, UI y recorrido integrado; el Mock UI Kit no se encuentra todavía en este checkout.
+- Las tareas 103, 105 y 107 conectaron controller, UI y recorrido integrado; el Mock UI Kit está integrado en el módulo `app` (ver doc 105).
 - No se incorpora autenticación real, envío a proveedores reales ni rediseño visual.

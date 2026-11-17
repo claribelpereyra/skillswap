@@ -13,9 +13,9 @@
 
 Se mantiene cada patrón donde encapsula una variación real: políticas de reintegro, composición de descuentos, estados de contratación, adaptadores externos y persistencia concurrente. Se evita agregar abstracciones cuando no hay una segunda implementación o una variación que probar.
 
-## Reglas de negocio pendientes de verificar o completar
+## Reglas de negocio verificadas
 
-- **Motivo en cada transición:** el historial guarda actor y fecha, pero las transiciones de aceptación, pago, inicio y finalización registran `reason = null`. Si la regla exige un motivo no nulo para todas las transiciones, falta ajustar el dominio y sus pruebas.
-- **Calificaciones únicas:** no se encontró un caso de uso o modelo de calificación que limite la acción a participantes de una contratación completada y permita calificar una sola vez.
-- **Baja lógica de perfil:** no se encontró una operación de baja de perfil que conserve las operaciones históricas.
+- **Motivo en cada transición:** cada estado registra un motivo por defecto cuando la persona no escribe uno (por ejemplo "Accepted by the provider"); rechazo y cancelación usan el motivo ingresado (#52).
+- **Calificaciones únicas:** `RegisterRatingService` solo admite participantes de una contratación completada, y la restricción `uq_rating_booking_author` impide calificar dos veces.
+- **Baja lógica de perfil:** `DeactivateProfileService` marca el perfil como inactivo sin borrar contrataciones, calificaciones ni movimientos.
 - **Permisos en controllers:** se obtiene el usuario activo del login mock y se lo pasa a los casos de uso; la autorización por participante/propietario debe permanecer validada en aplicación o dominio, además de la validación del identificador activo.

@@ -109,8 +109,8 @@ public class Booking implements BookingSubject {
         state.complete(this, actor);
     }
 
-    public void cancel(UserId actor, String reason) {
-        state.cancel(this, actor, reason);
+    public CancellationOutcome cancel(UserId actor, String reason) {
+        return state.cancel(this, actor, reason);
     }
 
     public void proposeReschedule(UserId actor, TimeSlot newSlot) {

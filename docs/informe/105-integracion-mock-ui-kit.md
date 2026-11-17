@@ -24,6 +24,8 @@ La proyección de búsqueda incluye descripción, duración y nombre de proveedo
 
 La consulta individual usa `BookingController.get(userId, bookingId)` y `BookingService.get(bookingId, actor)`: comprueba que el actor sea participante y devuelve las etiquetas de esa reserva, sin recorrer los listados. Las respuestas de las acciones también incluyen etiquetas. Para dibujar los botones de reprogramación se usa el `proposedSlotId` del listado visible; las acciones releen siempre la reserva y validan sesión/permisos. `RealUiControllersBookingTest` cubre veinte filas sin consultas individuales, la relectura antes de actuar y la validación de sesión al usar el snapshot. `BookingLabelsQuery` es obligatorio en el único constructor del servicio; los tests que no necesitan etiquetas lo declaran explícitamente.
 
+Desde la interfaz, una publicación nueva se crea con cupo 1 y sin etiquetas, porque el formulario del kit no los pide. El backend admite otros valores, y la demo y los tests los usan.
+
 ## Demostración
 
 `--demo` crea de forma explícita los perfiles user-mateo/user-sofia, una wallet con 500 créditos iniciales por usuario y dos ofertas de mentoría con horarios. Usa controllers y datos persistidos; no vuelve a acreditar saldo ni duplica publicaciones al reiniciar. La elección de canales del usuario no se sobrescribe al reiniciar. No hay autenticación real.

@@ -191,11 +191,6 @@ Cualquier acción que no esté en la tabla anterior se rechaza con un error de t
 | D3 | ¿El cliente puede retirar una solicitud `PENDIENTE`? | No, como en la tabla del enunciado: en `PENDIENTE` solo se acepta o se rechaza. |
 | Reprogramación | ¿Es un estado o una propuesta? | Una propuesta: la contratación no cambia de estado mientras la otra parte responde, así los estados quedan como en la tabla del enunciado. |
 | D6 | ¿Qué pasa si el proveedor ya gastó los créditos que debe reintegrar? | No hay escrow ni saldo negativo: el reintegro y la cancelación fallan juntos, y la contratación mantiene su estado y cupo hasta que el proveedor tenga saldo suficiente. |
-
-## Decisiones pendientes
-
-| # | Pregunta | Opciones |
-| --- | --- | --- |
-| D1 | ¿Cuándo se valida que la franja esté libre y haya cupo? | Al solicitar y al aceptar (el cliente se entera antes, pero se valida dos veces), o solo al aceptar (como dice el enunciado, que habla de reservar al aceptar). |
-| D4 | Cuando cancela el proveedor, ¿cuánto se reintegra? | Siempre el 100 % al cliente, o la misma política de anticipación que cuando cancela el cliente. Se define junto con el área de wallet. |
+| D1 | ¿Cuándo se valida que la franja esté libre y haya cupo? | La franja libre se valida al solicitar, para que el cliente se entere enseguida, y otra vez al aceptar, porque entre una cosa y otra otro cliente puede haberla ocupado. El cupo se valida al aceptar, que es cuando se reserva, con optimistic locking. |
+| D4 | Cuando cancela el proveedor, ¿cuánto se reintegra? | La misma política de anticipación que cuando cancela el cliente, porque el enunciado define el reintegro solo por anticipación. Consecuencia: si el proveedor cancela a último momento, el cliente puede recibir un reintegro parcial o nulo. |
 | D5 | ¿Cómo se relacionan el cupo y las franjas? | Cupo por publicación (cantidad de contrataciones activas, cada franja la toma una sola), o cupo por franja (cada franja admite varias personas, como un taller). Se define junto con el área de publicaciones. |

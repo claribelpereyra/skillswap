@@ -11,7 +11,7 @@ Reutilizar la búsqueda filtrada de publicaciones y ordenar sus resultados con e
 3. La estrategia ordena los candidatos por coincidencias de etiquetas, reputación y un desempate determinístico.
 4. El caso de uso aplica la página solicitada después del ordenamiento, de modo que una coincidencia de una página posterior no quede fuera de las recomendaciones.
 
-`JpaRecommendationMetadataQuery` lee solo perfiles activos. Usa las constantes `PROFILE_USER_ID` y `PROFILE_ACTIVE` declaradas junto con el esquema de perfiles en `JpaPublicationSearchQuery`.
+`JpaRecommendationMetadataQuery` lee solo perfiles activos. Declara sus propias constantes `PROFILE_USER_ID` y `PROFILE_ACTIVE`, con los mismos nombres de columna que usa `JpaPublicationSearchQuery`.
 
 ## Popularidad reciente
 

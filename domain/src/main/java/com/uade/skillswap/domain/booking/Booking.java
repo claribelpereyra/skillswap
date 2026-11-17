@@ -37,7 +37,10 @@ public class Booking implements BookingSubject {
     private RescheduleProposal pendingReschedule;
     private final List<BookingObserver> observers = new ArrayList<>();
     // Transiciones de esta instancia que todavía no se avisaron; se publican después de guardar.
-    private final List<StateTransition<BookingStatus>> unpublished = new ArrayList<>();
+    private final List<PendingEvent> unpublished = new ArrayList<>();
+
+    private record PendingEvent(StateTransition<BookingStatus> transition, boolean rescheduled) {
+    }
 
     private Booking(long publicationId, UserId clientId, UserId providerId, TimeSlot slot,
                     String message, String goal, SkillCoins price, StateHistory<BookingStatus> history) {
@@ -66,7 +69,7 @@ public class Booking implements BookingSubject {
         StateHistory<BookingStatus> history = StateHistory.startingAt(BookingStatus.PENDING, clientId, Instant.now(),
                 "Requested by the client");
         Booking booking = new Booking(publicationId, clientId, providerId, slot, message, goal, price, history);
-        booking.unpublished.add(history.last());
+        booking.unpublished.add(new PendingEvent(history.last(), false));
         return booking;
     }
 
@@ -124,7 +127,7 @@ public class Booking implements BookingSubject {
 
     public void changeState(BookingState next, UserId actor, String reason) {
         history.record(state.getStatus(), next.getStatus(), actor, nextHistoryTime(), reason);
-        unpublished.add(history.last());
+        unpublished.add(new PendingEvent(history.last(), false));
         state = next;
     }
 
@@ -181,13 +184,13 @@ public class Booking implements BookingSubject {
     public void acceptPendingReschedule(UserId actor) {
         RescheduleProposal proposal = requirePendingRescheduleAnsweredBy(actor);
         slot = proposal.newSlot();
-        recordInCurrentState(actor, "Rescheduled to slot " + slot.getId());
+        recordInCurrentState(actor, "Rescheduled to slot " + slot.getId(), true);
         pendingReschedule = null;
     }
 
     public void rejectPendingReschedule(UserId actor) {
         RescheduleProposal proposal = requirePendingRescheduleAnsweredBy(actor);
-        recordInCurrentState(actor, "Reschedule to slot " + proposal.newSlot().getId() + " rejected");
+        recordInCurrentState(actor, "Reschedule to slot " + proposal.newSlot().getId() + " rejected", false);
         pendingReschedule = null;
     }
 
@@ -206,10 +209,10 @@ public class Booking implements BookingSubject {
     }
 
     // La reprogramación no cambia el estado: queda en el historial como transición al mismo estado.
-    private void recordInCurrentState(UserId actor, String reason) {
+    private void recordInCurrentState(UserId actor, String reason, boolean rescheduled) {
         BookingStatus current = state.getStatus();
         history.record(current, current, actor, nextHistoryTime(), reason);
-        unpublished.add(history.last());
+        unpublished.add(new PendingEvent(history.last(), rescheduled));
     }
 
     private Instant nextHistoryTime() {
@@ -246,10 +249,10 @@ public class Booking implements BookingSubject {
 
     // Se llama después de confirmar la transacción; el id lo pasa quien guardó, porque una reserva nueva no lo tiene.
     public void publishPendingEvents(long bookingId) {
-        List<StateTransition<BookingStatus>> toPublish = List.copyOf(unpublished);
+        List<PendingEvent> toPublish = List.copyOf(unpublished);
         unpublished.clear();
-        for (StateTransition<BookingStatus> transition : toPublish) {
-            notifyObservers(BookingEvent.of(bookingId, clientId, providerId, transition));
+        for (PendingEvent pending : toPublish) {
+            notifyObservers(BookingEvent.of(bookingId, clientId, providerId, pending.transition(), pending.rescheduled()));
         }
     }
 

@@ -37,8 +37,7 @@ public final class BookingNotificationObserver implements BookingObserver {
     private static TipoEventoNotificable typeOf(BookingEvent event) {
         if (event.from() == null && event.to() == BookingStatus.PENDING)
             return TipoEventoNotificable.SOLICITUD_RECIBIDA;
-        if (event.from() == event.to() && event.reason() != null
-                && event.reason().startsWith("Rescheduled to slot "))
+        if (event.rescheduled())
             return TipoEventoNotificable.REPROGRAMACION;
         if (event.from() == event.to()) return null;
         return switch (event.to()) {

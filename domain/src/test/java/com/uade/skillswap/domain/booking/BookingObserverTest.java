@@ -134,6 +134,24 @@ class BookingObserverTest {
             assertThat(event.to()).isEqualTo(BookingStatus.ACCEPTED);
             assertThat(event.actor()).isEqualTo(CLIENT);
             assertThat(event.reason()).isEqualTo("Rescheduled to slot 2");
+            assertThat(event.rescheduled()).isTrue();
+        });
+    }
+
+    @Test
+    void aRejectedRescheduleIsPublishedWithoutTheRescheduleMark() {
+        Booking booking = newBooking();
+        booking.accept(PROVIDER);
+        booking.proposeReschedule(PROVIDER, OTHER_SLOT);
+        booking.publishPendingEvents(BOOKING_ID);
+        booking.addObserver(recorder);
+
+        booking.rejectReschedule(CLIENT);
+        booking.publishPendingEvents(BOOKING_ID);
+
+        assertThat(received).singleElement().satisfies(event -> {
+            assertThat(event.from()).isEqualTo(event.to());
+            assertThat(event.rescheduled()).isFalse();
         });
     }
 

@@ -77,8 +77,8 @@ class PublicationIntegrationTest {
         JpaPublicationRepository repository = new JpaPublicationRepository();
 
         publications = new PublicationControllerImpl(
-                new CreateDraftService(repository, profiles, unitOfWork, clock),
-                new EditDraftService(repository, unitOfWork),
+                new CreateDraftService(repository, profiles, new JpaCategoryTree(), unitOfWork, clock),
+                new EditDraftService(repository, new JpaCategoryTree(), unitOfWork),
                 new ChangePublicationStatusService(repository, unitOfWork, clock),
                 new GetPublicationService(repository),
                 new ListMyPublicationsService(repository),

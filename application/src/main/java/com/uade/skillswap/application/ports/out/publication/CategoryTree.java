@@ -7,4 +7,8 @@ import java.util.Set;
 public interface CategoryTree {
 
     Optional<Set<Long>> idsUnder(long categoryId);
+
+    default boolean contains(long categoryId) {
+        return idsUnder(categoryId).isPresent();
+    }
 }

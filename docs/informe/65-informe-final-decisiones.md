@@ -38,7 +38,7 @@ Las wallets y sus movimientos se persisten en infraestructura. El mapper restaur
 
 El caso de uso carga la contratación, valida primero que el actor sea el cliente y que el estado admita el pago, y recién entonces mueve los SkillCoins y confirma la transición en la misma unidad de trabajo. Una cancelación de una contratación confirmada calcula el reintegro con la `RefundStrategy`, lo mueve del proveedor al cliente, libera la franja y persiste el resultado dentro del límite transaccional. Cancelar una contratación aceptada libera la franja sin tocar wallets; una pendiente no libera nada porque nunca reservó cupo. Un reintegro que el proveedor no puede cubrir aborta toda la unidad de trabajo: no hay escrow.
 
-El precio final, con las promociones ya aplicadas, se calcula al solicitar la contratación y queda persistido; el pago y el reintegro usan ese importe sin recalcularlo. El ledger, el comprobante y el cálculo de reintegro coinciden con él. La cadena de promociones se configura en el armado de la aplicación; no existe un catálogo persistido de promociones activas.
+El precio final, con las promociones ya aplicadas, se calcula al solicitar la contratación y queda persistido; el pago y el reintegro usan ese importe sin recalcularlo. El ledger, el comprobante y el cálculo de reintegro coinciden con él. La cadena de promociones se configura en el armado de la aplicación con `SKILLSWAP_PROMOCIONES`, por proveedor y en orden (por ejemplo `user-sofia=PORCENTAJE:10,FIJO:5`): `CompositionRoot` traduce cada promoción a un decorador y `PromotionalPricingPolicy` envuelve el precio base de las publicaciones de ese proveedor en cada solicitud. Sin la variable, el precio es el base. No existe un catálogo persistido de promociones activas.
 
 ### Recomendaciones
 

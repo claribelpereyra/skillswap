@@ -27,6 +27,29 @@ class ConfiguracionFuncionalTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    @Test void leePromocionesPorProveedorEnElOrdenConfiguradoYSinVariableNoHayNinguna() {
+        var configuracion = ConfiguracionFuncional.desde(Map.of("SKILLSWAP_PROMOCIONES",
+                " user-sofia = porcentaje:10 , FIJO:5 ; user-mateo=FIJO:20 "));
+
+        assertThat(configuracion.promocionesPorProveedor()).containsOnlyKeys("user-sofia", "user-mateo");
+        assertThat(configuracion.promocionesPorProveedor().get("user-sofia")).containsExactly(
+                new ConfiguracionFuncional.PromocionConfigurada(ConfiguracionFuncional.TipoPromocion.PORCENTAJE, 10),
+                new ConfiguracionFuncional.PromocionConfigurada(ConfiguracionFuncional.TipoPromocion.FIJO, 5));
+        assertThat(configuracion.promocionesPorProveedor().get("user-mateo")).containsExactly(
+                new ConfiguracionFuncional.PromocionConfigurada(ConfiguracionFuncional.TipoPromocion.FIJO, 20));
+        assertThat(ConfiguracionFuncional.desde(Map.of()).promocionesPorProveedor()).isEmpty();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"user-sofia", "=FIJO:5", "user-sofia=", "user-sofia=DESCUENTO:5", "user-sofia=FIJO",
+            "user-sofia=FIJO:diez", "user-sofia=PORCENTAJE:101", "user-sofia=FIJO:-1", "user-sofia=FIJO:5,",
+            "user-sofia=FIJO:5;user-sofia=FIJO:1"})
+    void rechazaPromocionesMalFormadasFueraDeRangoORepetidas(String valor) {
+        assertThatThrownBy(() -> ConfiguracionFuncional.desde(Map.of("SKILLSWAP_PROMOCIONES", valor)))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("SKILLSWAP_PROMOCIONES");
+    }
+
     @Test void rechazaUmbralesInvertidosIgualesYEstrategiaDesconocida() {
         assertThatThrownBy(() -> ConfiguracionFuncional.desde(Map.of("SKILLSWAP_CANCELACION_TOTAL_HORAS", "12")))
                 .isInstanceOf(IllegalArgumentException.class);

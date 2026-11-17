@@ -131,6 +131,37 @@ class FullJourneyIntegrationTest {
         }
     }
 
+    // Caso de aceptación 9: promociones acumulables configuradas en el armado real, sin precio negativo.
+    @Test
+    void configuredPromotionsSetThePersistedPriceThatThePaymentCharges() {
+        try (var runtime = open(Map.of("SKILLSWAP_PROMOCIONES", "provider=PORCENTAJE:10,FIJO:5"))) {
+            var app = runtime.controllers();
+            var publication = publish(app);
+            ok(app.session().signIn("client"));
+            var booking = ok(app.bookings().request("client", publication.id(), publication.slots().get(0).id(),
+                    "Hi", "Learn"));
+            assertThat(booking.price()).isEqualTo(85);
+            ok(app.session().signIn("provider"));
+            ok(app.bookings().accept("provider", booking.id()));
+            ok(app.session().signIn("client"));
+            ok(app.bookings().pay("client", booking.id()));
+            assertThat(ok(app.walletQuery().getMyWallet()).balance()).isEqualTo(115);
+            ok(app.session().signIn("provider"));
+            assertThat(ok(app.walletQuery().getMyWallet()).balance()).isEqualTo(285);
+        }
+    }
+
+    @Test
+    void configuredPromotionsThatExceedThePriceLeaveItAtZero() {
+        try (var runtime = open(Map.of("SKILLSWAP_PROMOCIONES", "provider=FIJO:80,PORCENTAJE:50,FIJO:100"))) {
+            var app = runtime.controllers();
+            var publication = publish(app);
+            ok(app.session().signIn("client"));
+            assertThat(ok(app.bookings().request("client", publication.id(), publication.slots().get(0).id(),
+                    "Hi", "Learn")).price()).isZero();
+        }
+    }
+
     private static <T> T ok(ControllerResult<T> result) {
         assertThat(result.isSuccess()).as(result.getMessage()).isTrue();
         return result.getData();

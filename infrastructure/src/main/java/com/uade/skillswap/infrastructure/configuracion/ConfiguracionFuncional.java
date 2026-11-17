@@ -3,11 +3,24 @@ package com.uade.skillswap.infrastructure.configuracion;
 import java.time.Duration;
 import java.util.*;
 
-/** Lee valores externos; no calcula reintegros ni ejecuta recomendaciones. */
+/** Lee valores externos; no calcula reintegros, no ejecuta recomendaciones ni aplica promociones. */
 public record ConfiguracionFuncional(Duration anticipacionReintegroTotal,
                                     Duration anticipacionReintegroParcial,
-                                    EstrategiaRecomendacion estrategiaRecomendacion) {
+                                    EstrategiaRecomendacion estrategiaRecomendacion,
+                                    Map<String, List<PromocionConfigurada>> promocionesPorProveedor) {
     public enum EstrategiaRecomendacion { AFINIDAD, POPULARIDAD }
+
+    public enum TipoPromocion { PORCENTAJE, FIJO }
+
+    public record PromocionConfigurada(TipoPromocion tipo, long valor) {
+        public PromocionConfigurada {
+            Objects.requireNonNull(tipo);
+            if (valor < 0 || (tipo == TipoPromocion.PORCENTAJE && valor > 100)) {
+                throw new IllegalArgumentException(
+                        "SKILLSWAP_PROMOCIONES: PORCENTAJE va de 0 a 100 y FIJO no puede ser negativo");
+            }
+        }
+    }
 
     public ConfiguracionFuncional {
         Objects.requireNonNull(anticipacionReintegroTotal);
@@ -17,6 +30,10 @@ public record ConfiguracionFuncional(Duration anticipacionReintegroTotal,
                 || anticipacionReintegroTotal.compareTo(anticipacionReintegroParcial) <= 0) {
             throw new IllegalArgumentException("El umbral total debe ser mayor que el parcial, y ambos no negativos");
         }
+        Map<String, List<PromocionConfigurada>> copia = new HashMap<>();
+        Objects.requireNonNull(promocionesPorProveedor).forEach((proveedor, promociones) ->
+                copia.put(proveedor, List.copyOf(promociones)));
+        promocionesPorProveedor = Map.copyOf(copia);
     }
 
     public static ConfiguracionFuncional desdeEntorno() { return desde(System.getenv()); }
@@ -32,7 +49,51 @@ public record ConfiguracionFuncional(Duration anticipacionReintegroTotal,
         } catch (IllegalArgumentException fallo) {
             throw new IllegalArgumentException("SKILLSWAP_RECOMENDACION debe ser AFINIDAD o POPULARIDAD");
         }
-        return new ConfiguracionFuncional(total, parcial, estrategia);
+        return new ConfiguracionFuncional(total, parcial, estrategia, promociones(variables));
+    }
+
+    // Formato: proveedor=TIPO:valor,TIPO:valor;otroProveedor=TIPO:valor. Las promociones se aplican en ese orden.
+    private static Map<String, List<PromocionConfigurada>> promociones(Map<String, String> variables) {
+        String texto = valor(variables, "SKILLSWAP_PROMOCIONES", "");
+        Map<String, List<PromocionConfigurada>> porProveedor = new HashMap<>();
+        if (texto.isEmpty()) {
+            return porProveedor;
+        }
+        for (String grupo : texto.split(";", -1)) {
+            String[] partes = grupo.split("=", -1);
+            if (partes.length != 2 || partes[0].isBlank() || partes[1].isBlank()) {
+                throw formatoDePromocionInvalido();
+            }
+            List<PromocionConfigurada> promociones = new ArrayList<>();
+            for (String promocion : partes[1].split(",", -1)) {
+                promociones.add(promocion(promocion));
+            }
+            if (porProveedor.putIfAbsent(partes[0].trim(), promociones) != null) {
+                throw new IllegalArgumentException("SKILLSWAP_PROMOCIONES repite el proveedor " + partes[0].trim());
+            }
+        }
+        return porProveedor;
+    }
+
+    private static PromocionConfigurada promocion(String texto) {
+        String[] partes = texto.split(":", -1);
+        if (partes.length != 2) {
+            throw formatoDePromocionInvalido();
+        }
+        TipoPromocion tipo;
+        long valor;
+        try {
+            tipo = TipoPromocion.valueOf(partes[0].trim().toUpperCase(Locale.ROOT));
+            valor = Long.parseLong(partes[1].trim());
+        } catch (IllegalArgumentException fallo) {
+            throw formatoDePromocionInvalido();
+        }
+        return new PromocionConfigurada(tipo, valor);
+    }
+
+    private static IllegalArgumentException formatoDePromocionInvalido() {
+        return new IllegalArgumentException(
+                "SKILLSWAP_PROMOCIONES debe tener el formato proveedor=PORCENTAJE:10,FIJO:5;otroProveedor=FIJO:20");
     }
 
     private static Duration horas(Map<String, String> variables, String nombre, String defecto) {

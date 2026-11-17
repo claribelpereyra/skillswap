@@ -14,6 +14,7 @@ Aplicar promociones acumulables al precio de una contratación y garantizar que 
 - `BookingPricingPolicy` calcula el importe por cliente y publicación al crear la contratación; `Booking.price` persiste el precio final y el pago no vuelve a aplicar descuentos.
 - Las políticas pueden componer `PromotionDecorator` sin compartir una única cadena global entre todos los clientes y publicaciones.
 - Un precio final de cero es válido: la contratación avanza sin insertar movimientos de monto cero.
+- En producción, `PromotionalPricingPolicy` aplica las promociones de `SKILLSWAP_PROMOCIONES` a las publicaciones del proveedor configurado, en el orden escrito. `FullJourneyIntegrationTest` cubre el caso 9 con el armado real.
 
 ## Resultado
 

@@ -17,7 +17,7 @@ import com.uade.skillswap.application.ports.out.UnitOfWork;
 import com.uade.skillswap.application.ports.out.WalletRepository;
 import com.uade.skillswap.application.ports.out.BookingLabelsQuery;
 import com.uade.skillswap.domain.booking.Booking;
-import com.uade.skillswap.domain.booking.BookingStatus;
+import com.uade.skillswap.domain.booking.CancellationOutcome;
 import com.uade.skillswap.domain.booking.observer.BookingObserver;
 import com.uade.skillswap.domain.common.BusinessRuleException;
 import com.uade.skillswap.domain.common.SkillCoins;
@@ -120,10 +120,9 @@ public class BookingServiceImpl implements BookingService {
     public BookingView cancel(Long bookingId, UserId actor, String reason) {
         return unitOfWork.execute(() -> {
             Booking booking = findBooking(bookingId);
-            BookingStatus previousStatus = booking.getStatus();
-            booking.cancel(actor, reason);
+            CancellationOutcome outcome = booking.cancel(actor, reason);
 
-            if (previousStatus == BookingStatus.CONFIRMED) {
+            if (outcome.refundable()) {
                 SkillCoins refundAmount = refundStrategy.refundAmount(
                         booking.getPrice(), booking.getSlot().getStartsAt(), clock.instant());
                 if (refundAmount.amount() > 0) {
@@ -135,7 +134,7 @@ public class BookingServiceImpl implements BookingService {
                 }
             }
 
-            if (previousStatus == BookingStatus.ACCEPTED || previousStatus == BookingStatus.CONFIRMED) {
+            if (outcome.releasesSlot()) {
                 availability.release(booking.getPublicationId(), booking.getSlot().getId());
             }
             return saveAndScheduleEvents(booking);

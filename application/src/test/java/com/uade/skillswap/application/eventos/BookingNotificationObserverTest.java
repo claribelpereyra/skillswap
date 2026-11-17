@@ -21,7 +21,7 @@ class BookingNotificationObserverTest {
         for (int i = 0; i < statuses.size(); i++) {
             var event = new BookingEvent(10L, new UserId("ana"), new UserId("bruno"),
                     i == 0 ? null : BookingStatus.ACCEPTED, statuses.get(i), new UserId("ana"),
-                    Instant.EPOCH.plusSeconds(i), i == 3 ? "Rescheduled to slot 2" : null);
+                    Instant.EPOCH.plusSeconds(i), i == 3 ? "Rescheduled to slot 2" : null, i == 3);
             // ACCEPTED necesita un origen PENDING; el resto conserva su transición real.
             if (i == 1) event = new BookingEvent(10L, event.clientId(), event.providerId(),
                     BookingStatus.PENDING, event.to(), event.actor(), event.occurredAt(), null);
@@ -35,6 +35,20 @@ class BookingNotificationObserverTest {
         }
         assertThat(received.stream().map(EventoNotificable::tipo).distinct())
                 .containsExactly(TipoEventoNotificable.values());
+    }
+
+    @Test
+    void recognizesARescheduleByItsMarkAndNotByTheReasonText() {
+        List<EventoNotificable> received = new ArrayList<>();
+        var observer = new BookingNotificationObserver(received::add);
+
+        observer.update(new BookingEvent(10, new UserId("ana"), new UserId("bruno"), BookingStatus.CONFIRMED,
+                BookingStatus.CONFIRMED, new UserId("ana"), Instant.EPOCH, "Moved to another slot", true));
+        observer.update(new BookingEvent(10, new UserId("ana"), new UserId("bruno"), BookingStatus.CONFIRMED,
+                BookingStatus.CONFIRMED, new UserId("ana"), Instant.EPOCH.plusSeconds(1), "Rescheduled to slot 2", false));
+
+        assertThat(received).singleElement()
+                .satisfies(event -> assertThat(event.tipo()).isEqualTo(TipoEventoNotificable.REPROGRAMACION));
     }
 
     @Test

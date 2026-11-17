@@ -23,6 +23,8 @@ public interface BookingState {
 
     void complete(Booking booking, UserId actor);
 
+    UserId ratingRecipientFor(Booking booking, UserId author);
+
     CancellationOutcome cancel(Booking booking, UserId actor, String reason);
 
     void proposeReschedule(Booking booking, UserId actor, TimeSlot newSlot);

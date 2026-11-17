@@ -1,19 +1,22 @@
 package com.uade.skillswap.application.usecases.rating;
 
-import com.uade.skillswap.application.common.AccessDeniedException;
 import com.uade.skillswap.application.common.Page;
 import com.uade.skillswap.application.common.PageRequest;
 import com.uade.skillswap.application.common.ResourceNotFoundException;
 import com.uade.skillswap.application.dto.rating.RatingView;
 import com.uade.skillswap.application.dto.rating.RegisterRatingCommand;
+import com.uade.skillswap.application.ports.out.BookingRepository;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
 import com.uade.skillswap.application.ports.out.profile.ProfileRepository;
-import com.uade.skillswap.application.ports.out.rating.EligibleBookingQuery;
-import com.uade.skillswap.application.ports.out.rating.EligibleBookingQuery.BookingTarget;
 import com.uade.skillswap.application.ports.out.rating.RatingRepository;
+import com.uade.skillswap.domain.booking.Booking;
+import com.uade.skillswap.domain.common.InvalidTransitionException;
+import com.uade.skillswap.domain.common.PermissionDeniedException;
+import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.profile.AccountType;
 import com.uade.skillswap.domain.profile.Profile;
+import com.uade.skillswap.domain.publication.TimeSlot;
 import com.uade.skillswap.domain.rating.InvalidRatingException;
 import com.uade.skillswap.domain.rating.Rating;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,7 +53,7 @@ class RatingUseCasesTest {
     @Mock
     private ProfileRepository profileRepository;
     @Mock
-    private EligibleBookingQuery eligibleBookingQuery;
+    private BookingRepository bookings;
 
     private final UnitOfWork immediateUnitOfWork = new UnitOfWork() {
         @Override
@@ -65,7 +68,7 @@ class RatingUseCasesTest {
     @BeforeEach
     void setUp() {
         registerService = new RegisterRatingService(
-                ratingRepository, profileRepository, eligibleBookingQuery, immediateUnitOfWork);
+                ratingRepository, profileRepository, bookings, immediateUnitOfWork);
         listService = new ListRatingsService(ratingRepository, profileRepository);
 
         lenient().when(ratingRepository.save(any(Rating.class)))
@@ -74,13 +77,27 @@ class RatingUseCasesTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
+    private static Booking confirmedBooking() {
+        TimeSlot slot = new TimeSlot(1L, Instant.parse("2026-12-01T10:00:00Z"), Instant.parse("2026-12-01T11:00:00Z"));
+        Booking booking = Booking.request(1L, CLIENT, PROVIDER, slot, "Hola", "Aprender", new SkillCoins(100));
+        booking.accept(PROVIDER);
+        booking.confirmPayment(CLIENT);
+        return booking;
+    }
+
+    private static Booking completedBooking() {
+        Booking booking = confirmedBooking();
+        booking.start(PROVIDER);
+        booking.complete(CLIENT);
+        return booking;
+    }
+
     @Test
     void registersRatingAndUpdatesCounterpartyReputationAtomically() {
         Profile recipientProfile = Profile.rebuild(2L, PROVIDER, "Bruno", "Bio", ZoneId.of("UTC"),
                 AccountType.PROFESSIONAL, 4, 1, Set.of(), Set.of(), null, true,
                 Instant.parse("2026-11-01T10:00:00Z"));
-        when(eligibleBookingQuery.findBooking(BOOKING_ID))
-                .thenReturn(Optional.of(new BookingTarget(BOOKING_ID, CLIENT, PROVIDER, true)));
+        when(bookings.findById(BOOKING_ID)).thenReturn(Optional.of(completedBooking()));
         when(ratingRepository.existsByBookingIdAndAuthorId(BOOKING_ID, CLIENT)).thenReturn(false);
         when(profileRepository.findByUserId(PROVIDER)).thenReturn(Optional.of(recipientProfile));
 
@@ -99,6 +116,8 @@ class RatingUseCasesTest {
 
     @Test
     void rejectsNullCommandNullAuthorAndSelfRating() {
+        when(bookings.findById(BOOKING_ID)).thenReturn(Optional.of(completedBooking()));
+
         assertThatThrownBy(() -> registerService.register(null))
                 .isExactlyInstanceOf(InvalidRatingException.class)
                 .hasMessage("The rating command cannot be null");
@@ -111,30 +130,28 @@ class RatingUseCasesTest {
         assertThatThrownBy(() -> registerService.register(
                 new RegisterRatingCommand(CLIENT, BOOKING_ID, CLIENT, 5, "ok")))
                 .isExactlyInstanceOf(InvalidRatingException.class)
-                .hasMessage("A user cannot rate themselves");
+                .hasMessage("The recipient does not match the counterparty of booking 10");
     }
 
     @Test
     void rejectsMissingIncompleteNonParticipantWrongCounterpartyDuplicateAndMissingProfile() {
-        when(eligibleBookingQuery.findBooking(BOOKING_ID)).thenReturn(Optional.empty());
+        when(bookings.findById(BOOKING_ID)).thenReturn(Optional.empty());
         assertThatThrownBy(() -> registerService.register(
                 new RegisterRatingCommand(CLIENT, BOOKING_ID, PROVIDER, 5, "ok")))
                 .isExactlyInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Booking not found with id 10");
 
-        when(eligibleBookingQuery.findBooking(BOOKING_ID))
-                .thenReturn(Optional.of(new BookingTarget(BOOKING_ID, CLIENT, PROVIDER, false)));
+        when(bookings.findById(BOOKING_ID)).thenReturn(Optional.of(confirmedBooking()));
         assertThatThrownBy(() -> registerService.register(
                 new RegisterRatingCommand(CLIENT, BOOKING_ID, PROVIDER, 5, "ok")))
-                .isExactlyInstanceOf(InvalidRatingException.class)
-                .hasMessage("Only completed bookings can be rated");
+                .isExactlyInstanceOf(InvalidTransitionException.class)
+                .hasMessage("Cannot rate in state CONFIRMED");
 
-        when(eligibleBookingQuery.findBooking(BOOKING_ID))
-                .thenReturn(Optional.of(new BookingTarget(BOOKING_ID, CLIENT, PROVIDER, true)));
+        when(bookings.findById(BOOKING_ID)).thenReturn(Optional.of(completedBooking()));
         assertThatThrownBy(() -> registerService.register(
                 new RegisterRatingCommand(OUTSIDER, BOOKING_ID, PROVIDER, 5, "ok")))
-                .isExactlyInstanceOf(AccessDeniedException.class)
-                .hasMessage("User carla is not allowed to rate booking 10");
+                .isExactlyInstanceOf(PermissionDeniedException.class)
+                .hasMessage("Only the client or the provider can rate a booking");
 
         assertThatThrownBy(() -> registerService.register(
                 new RegisterRatingCommand(PROVIDER, BOOKING_ID, null, 5, "ok")))
@@ -162,18 +179,6 @@ class RatingUseCasesTest {
         verify(profileRepository, never()).save(any());
     }
 
-    @Test
-    void bookingTargetCounterpartyHelperHandlesAllParticipantCases() {
-        BookingTarget target = new BookingTarget(BOOKING_ID, CLIENT, PROVIDER, true);
-
-        assertThat(target.involves(null)).isFalse();
-        assertThat(target.involves(OUTSIDER)).isFalse();
-        assertThat(target.involves(CLIENT)).isTrue();
-        assertThat(target.counterpartyOf(null)).isEmpty();
-        assertThat(target.counterpartyOf(OUTSIDER)).isEmpty();
-        assertThat(target.counterpartyOf(CLIENT)).contains(PROVIDER);
-        assertThat(target.counterpartyOf(PROVIDER)).contains(CLIENT);
-    }
 
     @Test
     void listsPaginatedRatingsForExistingProfileAndRejectsMissingOrNullRecipient() {

@@ -40,6 +40,11 @@ public abstract class BookingStateBase implements BookingState {
     }
 
     @Override
+    public UserId ratingRecipientFor(Booking booking, UserId author) {
+        throw invalid("rate");
+    }
+
+    @Override
     public CancellationOutcome cancel(Booking booking, UserId actor, String reason) {
         throw invalid("cancel");
     }

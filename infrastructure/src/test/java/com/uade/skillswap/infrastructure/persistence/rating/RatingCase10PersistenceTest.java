@@ -1,6 +1,5 @@
 package com.uade.skillswap.infrastructure.persistence.rating;
 
-import com.uade.skillswap.application.common.AccessDeniedException;
 import com.uade.skillswap.application.common.ConcurrentUpdateException;
 import com.uade.skillswap.application.common.Page;
 import com.uade.skillswap.application.common.PageRequest;
@@ -12,6 +11,8 @@ import com.uade.skillswap.application.ports.out.rating.RatingRepository;
 import com.uade.skillswap.application.usecases.rating.RegisterRatingService;
 import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.common.SkillCoins;
+import com.uade.skillswap.domain.common.InvalidTransitionException;
+import com.uade.skillswap.domain.common.PermissionDeniedException;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.profile.AccountType;
 import com.uade.skillswap.domain.profile.Profile;
@@ -48,7 +49,6 @@ class RatingCase10PersistenceTest extends PersistenceTestBase {
     private final JpaProfileRepository profileRepository = new JpaProfileRepository();
     private final JpaRatingRepository ratingRepository = new JpaRatingRepository();
     private final JpaBookingRepository bookingRepository = new JpaBookingRepository();
-    private final JpaEligibleBookingQuery eligibleBookingQuery = new JpaEligibleBookingQuery(bookingRepository);
 
     private RegisterRatingService registerService;
     private long firstCompletedBookingId;
@@ -65,7 +65,7 @@ class RatingCase10PersistenceTest extends PersistenceTestBase {
         registerService = new RegisterRatingService(
                 ratingRepository,
                 profileRepository,
-                eligibleBookingQuery,
+                bookingRepository,
                 unitOfWork
         );
 
@@ -109,12 +109,12 @@ class RatingCase10PersistenceTest extends PersistenceTestBase {
 
         assertThatThrownBy(() -> registerService.register(
                 new RegisterRatingCommand(ANA, confirmedBookingId, BRUNO, 5, "Early")))
-                .isExactlyInstanceOf(InvalidRatingException.class)
-                .hasMessage("Only completed bookings can be rated");
+                .isExactlyInstanceOf(InvalidTransitionException.class)
+                .hasMessage("Cannot rate in state CONFIRMED");
         assertThatThrownBy(() -> registerService.register(
                 new RegisterRatingCommand(CARLA, firstCompletedBookingId, BRUNO, 5, "Outsider")))
-                .isExactlyInstanceOf(AccessDeniedException.class)
-                .hasMessage("User carla is not allowed to rate booking " + firstCompletedBookingId);
+                .isExactlyInstanceOf(PermissionDeniedException.class)
+                .hasMessage("Only the client or the provider can rate a booking");
 
         Page<Rating> storedForBruno = ratingRepository.findByRecipientId(BRUNO, PageRequest.first());
         assertThat(storedForBruno.totalItems()).isEqualTo(2L);
@@ -155,7 +155,7 @@ class RatingCase10PersistenceTest extends PersistenceTestBase {
             }
         };
         RegisterRatingService synchronizedService = new RegisterRatingService(
-                ratingRepository, synchronizedProfileRepo, eligibleBookingQuery, unitOfWork);
+                ratingRepository, synchronizedProfileRepo, bookingRepository, unitOfWork);
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {
@@ -202,7 +202,7 @@ class RatingCase10PersistenceTest extends PersistenceTestBase {
             }
         };
         RegisterRatingService synchronizedService = new RegisterRatingService(
-                synchronizedRatingRepo, profileRepository, eligibleBookingQuery, unitOfWork);
+                synchronizedRatingRepo, profileRepository, bookingRepository, unitOfWork);
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         try {

@@ -418,6 +418,19 @@ class BookingTest {
     }
 
     @Test
+    void onlyACompletedBookingCanBeRatedAndEachParticipantRatesTheOtherOne() {
+        Booking completed = completed();
+
+        assertThat(completed.ratingRecipientFor(CLIENT)).isEqualTo(PROVIDER);
+        assertThat(completed.ratingRecipientFor(PROVIDER)).isEqualTo(CLIENT);
+        assertThatThrownBy(() -> completed.ratingRecipientFor(OUTSIDER))
+                .isExactlyInstanceOf(PermissionDeniedException.class);
+        assertThatThrownBy(() -> inProgress().ratingRecipientFor(CLIENT))
+                .isExactlyInstanceOf(InvalidTransitionException.class)
+                .hasMessage("Cannot rate in state IN_PROGRESS");
+    }
+
+    @Test
     void finalStatesRejectEveryAction() {
         Booking completed = completed();
         Booking rejected = newBooking();

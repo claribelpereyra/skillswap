@@ -48,13 +48,6 @@ public class BookingServiceImpl implements BookingService {
     public BookingServiceImpl(BookingRepository bookings, PublicationCatalog publications,
                               PublicationAvailability availability, WalletRepository wallets,
                               BookingPricingPolicy pricingPolicy, RefundStrategy refundStrategy,
-                              UnitOfWork unitOfWork, Clock clock) {
-        this(bookings,publications,availability,wallets,pricingPolicy,refundStrategy,unitOfWork,clock,ids -> java.util.Map.of());
-    }
-
-    public BookingServiceImpl(BookingRepository bookings, PublicationCatalog publications,
-                              PublicationAvailability availability, WalletRepository wallets,
-                              BookingPricingPolicy pricingPolicy, RefundStrategy refundStrategy,
                               UnitOfWork unitOfWork, Clock clock, BookingLabelsQuery labels) {
         this.bookings = Objects.requireNonNull(bookings);
         this.publications = Objects.requireNonNull(publications);
@@ -88,7 +81,7 @@ public class BookingServiceImpl implements BookingService {
                     command.message(), command.goal(), finalPrice);
             Changed changed = new Changed(booking, bookings.save(booking));
             unitOfWork.afterCommit(() -> publish(changed));
-            return BookingView.from(changed.saved());
+            return withLabels(changed.saved());
         });
     }
 
@@ -190,6 +183,15 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    public BookingView get(Long bookingId, UserId actor) {
+        Booking booking = findBooking(bookingId);
+        if (!booking.isParticipant(actor)) {
+            throw new AccessDeniedException(actor, "view booking " + bookingId);
+        }
+        return withLabels(booking);
+    }
+
+    @Override
     public List<BookingHistoryEntry> history(Long bookingId, UserId actor) {
         Booking booking = findBooking(bookingId);
         if (!booking.isParticipant(actor)) {
@@ -208,14 +210,22 @@ public class BookingServiceImpl implements BookingService {
         return withLabels(bookings.findByProvider(actor, page));
     }
 
+    private BookingView withLabels(Booking booking) {
+        var names = booking.getId() == null ? java.util.Map.<Long, BookingLabelsQuery.Labels>of()
+                : labels.forBookings(java.util.Set.of(booking.getId()));
+        return withLabels(booking, booking.getId() == null ? null : names.get(booking.getId()));
+    }
+
+    private static BookingView withLabels(Booking booking, BookingLabelsQuery.Labels row) {
+        var view = BookingView.from(booking);
+        return row == null ? view : view.withLabels(row.title(), row.clientName(), row.providerName());
+    }
+
     private Page<BookingView> withLabels(Page<Booking> page) {
         var ids = page.items().stream().map(Booking::getId).filter(Objects::nonNull).collect(java.util.stream.Collectors.toSet());
         var names = labels.forBookings(ids);
-        return page.map(booking -> {
-            var view = BookingView.from(booking);
-            var row = booking.getId() == null ? null : names.get(booking.getId());
-            return row == null ? view : view.withLabels(row.title(),row.clientName(),row.providerName());
-        });
+        return page.map(booking -> withLabels(booking,
+                booking.getId() == null ? null : names.get(booking.getId())));
     }
 
     // Busca la reserva, aplica el cambio y la guarda, todo en una misma transacción.
@@ -230,7 +240,7 @@ public class BookingServiceImpl implements BookingService {
     private BookingView saveAndScheduleEvents(Booking booking) {
         Changed changed = new Changed(booking, bookings.save(booking));
         unitOfWork.afterCommit(() -> publish(changed));
-        return BookingView.from(changed.saved());
+        return withLabels(changed.saved());
     }
     // Lo registra el execute() mediante afterCommit; si la transacción revierte, no se dispara.
     private void publish(Changed changed) {

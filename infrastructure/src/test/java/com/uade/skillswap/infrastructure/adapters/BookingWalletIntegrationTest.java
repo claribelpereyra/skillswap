@@ -224,7 +224,7 @@ class BookingWalletIntegrationTest extends PersistenceTestBase {
                 pricing,
                 refunds,
                 unitOfWork,
-                Clock.fixed(now, ZoneOffset.UTC));
+                Clock.fixed(now, ZoneOffset.UTC), ids -> java.util.Map.of());
     }
 
     private String payOutcome(BookingServiceImpl service, long bookingId) {

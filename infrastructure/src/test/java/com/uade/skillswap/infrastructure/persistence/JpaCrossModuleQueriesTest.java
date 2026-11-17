@@ -17,7 +17,6 @@ import com.uade.skillswap.infrastructure.persistence.booking.JpaBookingRepositor
 import com.uade.skillswap.infrastructure.persistence.profile.JpaActivePublicationsQuery;
 import com.uade.skillswap.infrastructure.persistence.publication.JpaPublicationRepository;
 import com.uade.skillswap.infrastructure.persistence.rating.JpaEligibleBookingQuery;
-import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -91,26 +90,21 @@ class JpaCrossModuleQueriesTest extends PersistenceTestBase {
     }
 
     @Test
-    void demoSeedMigrationLoadsCoherentSchemaDataWithoutBlockingFutureMigrations() {
-        String demoUrl = "jdbc:h2:mem:demo-seed-check;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1";
-        Flyway flyway = Flyway.configure()
-                .dataSource(demoUrl, "sa", "")
-                .locations("classpath:db/migration", "classpath:db/seed")
-                .load();
-        flyway.migrate();
-        flyway.migrate();
-
+    void migracionesDeEsquemaNoCarganDatosDeEjemplo() {
+        String demoUrl = "jdbc:h2:mem:schema-without-demo;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1";
         PersistenceConfiguration demoDb = new PersistenceConfiguration(demoUrl, "sa", "");
+        demoDb.migrate();
+        demoDb.migrate();
         try (var emf = demoDb.createEntityManagerFactory(); var em = emf.createEntityManager()) {
             long profiles = ((Number) em.createNativeQuery("SELECT COUNT(*) FROM profile").getSingleResult())
                     .longValue();
             long ratings = ((Number) em.createNativeQuery("SELECT COUNT(*) FROM rating").getSingleResult())
                     .longValue();
-            double anaReputation = ((Number) em.createNativeQuery(
-                    "SELECT reputation FROM profile WHERE user_id = 'ana'").getSingleResult()).doubleValue();
-            assertThat(profiles).isEqualTo(3L);
-            assertThat(ratings).isEqualTo(2L);
-            assertThat(anaReputation).isEqualTo(5.0);
+            long publications = ((Number) em.createNativeQuery("SELECT COUNT(*) FROM publication").getSingleResult())
+                    .longValue();
+            assertThat(profiles).isZero();
+            assertThat(ratings).isZero();
+            assertThat(publications).isZero();
         }
     }
 

@@ -1,6 +1,6 @@
 # Validación de UI y MySQL
 
-Fecha: 16/11/2026. Java 17 y MySQL Community Server 8.4.13 local, iniciado desde el ZIP oficial sin instalar un servicio Windows. Servidor de desarrollo en 127.0.0.1:3307. Los datos y binarios locales no se incluyen en Git.
+Java 17 y MySQL 8.4. La validación inicial se hizo el 16/11/2026 con MySQL Community Server 8.4.13. Para reproducirla se usa el servicio MySQL definido en Docker Compose (puerto 3306).
 
 ## Pruebas reproducibles
 
@@ -9,9 +9,10 @@ La suite normal `mvn clean verify` usa H2 y conserva el control JaCoCo de 80 % e
 Para probar MySQL, se configura una URL de servidor **sin nombre de base**, terminada en `/`:
 
 ```powershell
-$env:SKILLSWAP_MYSQL_TEST_URL='jdbc:mysql://127.0.0.1:3307/'
+docker compose up -d
+$env:SKILLSWAP_MYSQL_TEST_URL='jdbc:mysql://127.0.0.1:3306/'
 $env:SKILLSWAP_MYSQL_TEST_USER='root'
-$env:SKILLSWAP_MYSQL_TEST_PASSWORD='<clave local>'
+$env:SKILLSWAP_MYSQL_TEST_PASSWORD='root'
 mvn -B -pl app -am '-Dtest=FullJourneyIntegrationTest,RealUiControllersIntegrationTest' -Dsurefire.failIfNoSpecifiedTests=false test
 ```
 
@@ -25,11 +26,13 @@ El workflow CI conserva build/H2 y agrega un job independiente MySQL 8.4 con las
 
 ## Arranque local
 
-- Con Docker: `docker compose up -d`; conexión habitual en 3306.
-- En la máquina preparada de Ian: `scripts/start-local-mysql.ps1` reutiliza la instancia portable y su configuración en la carpeta local de herramientas, sin servicio del sistema.
-- `scripts/run-ui.ps1` abre el JAR con --demo y conexión local 3307; permite cambiar DatabaseUrl, JavaHome y UserId.
+```bash
+docker compose up -d
+mvn clean verify
+java -jar app/target/app-0.1.0-SNAPSHOT.jar --demo
+```
 
-Los scripts no descargan ni instalan software. En otra máquina se debe preparar MySQL (por ejemplo Docker) y usar la conexión correspondiente. La carpeta de herramientas portable local no es parte de la entrega del repositorio.
+Se requieren JDK 17 y Maven 3.9+. La conexión por defecto coincide con el compose (localhost:3306, base/usuario/clave skillswap). Esperar a que MySQL acepte conexiones antes de iniciar el JAR. `--demo` es la única carga de ejemplo: crea Mateo/Sofía y no duplica datos ni reinicia saldos al volver a ejecutarla. Sin esa opción se usan los datos existentes.
 
 ## Límites conservados
 

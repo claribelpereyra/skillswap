@@ -110,7 +110,7 @@ Mínimo cuatro, cada uno resolviendo una variación concreta y con tests que lo 
 - Límites transaccionales explícitos en aceptación, reserva, pago y cancelación.
 - Modelar bien cardinalidades, claves, unicidad e índices.
 - Evitar N+1 en las consultas principales (fetch joins, entity graphs o proyecciones) y dejar comentado por qué.
-- Datos de ejemplo reproducibles para el entorno local en su propia migración (por ejemplo `V100__datos_ejemplo.sql`).
+- Datos de ejemplo locales: una única demo opcional e idempotente (`--demo`, `DemoScenario`) mediante controllers reales. Las migraciones Flyway contienen solo esquema; no cargar demos automáticamente ni mantener un seed SQL paralelo.
 
 ## Tests
 

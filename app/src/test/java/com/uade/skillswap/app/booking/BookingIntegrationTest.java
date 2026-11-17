@@ -183,7 +183,7 @@ class BookingIntegrationTest {
     private static BookingController controller(PublicationRepository publications) {
         return new BookingControllerImpl(new BookingServiceImpl(BOOKINGS, new PublicationCatalogAdapter(publications),
                 new PublicationAvailabilityAdapter(publications), WALLETS, PRICING_POLICY, REFUND_STRATEGY,
-                UNIT_OF_WORK, CLOCK), ACTIVE::get);
+                UNIT_OF_WORK, CLOCK, ids -> java.util.Map.of()), ACTIVE::get);
     }
 
     private static void signIn(UserId user) {

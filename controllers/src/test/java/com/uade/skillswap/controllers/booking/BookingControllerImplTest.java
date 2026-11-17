@@ -37,7 +37,7 @@ class BookingControllerImplTest {
     private static final UserId BRUNO = new UserId("bruno");
     private static final BookingView VIEW = new BookingView(99L, 10L, "ana", "bruno", 1L,
             Instant.parse("2026-11-19T21:00:00Z"), Instant.parse("2026-11-19T22:00:00Z"),
-            BookingStatus.PENDING, 100, "Hola", "Entrevista", null, null);
+            BookingStatus.PENDING, 100, "Hola", "Entrevista", null, null, "Mock interview", "Ana", "Bruno");
 
     private BookingService service;
     private BookingControllerImpl controller;
@@ -221,5 +221,16 @@ class BookingControllerImplTest {
 
     private void loggedAs(UserId user) {
         loggedUser = user;
+    }
+
+    @Test
+    void consultaPorIdConElUsuarioActivoYRechazaSuplantaciones() {
+        loggedAs(ANA);
+        when(service.get(99L, ANA)).thenReturn(VIEW);
+
+        assertThat(controller.get("ana", 99L).getData()).isEqualTo(VIEW);
+        assertThat(controller.get("bruno", 99L).getErrorType()).isEqualTo(ErrorType.ACCESS_DENIED);
+        verify(service).get(99L, ANA);
+        org.mockito.Mockito.verifyNoMoreInteractions(service);
     }
 }

@@ -6,7 +6,7 @@ TP obligatorio de Procesos de Desarrollo de Software (UADE). Backend en Java 17 
 
 - JDK 17
 - Maven 3.9+ (o el que trae IntelliJ)
-- MySQL 8.4 (Docker Compose o una instancia local)
+- Docker Compose, para levantar MySQL 8.4 local
 
 ## Cómo correrlo
 
@@ -26,14 +26,7 @@ java -jar app/target/app-0.1.0-SNAPSHOT.jar --demo
 
 `--demo` crea datos locales reproducibles: user-mateo y user-sofia, 500 créditos iniciales por usuario, habilidades y ofertas con franjas. Reiniciar no vuelve a acreditar saldo ni duplica ofertas. El selector de sesión permite probar cliente y proveedor sin cambiar de actor automáticamente. Sin --demo no se cargan datos.
 
-En la máquina de Ian está preparada una instancia MySQL portable en 127.0.0.1:3307. Desde PowerShell:
-
-```powershell
-.\scripts\start-local-mysql.ps1
-.\scripts\run-ui.ps1
-```
-
-El script de UI selecciona el JDK 17 preparado localmente si JAVA_HOME no está definido. En otra máquina puede indicarse `-JavaHome` y `-DatabaseUrl`; con Docker el puerto usual es 3306. El script portable no descarga ni instala MySQL: requiere la instancia ya preparada. Para ejecutar con datos propios se puede pasar --user=<userId> al JAR y crear previamente el perfil correspondiente.
+Para levantar MySQL local alcanza con `docker compose up -d` (puerto 3306). Para ejecutar con datos propios se puede pasar `--user=<userId>` al JAR y crear previamente el perfil correspondiente.
 
 Ver `docs/informe/105-integracion-mock-ui-kit.md` para el contrato y los ajustes mínimos del kit.
 

@@ -191,7 +191,7 @@ class PublicationQueriesTest {
     void theSearchReturnsThePageTheQueryFound() {
         PageRequest page = new PageRequest(0, 1);
         PublicationSummary row = new PublicationSummary(1, "ana", 4.5, PublicationType.MENTORING, "Mock interview",
-                1L, Modality.REMOTE, 100, 1, Set.of("java"), NOW);
+                1L, Modality.REMOTE, 100, 1, Set.of("java"), NOW, "Descripción de prueba", 60, "Proveedor");
         when(searchQuery.search(any(), eq(page))).thenReturn(new Page<>(List.of(row), page, 3));
 
         Page<PublicationSummary> result = search.search(new SearchFilters("mock", null, null, null, null, null,

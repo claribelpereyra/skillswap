@@ -23,6 +23,9 @@ public final class RealUiControllers implements UiControllers, UiControllers.Bus
     private final ZoneId zone;
     private final Map<String, Integer> pages = new HashMap<>();
     private final Map<String, Boolean> next = new HashMap<>();
+    // Snapshot del listado visible: permite dibujar reprogramaciones sin consultar por fila.
+    // Las acciones siempre vuelven a consultar la contratación y sus permisos.
+    private final Map<Long, BookingView> listedBookings = new HashMap<>();
     private final Map<Long, CatalogEntryView> catalog = new LinkedHashMap<>();
 
     public RealUiControllers(ApplicationControllers app, String user, ZoneId zone) {
@@ -154,7 +157,6 @@ public final class RealUiControllers implements UiControllers, UiControllers.Bus
         return publication(data(app.publications().changeStatus(user, current.id(), action, reason)));
     }); }
     private Contratacion contract(BookingView b) {
-        if(b.publicationTitle() == null) b=booking(""+b.id());
         String other = b.clientId().equals(user) ? b.providerDisplayName() : b.clientDisplayName();
         return new Contratacion("" + b.id(), b.publicationTitle(), other, date(b.slotStartsAt()), integer(b.price()),
                 switch(b.status()) { case PENDING -> EstadoContratacion.PENDIENTE; case ACCEPTED -> EstadoContratacion.ACEPTADA;
@@ -167,24 +169,29 @@ public final class RealUiControllers implements UiControllers, UiControllers.Bus
         var provider = data(app.bookings().listAsProvider(user, p, SIZE));
         next.put("contrataciones", client.hasNext() || provider.hasNext());
         List<BookingView> both = new ArrayList<>(client.items()); both.addAll(provider.items());
+        listedBookings.clear();
+        both.forEach(b -> listedBookings.put(b.id(), b));
         return both.stream().sorted(Comparator.comparing(BookingView::slotStartsAt).reversed()).map(this::contract).toList();
     }); }
     private BookingView booking(String raw) {
         // Otro participante puede haber cambiado el estado desde la última pantalla.
         long key = id(raw);
-        var both = all(p -> data(app.bookings().listAsClient(user, p, 100)));
-        both.addAll(all(p -> data(app.bookings().listAsProvider(user, p, 100))));
-        return both.stream().filter(b -> b.id() == key).findFirst().orElseThrow(() -> new UiOperationException("Contratación no encontrada"));
+        listedBookings.remove(key);
+        return data(app.bookings().get(user, key));
+    }
+    private Contratacion updated(BookingView booking) {
+        listedBookings.remove(booking.id());
+        return contract(booking);
     }
     @Override public Contratacion solicitar(String u, String pub, String objective) {
         throw new UiOperationException("Elegí una franja y escribí el mensaje de solicitud");
     }
     @Override public Contratacion solicitar(String u, String pub, String slot, String message, String objective) { return call(() -> {
-        requireUser(u); return contract(data(app.bookings().request(user, id(pub), id(slot), message, objective)));
+        requireUser(u); return updated(data(app.bookings().request(user, id(pub), id(slot), message, objective)));
     }); }
     @Override public Contratacion avanzar(String u, String raw) { return call(() -> {
         requireUser(u); var b = booking(raw);
-        return contract(data(switch(b.status()) {
+        return updated(data(switch(b.status()) {
             case PENDING -> app.bookings().accept(user, b.id()); case ACCEPTED -> app.bookings().pay(user, b.id());
             case CONFIRMED -> app.bookings().start(user, b.id()); case IN_PROGRESS -> app.bookings().complete(user, b.id());
             default -> throw new UiOperationException("La contratación no admite avanzar de estado");
@@ -192,22 +199,25 @@ public final class RealUiControllers implements UiControllers, UiControllers.Bus
     }); }
     @Override public Contratacion cancelar(String u, String raw) { throw new UiOperationException("Indicá el motivo de cancelación"); }
     @Override public Contratacion cancelar(String u, String raw, String reason) { return call(() -> {
-        requireUser(u); return contract(data(app.bookings().cancel(user, id(raw), reason)));
+        requireUser(u); return updated(data(app.bookings().cancel(user, id(raw), reason)));
     }); }
     @Override public void rechazar(String u,String raw,String reason) { call(()->{
-        requireUser(u);return contract(data(app.bookings().reject(user,id(raw),reason)));
+        requireUser(u);return updated(data(app.bookings().reject(user,id(raw),reason)));
     }); }
     @Override public List<Franja> franjasParaContrato(String u, String raw) { return call(() -> {
         requireUser(u); return franjas(u, "" + booking(raw).publicationId()).stream().filter(s -> !s.ocupada()).toList();
     }); }
     @Override public void reprogramar(String u, String raw, String slot) { call(() -> {
-        requireUser(u); return contract(data(app.bookings().proposeReschedule(user, id(raw), id(slot))));
+        requireUser(u); return updated(data(app.bookings().proposeReschedule(user, id(raw), id(slot))));
     }); }
     @Override public boolean tieneReprogramacion(String u, String raw) { return call(() -> {
-        requireUser(u); var b = booking(raw); return b.proposedSlotId() != null && !user.equals(b.rescheduleProposedBy());
+        requireUser(u);
+        var b = listedBookings.get(id(raw));
+        if (b == null) b = booking(raw);
+        return b.proposedSlotId() != null && !user.equals(b.rescheduleProposedBy());
     }); }
     @Override public void responderReprogramacion(String u, String raw, boolean accept) { call(() -> {
-        requireUser(u); return contract(data(accept ? app.bookings().acceptReschedule(user,id(raw)) : app.bookings().rejectReschedule(user,id(raw))));
+        requireUser(u); return updated(data(accept ? app.bookings().acceptReschedule(user,id(raw)) : app.bookings().rejectReschedule(user,id(raw))));
     }); }
     @Override public void calificar(String u, String raw, int score, String comment) { call(() -> {
         requireUser(u); var b = booking(raw); String other = user.equals(b.clientId()) ? b.providerId() : b.clientId();

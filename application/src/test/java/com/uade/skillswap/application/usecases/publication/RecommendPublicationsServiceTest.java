@@ -141,6 +141,6 @@ class RecommendPublicationsServiceTest {
 
     private PublicationSummary publication(int id, String authorId, Set<String> tags) {
         return new PublicationSummary(id, authorId, 4.8, PublicationType.MENTORING, "Publication " + id, 2L,
-                Modality.REMOTE, 120L, 2, tags, NOW);
+                Modality.REMOTE, 120L, 2, tags, NOW, "Descripción de prueba", 60, "Proveedor");
     }
 }

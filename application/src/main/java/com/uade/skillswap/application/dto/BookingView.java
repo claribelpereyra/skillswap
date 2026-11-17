@@ -10,13 +10,6 @@ public record BookingView(Long id, long publicationId, String clientId, String p
                           String message, String goal, Long proposedSlotId, String rescheduleProposedBy,
                           String publicationTitle, String clientDisplayName, String providerDisplayName) {
 
-    public BookingView(Long id,long publicationId,String clientId,String providerId,long slotId,
-            Instant slotStartsAt,Instant slotEndsAt,BookingStatus status,long price,String message,String goal,
-            Long proposedSlotId,String rescheduleProposedBy) {
-        this(id,publicationId,clientId,providerId,slotId,slotStartsAt,slotEndsAt,status,price,message,goal,
-                proposedSlotId,rescheduleProposedBy,null,null,null);
-    }
-
     public BookingView withLabels(String title,String clientName,String providerName) {
         return new BookingView(id,publicationId,clientId,providerId,slotId,slotStartsAt,slotEndsAt,status,
                 price,message,goal,proposedSlotId,rescheduleProposedBy,title,clientName,providerName);
@@ -37,6 +30,6 @@ public record BookingView(Long id, long publicationId, String clientId, String p
                 booking.getMessage(),
                 booking.getGoal(),
                 proposal.map(p -> p.newSlot().getId()).orElse(null),
-                proposal.map(p -> p.proposedBy().value()).orElse(null));
+                proposal.map(p -> p.proposedBy().value()).orElse(null), null, null, null);
     }
 }

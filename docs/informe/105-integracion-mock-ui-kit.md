@@ -22,8 +22,12 @@ La estética de Theme y la organización de las siete pantallas se conservan. No
 
 La proyección de búsqueda incluye descripción, duración y nombre de proveedor en las tres consultas fijas existentes. Los títulos y nombres de la página de contrataciones se obtienen en una consulta agrupada por IDs; no se consulta un perfil/publicación por fila y el historial sigue visible al cerrarse una publicación.
 
+La consulta individual usa `BookingController.get(userId, bookingId)` y `BookingService.get(bookingId, actor)`: comprueba que el actor sea participante y devuelve las etiquetas de esa reserva, sin recorrer los listados. Las respuestas de las acciones también incluyen etiquetas. Para dibujar los botones de reprogramación se usa el `proposedSlotId` del listado visible; las acciones releen siempre la reserva y validan sesión/permisos. `RealUiControllersBookingTest` cubre veinte filas sin consultas individuales, la relectura antes de actuar y la validación de sesión al usar el snapshot. `BookingLabelsQuery` es obligatorio en el único constructor del servicio; los tests que no necesitan etiquetas lo declaran explícitamente.
+
 ## Demostración
 
 `--demo` crea de forma explícita los perfiles user-mateo/user-sofia, una wallet con 500 créditos iniciales por usuario y dos ofertas de mentoría con horarios. Usa controllers y datos persistidos; no vuelve a acreditar saldo ni duplica publicaciones al reiniciar. La elección de canales del usuario no se sobrescribe al reiniciar. No hay autenticación real.
+
+Es la única fuente de datos de ejemplo. Se retiró el SQL de demo que no ejecutaba el arranque; las migraciones contienen solo esquema y los tests conservan fixtures aislados.
 
 Ver README para empaquetado y ejecución. RealUiControllersIntegrationTest recorre los contratos del kit con persistencia real. SkillSwapViewIntegrationTest abre y pinta las siete pantallas con controllers reales en modo headless. SwingCallsTest verifica la ejecución fuera del EDT y la propagación del error de negocio.

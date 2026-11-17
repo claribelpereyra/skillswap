@@ -9,14 +9,14 @@ import com.uade.skillswap.application.dto.publication.SearchSort;
 import com.uade.skillswap.application.ports.in.publication.RecommendationStrategy;
 import com.uade.skillswap.application.ports.in.publication.RecommendPublicationsUseCase;
 import com.uade.skillswap.application.ports.out.IdentityService;
-import com.uade.skillswap.application.usecases.publication.RecentPopularityRecommendationStrategy;
-import com.uade.skillswap.application.usecases.publication.SkillAffinityRecommendationStrategy;
 import com.uade.skillswap.controllers.ControllerResult;
 import com.uade.skillswap.controllers.common.ControllerSupport.InvalidInputException;
 import com.uade.skillswap.domain.common.UserId;
 import com.uade.skillswap.domain.publication.Modality;
 
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 import static com.uade.skillswap.controllers.common.ControllerSupport.parseEnum;
@@ -24,27 +24,21 @@ import static com.uade.skillswap.controllers.common.ControllerSupport.parseEnum;
 public final class RecommendationControllerImpl implements RecommendationController {
 
     private final RecommendPublicationsUseCase recommend;
-    private final SkillAffinityRecommendationStrategy skillAffinity;
-    private final RecentPopularityRecommendationStrategy recentPopularity;
+    // Registro por nombre: sumar una estrategia es registrarla en CompositionRoot, sin tocar este controller.
+    private final Map<String, RecommendationStrategy> strategies;
     private final IdentityService identity;
     private final RecommendationStrategy defaultStrategy;
 
     public RecommendationControllerImpl(RecommendPublicationsUseCase recommend,
-                                        SkillAffinityRecommendationStrategy skillAffinity,
-                                        RecentPopularityRecommendationStrategy recentPopularity,
-                                        IdentityService identity) {
-        this(recommend, skillAffinity, recentPopularity, identity, skillAffinity);
-    }
-
-    public RecommendationControllerImpl(RecommendPublicationsUseCase recommend,
-                                        SkillAffinityRecommendationStrategy skillAffinity,
-                                        RecentPopularityRecommendationStrategy recentPopularity,
-                                        IdentityService identity, RecommendationStrategy defaultStrategy) {
+                                        Map<String, RecommendationStrategy> strategies,
+                                        RecommendationStrategy defaultStrategy, IdentityService identity) {
         this.recommend = Objects.requireNonNull(recommend, "The recommendation use case is required");
-        this.skillAffinity = Objects.requireNonNull(skillAffinity, "The skill affinity strategy is required");
-        this.recentPopularity = Objects.requireNonNull(recentPopularity, "The recent popularity strategy is required");
-        this.identity = Objects.requireNonNull(identity, "The identity service is required");
+        Map<String, RecommendationStrategy> byName = new HashMap<>();
+        Objects.requireNonNull(strategies, "The recommendation strategies are required").forEach((name, strategy) ->
+                byName.put(name.strip().toUpperCase(Locale.ROOT), Objects.requireNonNull(strategy)));
+        this.strategies = Map.copyOf(byName);
         this.defaultStrategy = Objects.requireNonNull(defaultStrategy, "The default strategy is required");
+        this.identity = Objects.requireNonNull(identity, "The identity service is required");
     }
 
     @Override
@@ -69,11 +63,11 @@ public final class RecommendationControllerImpl implements RecommendationControl
         if (strategy == null || strategy.isBlank()) {
             return defaultStrategy;
         }
-        return switch (strategy.strip().toUpperCase(Locale.ROOT)) {
-            case "SKILL_AFFINITY" -> skillAffinity;
-            case "RECENT_POPULARITY" -> recentPopularity;
-            default -> throw new InvalidInputException("Unknown recommendation strategy: " + strategy);
-        };
+        RecommendationStrategy selected = strategies.get(strategy.strip().toUpperCase(Locale.ROOT));
+        if (selected == null) {
+            throw new InvalidInputException("Unknown recommendation strategy: " + strategy);
+        }
+        return selected;
     }
 
     private UserId currentUser(String userId) {

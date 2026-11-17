@@ -53,8 +53,6 @@ La conexión se puede cambiar con variables de entorno (los defaults coinciden c
 
 Los umbrales se aplican al reintegro y la estrategia se usa cuando el formulario de recomendación no elige otra. La identidad y los canales siguen siendo simulados; los avisos se procesan después del commit, con registro de fallos y sin reintentos automáticos.
 
-El estado de las tareas 88–107 está en `docs/informe/estado-tareas-ian.md`.
-
 La cobertura de cada módulo queda en `<modulo>/target/site/jacoco/index.html`.
 
 ## Estructura y regla de dependencias

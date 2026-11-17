@@ -3,7 +3,6 @@ package com.uade.skillswap.app;
 import com.uade.skillswap.app.presentation.ApplicationControllers;
 import com.uade.skillswap.application.eventos.*;
 import com.uade.skillswap.application.notificaciones.FabricaCanalNotificacion;
-import com.uade.skillswap.application.ports.out.BookingPricingPolicy;
 import com.uade.skillswap.application.usecases.*;
 import com.uade.skillswap.application.usecases.profile.*;
 import com.uade.skillswap.application.usecases.publication.*;
@@ -13,13 +12,18 @@ import com.uade.skillswap.controllers.ControllerResult;
 import com.uade.skillswap.controllers.booking.BookingControllerImpl;
 import com.uade.skillswap.controllers.booking.BookingReceiptControllerImpl;
 import com.uade.skillswap.application.usecases.booking.GetBookingReceiptService;
+import com.uade.skillswap.application.usecases.booking.PromotionalPricingPolicy;
 import com.uade.skillswap.controllers.notification.*;
 import com.uade.skillswap.controllers.profile.ProfileControllerImpl;
 import com.uade.skillswap.controllers.publication.*;
 import com.uade.skillswap.controllers.rating.RatingControllerImpl;
 import com.uade.skillswap.controllers.session.SessionController;
 import com.uade.skillswap.controllers.wallet.*;
+import com.uade.skillswap.domain.common.SkillCoins;
 import com.uade.skillswap.domain.common.UserId;
+import com.uade.skillswap.domain.pricing.FixedPromotion;
+import com.uade.skillswap.domain.pricing.PercentagePromotion;
+import com.uade.skillswap.domain.pricing.Price;
 import com.uade.skillswap.domain.wallet.*;
 import com.uade.skillswap.infrastructure.adapters.*;
 import com.uade.skillswap.infrastructure.adapters.notificaciones.*;
@@ -38,9 +42,11 @@ import com.uade.skillswap.infrastructure.persistence.wallet.JpaWalletRepository;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.UnaryOperator;
 
 /** Único punto de composición de implementaciones concretas en producción. */
 public final class CompositionRoot {
@@ -68,7 +74,7 @@ public final class CompositionRoot {
             var refund = new TieredRefundStrategy(new RefundPolicy(configuration.anticipacionReintegroTotal(),
                     configuration.anticipacionReintegroParcial()));
             var bookingService = new BookingServiceImpl(bookings, new PublicationCatalogAdapter(publications),
-                    new PublicationAvailabilityAdapter(publications), wallets, BookingPricingPolicy.basePrice(),
+                    new PublicationAvailabilityAdapter(publications), wallets, new PromotionalPricingPolicy(promociones(configuration)),
                     refund, work, clock, new JpaBookingLabelsQuery());
             bookingService.addObserver(new BookingNotificationObserver(processor));
             var search = new SearchPublicationsService(new JpaPublicationSearchQuery(), new JpaCategoryTree());
@@ -118,5 +124,19 @@ public final class CompositionRoot {
             factory.close();
             throw error;
         }
+    }
+
+    private static Map<UserId, List<UnaryOperator<Price>>> promociones(ConfiguracionFuncional configuration) {
+        Map<UserId, List<UnaryOperator<Price>>> porProveedor = new HashMap<>();
+        configuration.promocionesPorProveedor().forEach((proveedor, promociones) -> porProveedor.put(
+                new UserId(proveedor), promociones.stream().map(CompositionRoot::decorador).toList()));
+        return porProveedor;
+    }
+
+    private static UnaryOperator<Price> decorador(ConfiguracionFuncional.PromocionConfigurada promocion) {
+        return switch (promocion.tipo()) {
+            case PORCENTAJE -> price -> new PercentagePromotion(price, (int) promocion.valor());
+            case FIJO -> price -> new FixedPromotion(price, new SkillCoins(promocion.valor()));
+        };
     }
 }

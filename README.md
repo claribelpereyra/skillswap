@@ -48,6 +48,7 @@ La conexión se puede cambiar con variables de entorno (los defaults coinciden c
 | `SKILLSWAP_CANCELACION_TOTAL_HORAS` | `48` |
 | `SKILLSWAP_CANCELACION_PARCIAL_HORAS` | `24` |
 | `SKILLSWAP_RECOMENDACION` | `AFINIDAD` (`POPULARIDAD` como alternativa) |
+| `SKILLSWAP_PROMOCIONES` | sin promociones (ejemplo: `user-sofia=PORCENTAJE:10,FIJO:5;user-mateo=FIJO:20`) |
 | `SKILLSWAP_UI_ZONE` | `America/Argentina/Buenos_Aires` |
 
 Los umbrales se aplican al reintegro y la estrategia se usa cuando el formulario de recomendación no elige otra. La identidad y los canales siguen siendo simulados; los avisos se procesan después del commit, con registro de fallos y sin reintentos automáticos.

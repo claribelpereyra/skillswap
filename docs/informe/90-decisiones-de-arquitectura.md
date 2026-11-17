@@ -22,7 +22,7 @@ La arquitectura existente conserva EntityManagerContext como contexto único por
 
 La unidad raíz confirma las operaciones anidadas y solo después publica los eventos. Si revierte, descarta callbacks. La alternativa de notificar dentro de la transacción habría enviado avisos de operaciones que luego podrían fallar. La aceptación/cupo, pago/dos wallets y cancelación/reintegro conservan su unidad de trabajo.
 
-Se reutiliza Observer sobre Booking y un adaptador BookingNotificationObserver lo conecta con el publicador de notificaciones; no hay imports de canales en dominio. La deduplicación usa un UUID estable para la transición y una restricción por evento/destinatario. Una excepción en un observer se registra y no corta al resto ni modifica el resultado del negocio confirmado.
+Se reutiliza Observer sobre Booking y un adaptador BookingNotificationObserver lo conecta con el caso de uso de notificaciones; no hay imports de canales en dominio. La deduplicación usa un UUID estable para la transición y una restricción por evento/destinatario. Una excepción en un observer se registra y no corta al resto ni modifica el resultado del negocio confirmado.
 
 El compromiso elegido es envío síncrono después del commit, sin outbox ni reintentos automáticos. No garantiza entrega si el proceso termina entre confirmación y envío. Esa limitación está explícita; agregar una cola durable sería una evolución separada.
 

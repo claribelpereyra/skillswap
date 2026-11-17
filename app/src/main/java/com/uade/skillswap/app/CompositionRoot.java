@@ -39,6 +39,7 @@ import com.uade.skillswap.infrastructure.persistence.profile.*;
 import com.uade.skillswap.infrastructure.persistence.publication.*;
 import com.uade.skillswap.infrastructure.persistence.rating.*;
 import com.uade.skillswap.infrastructure.persistence.wallet.JpaWalletRepository;
+import com.uade.skillswap.infrastructure.persistence.wallet.JpaWalletStatementQuery;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -111,7 +112,7 @@ public final class CompositionRoot {
                     new BookingControllerImpl(bookingService, identity),
                     new BookingReceiptControllerImpl(new GetBookingReceiptService(bookings, wallets), identity),
                     new WalletControllerImpl(new LoadWalletService(wallets, new SimulatedSkillCoinGateway(), work, clock), identity),
-                    new WalletQueryControllerImpl(new GetWalletService(wallets), identity),
+                    new WalletQueryControllerImpl(new GetWalletService(wallets, new JpaWalletStatementQuery()), identity),
                     new RatingControllerImpl(new RegisterRatingService(ratings, profiles,
                             bookings, work), new ListRatingsService(ratings, profiles), identity),
                     new NotificationControllerImpl(new BandejaNotificacionCasoDeUso(notificationRepository, clock), identity),

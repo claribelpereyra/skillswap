@@ -1,9 +1,10 @@
 package com.uade.skillswap.application.ports.in;
 
-import com.uade.skillswap.application.notificaciones.PaginaNotificaciones;
+import com.uade.skillswap.application.common.Page;
+import com.uade.skillswap.application.dto.notification.NotificationView;
 import java.util.UUID;
 
 public interface BandejaNotificacionEntrada {
-    PaginaNotificaciones listar(String actorUserId, int pagina, int tamanio);
+    Page<NotificationView> listar(String actorUserId, int pagina, int tamanio);
     void marcarLeida(String actorUserId, UUID notificacionId);
 }

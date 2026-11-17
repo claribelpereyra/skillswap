@@ -7,7 +7,6 @@ import com.uade.skillswap.application.ports.in.BandejaNotificacionEntrada;
 import com.uade.skillswap.application.ports.out.IdentityService;
 import com.uade.skillswap.application.common.AccessDeniedException;
 import com.uade.skillswap.application.common.Page;
-import com.uade.skillswap.application.common.PageRequest;
 import com.uade.skillswap.application.dto.notification.NotificationView;
 import com.uade.skillswap.controllers.notification.NotificationController;
 import com.uade.skillswap.domain.common.UserId;
@@ -28,9 +27,7 @@ public final class NotificationControllerImpl implements NotificationController 
         return ControllerResult.of(() -> {
             String actor = actor();
             PaginaNotificaciones.validar(pagina, tamanio);
-            var result = bandeja.listar(actor, pagina, tamanio);
-            return new Page<>(result.elementos().stream().map(NotificationView::from).toList(),
-                    new PageRequest(result.pagina(), result.tamanio()), result.total());
+            return bandeja.listar(actor, pagina, tamanio);
         });
     }
 

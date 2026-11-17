@@ -1,5 +1,6 @@
 package com.uade.skillswap.application.notificaciones;
 
+import com.uade.skillswap.application.dto.notification.NotificationPreferenceView;
 import com.uade.skillswap.application.usecases.ProcesarEventoNotificableCasoDeUso;
 import com.uade.skillswap.application.ports.in.PreferenciaNotificacionEntrada;
 import com.uade.skillswap.application.ports.out.*;
@@ -20,8 +21,8 @@ class ProcesarEventoTest {
         when(email.tipo()).thenReturn(CanalPreferido.EMAIL);
         when(push.tipo()).thenReturn(CanalPreferido.PUSH);
         when(interna.tipo()).thenReturn(CanalPreferido.INTERNA);
-        when(preferencias.consultar("cliente")).thenReturn(new PreferenciaNotificacion("cliente", CanalPreferido.EMAIL));
-        when(preferencias.consultar("proveedor")).thenReturn(new PreferenciaNotificacion("proveedor", CanalPreferido.PUSH));
+        when(preferencias.consultar("cliente")).thenReturn(new NotificationPreferenceView("cliente", CanalPreferido.EMAIL));
+        when(preferencias.consultar("proveedor")).thenReturn(new NotificationPreferenceView("proveedor", CanalPreferido.PUSH));
         when(repo.registrarSiAusente(any())).thenReturn(true);
         doThrow(new IllegalStateException("No disponible")).when(email).enviar(any());
         var caso = new ProcesarEventoNotificableCasoDeUso(preferencias, repo,
@@ -42,7 +43,7 @@ class ProcesarEventoTest {
             when(canal.tipo()).thenReturn(tipo);
             return canal;
         }).toList();
-        when(preferencias.consultar("ana")).thenReturn(new PreferenciaNotificacion("ana", CanalPreferido.INTERNA));
+        when(preferencias.consultar("ana")).thenReturn(new NotificationPreferenceView("ana", CanalPreferido.INTERNA));
         var caso = new ProcesarEventoNotificableCasoDeUso(preferencias, repo, new FabricaCanalNotificacion(canales));
         caso.procesar(new EventoNotificable(UUID.randomUUID(), Instant.EPOCH, TipoEventoNotificable.ACEPTACION,
                 "1", List.of("ana"), "Aceptada"));

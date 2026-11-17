@@ -50,6 +50,17 @@ class ConfiguracionFuncionalTest {
                 .hasMessageContaining("SKILLSWAP_PROMOCIONES");
     }
 
+    @Test void leeElTopeDeCandidatosDeRecomendacion() {
+        assertThat(ConfiguracionFuncional.desde(Map.of()).candidatosRecomendacion()).isEqualTo(200);
+        assertThat(ConfiguracionFuncional.desde(Map.of("SKILLSWAP_RECOMENDACION_CANDIDATOS", " 50 "))
+                .candidatosRecomendacion()).isEqualTo(50);
+        for (String invalido : new String[]{"0", "-3", "muchos"}) {
+            assertThatThrownBy(() -> ConfiguracionFuncional.desde(Map.of("SKILLSWAP_RECOMENDACION_CANDIDATOS", invalido)))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("SKILLSWAP_RECOMENDACION_CANDIDATOS");
+        }
+    }
+
     @Test void rechazaUmbralesInvertidosIgualesYEstrategiaDesconocida() {
         assertThatThrownBy(() -> ConfiguracionFuncional.desde(Map.of("SKILLSWAP_CANCELACION_TOTAL_HORAS", "12")))
                 .isInstanceOf(IllegalArgumentException.class);

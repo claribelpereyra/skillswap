@@ -42,6 +42,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class RatingUseCasesTest {
+    private static final Instant AT = Instant.parse("2026-11-16T10:00:00Z");
 
     private static final UserId CLIENT = new UserId("ana");
     private static final UserId PROVIDER = new UserId("bruno");
@@ -68,7 +69,7 @@ class RatingUseCasesTest {
     @BeforeEach
     void setUp() {
         registerService = new RegisterRatingService(
-                ratingRepository, profileRepository, bookings, immediateUnitOfWork);
+                ratingRepository, profileRepository, bookings, immediateUnitOfWork, java.time.Clock.systemUTC());
         listService = new ListRatingsService(ratingRepository, profileRepository);
 
         lenient().when(ratingRepository.save(any(Rating.class)))
@@ -79,16 +80,16 @@ class RatingUseCasesTest {
 
     private static Booking confirmedBooking() {
         TimeSlot slot = new TimeSlot(1L, Instant.parse("2026-12-01T10:00:00Z"), Instant.parse("2026-12-01T11:00:00Z"));
-        Booking booking = Booking.request(1L, CLIENT, PROVIDER, slot, "Hola", "Aprender", new SkillCoins(100));
-        booking.accept(PROVIDER);
-        booking.confirmPayment(CLIENT);
+        Booking booking = Booking.request(1L, CLIENT, PROVIDER, slot, "Hola", "Aprender", new SkillCoins(100), AT);
+        booking.accept(PROVIDER, AT);
+        booking.confirmPayment(CLIENT, AT);
         return booking;
     }
 
     private static Booking completedBooking() {
         Booking booking = confirmedBooking();
-        booking.start(PROVIDER);
-        booking.complete(CLIENT);
+        booking.start(PROVIDER, AT);
+        booking.complete(CLIENT, AT);
         return booking;
     }
 

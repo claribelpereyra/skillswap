@@ -57,6 +57,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class BookingServiceImplTest {
+    private static final Instant AT = Instant.parse("2026-11-16T10:00:00Z");
 
     private static final UserId CLIENT = new UserId("ana");
     private static final UserId PROVIDER = new UserId("bruno");
@@ -694,7 +695,7 @@ class BookingServiceImplTest {
     }
 
     private static Booking pending() {
-        return Booking.request(PUBLICATION_ID, CLIENT, PROVIDER, SLOT, "Hola", "Entrevista", new SkillCoins(100));
+        return Booking.request(PUBLICATION_ID, CLIENT, PROVIDER, SLOT, "Hola", "Entrevista", new SkillCoins(100), AT);
     }
 
     private static Booking accepted() {
@@ -702,8 +703,8 @@ class BookingServiceImplTest {
     }
 
     private static Booking accepted(SkillCoins price) {
-        Booking booking = Booking.request(PUBLICATION_ID, CLIENT, PROVIDER, SLOT, "Hola", "Entrevista", price);
-        booking.accept(PROVIDER);
+        Booking booking = Booking.request(PUBLICATION_ID, CLIENT, PROVIDER, SLOT, "Hola", "Entrevista", price, AT);
+        booking.accept(PROVIDER, AT);
         return booking;
     }
 
@@ -712,9 +713,9 @@ class BookingServiceImplTest {
     }
 
     private static Booking confirmed(SkillCoins price, TimeSlot slot) {
-        Booking booking = Booking.request(PUBLICATION_ID, CLIENT, PROVIDER, slot, "Hola", "Entrevista", price);
-        booking.accept(PROVIDER);
-        booking.confirmPayment(CLIENT);
+        Booking booking = Booking.request(PUBLICATION_ID, CLIENT, PROVIDER, slot, "Hola", "Entrevista", price, AT);
+        booking.accept(PROVIDER, AT);
+        booking.confirmPayment(CLIENT, AT);
         return booking;
     }
 

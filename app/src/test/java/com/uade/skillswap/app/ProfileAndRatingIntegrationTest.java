@@ -68,6 +68,7 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 
 class ProfileAndRatingIntegrationTest {
+    private static final Instant AT = Instant.parse("2026-11-16T10:00:00Z");
 
     private static final String URL = "jdbc:h2:mem:app-integration;MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1";
     private static final Instant NOW = Instant.parse("2026-11-14T10:00:00Z");
@@ -158,7 +159,7 @@ class ProfileAndRatingIntegrationTest {
         };
 
         profileController = new ProfileControllerImpl(
-                new CreateProfileService(profileRepo, unitOfWork),
+                new CreateProfileService(profileRepo, unitOfWork, java.time.Clock.systemUTC()),
                 new UpdateProfileService(profileRepo, unitOfWork),
                 new ManageSkillsService(profileRepo, unitOfWork),
                 new DeactivateProfileService(profileRepo, unitOfWork),
@@ -176,7 +177,7 @@ class ProfileAndRatingIntegrationTest {
                 identityAdapter
         );
         ratingController = new RatingControllerImpl(
-                new RegisterRatingService(ratingRepo, profileRepo, bookingRepo, unitOfWork),
+                new RegisterRatingService(ratingRepo, profileRepo, bookingRepo, unitOfWork, java.time.Clock.systemUTC()),
                 new ListRatingsService(ratingRepo, profileRepo),
                 identityAdapter
         );
@@ -224,7 +225,7 @@ class ProfileAndRatingIntegrationTest {
         identityAdapter.signIn(new UserId("techlab"));
         Booking confirmed = unitOfWork.execute(() -> {
             Booking booking = bookingRepo.findById(bookingId).orElseThrow();
-            booking.confirmPayment(new UserId("techlab"));
+            booking.confirmPayment(new UserId("techlab"), AT);
             return bookingRepo.save(booking);
         });
         assertThat(confirmed.getStatus()).isEqualTo(BookingStatus.CONFIRMED);

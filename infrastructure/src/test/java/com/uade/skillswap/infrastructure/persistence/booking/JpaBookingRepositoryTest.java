@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JpaBookingRepositoryTest extends PersistenceTestBase {
+    private static final Instant AT = Instant.parse("2026-11-16T10:00:00Z");
 
     private static final UserId CLIENT = new UserId("ana");
     private static final UserId PROVIDER = new UserId("bruno");
@@ -66,8 +67,8 @@ class JpaBookingRepositoryTest extends PersistenceTestBase {
 
         unitOfWork.execute(() -> {
             Booking booking = repository.findById(id).orElseThrow();
-            booking.accept(PROVIDER);
-            booking.confirmPayment(CLIENT);
+            booking.accept(PROVIDER, AT);
+            booking.confirmPayment(CLIENT, AT);
             return repository.save(booking);
         });
 
@@ -83,7 +84,7 @@ class JpaBookingRepositoryTest extends PersistenceTestBase {
     void savesAndClearsAPendingReschedule() {
         Long id = unitOfWork.execute(() -> {
             Booking booking = newBooking();
-            booking.accept(PROVIDER);
+            booking.accept(PROVIDER, AT);
             booking.proposeReschedule(PROVIDER, OTHER_SLOT);
             return repository.save(booking);
         }).getId();
@@ -97,7 +98,7 @@ class JpaBookingRepositoryTest extends PersistenceTestBase {
 
         unitOfWork.execute(() -> {
             Booking booking = repository.findById(id).orElseThrow();
-            booking.acceptReschedule(CLIENT);
+            booking.acceptReschedule(CLIENT, AT);
             return repository.save(booking);
         });
 
@@ -135,7 +136,7 @@ class JpaBookingRepositoryTest extends PersistenceTestBase {
 
     @Test
     void theDatabaseRejectsABookingOfAnUnknownPublication() {
-        Booking orphan = Booking.request(99L, CLIENT, PROVIDER, SLOT, "Hola", "Entrevista", new SkillCoins(100));
+        Booking orphan = Booking.request(99L, CLIENT, PROVIDER, SLOT, "Hola", "Entrevista", new SkillCoins(100), AT);
 
         assertThatThrownBy(() -> unitOfWork.execute(() -> repository.save(orphan)))
                 .isInstanceOf(PersistenceException.class);
@@ -162,6 +163,6 @@ class JpaBookingRepositoryTest extends PersistenceTestBase {
     }
 
     private static Booking newBooking() {
-        return Booking.request(10L, CLIENT, PROVIDER, SLOT, "Hola Bruno", "Preparar una entrevista", new SkillCoins(100));
+        return Booking.request(10L, CLIENT, PROVIDER, SLOT, "Hola Bruno", "Preparar una entrevista", new SkillCoins(100), AT);
     }
 }

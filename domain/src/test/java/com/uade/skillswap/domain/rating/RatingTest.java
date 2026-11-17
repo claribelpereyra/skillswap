@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class RatingTest {
+    private static final Instant AT = Instant.parse("2026-11-16T10:00:00Z");
 
     private static final UserId AUTHOR = new UserId("ana");
     private static final UserId RECIPIENT = new UserId("bruno");
@@ -29,7 +30,7 @@ class RatingTest {
 
     @Test
     void nullCommentDefaultsToEmptyAndDistinguishesDifferentCasedUserIds() {
-        Rating rating = Rating.create(1L, AUTHOR, new UserId("ANA"), 1, null);
+        Rating rating = Rating.create(1L, AUTHOR, new UserId("ANA"), 1, null, AT);
 
         assertThat(rating.getComment()).isEmpty();
         assertThat(rating.getRatedAt()).isNotNull();
@@ -38,25 +39,25 @@ class RatingTest {
 
     @Test
     void invalidRatingsThrowInvalidRatingException() {
-        assertThatThrownBy(() -> Rating.create(0L, AUTHOR, RECIPIENT, 5, "ok"))
+        assertThatThrownBy(() -> Rating.create(0L, AUTHOR, RECIPIENT, 5, "ok", AT))
                 .isExactlyInstanceOf(InvalidRatingException.class)
                 .hasMessage("The rating must belong to a valid booking");
-        assertThatThrownBy(() -> Rating.create(-4L, AUTHOR, RECIPIENT, 5, "ok"))
+        assertThatThrownBy(() -> Rating.create(-4L, AUTHOR, RECIPIENT, 5, "ok", AT))
                 .isExactlyInstanceOf(InvalidRatingException.class)
                 .hasMessage("The rating must belong to a valid booking");
-        assertThatThrownBy(() -> Rating.create(1L, null, RECIPIENT, 5, "ok"))
+        assertThatThrownBy(() -> Rating.create(1L, null, RECIPIENT, 5, "ok", AT))
                 .isExactlyInstanceOf(InvalidRatingException.class)
                 .hasMessage("The rating author cannot be null");
-        assertThatThrownBy(() -> Rating.create(1L, AUTHOR, null, 5, "ok"))
+        assertThatThrownBy(() -> Rating.create(1L, AUTHOR, null, 5, "ok", AT))
                 .isExactlyInstanceOf(InvalidRatingException.class)
                 .hasMessage("The rating recipient cannot be null");
-        assertThatThrownBy(() -> Rating.create(1L, AUTHOR, new UserId("ana"), 5, "ok"))
+        assertThatThrownBy(() -> Rating.create(1L, AUTHOR, new UserId("ana"), 5, "ok", AT))
                 .isExactlyInstanceOf(InvalidRatingException.class)
                 .hasMessage("A user cannot rate themselves");
-        assertThatThrownBy(() -> Rating.create(1L, AUTHOR, RECIPIENT, 0, "ok"))
+        assertThatThrownBy(() -> Rating.create(1L, AUTHOR, RECIPIENT, 0, "ok", AT))
                 .isExactlyInstanceOf(InvalidRatingException.class)
                 .hasMessage("The rating score must be between 1 and 5 (received: 0)");
-        assertThatThrownBy(() -> Rating.create(1L, AUTHOR, RECIPIENT, 6, "ok"))
+        assertThatThrownBy(() -> Rating.create(1L, AUTHOR, RECIPIENT, 6, "ok", AT))
                 .isExactlyInstanceOf(InvalidRatingException.class)
                 .hasMessage("The rating score must be between 1 and 5 (received: 6)");
     }

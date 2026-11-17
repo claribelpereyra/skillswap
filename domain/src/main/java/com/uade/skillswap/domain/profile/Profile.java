@@ -52,7 +52,7 @@ public class Profile {
         this.interests = new HashSet<>(interests);
         this.availability = availability != null ? availability : Availability.UNSPECIFIED;
         this.active = active;
-        this.createdAt = createdAt != null ? createdAt : Instant.now();
+        this.createdAt = Objects.requireNonNull(createdAt, "The creation date is required");
     }
 
     public static Profile create(UserId userId,
@@ -65,13 +65,6 @@ public class Profile {
                 0, 0, Set.of(), Set.of(), Availability.UNSPECIFIED, true, createdAt);
     }
 
-    public static Profile create(UserId userId,
-                                 String displayName,
-                                 String bio,
-                                 ZoneId timeZone,
-                                 AccountType accountType) {
-        return create(userId, displayName, bio, timeZone, accountType, Instant.now());
-    }
 
     public static Profile rebuild(Long id,
                                   UserId userId,

@@ -64,7 +64,7 @@ class AcceptBookingConcurrencyTest extends PersistenceTestBase {
                 BookingPricingPolicy.basePrice(),
                 new TieredRefundStrategy(new RefundPolicy(Duration.ofDays(2), Duration.ofDays(1))),
                 unitOfWork,
-                Clock.systemUTC());
+                Clock.systemUTC(), ids -> java.util.Map.of());
 
         ExecutorService pool = Executors.newFixedThreadPool(2);
         List<Future<String>> outcomes = new ArrayList<>();

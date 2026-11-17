@@ -10,6 +10,7 @@ import com.uade.skillswap.controllers.publication.RecommendationForm;
 import com.uade.skillswap.controllers.rating.RatingForm;
 import com.uade.skillswap.infrastructure.persistence.*;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.AfterEach;
 
 import java.time.*;
 import java.util.*;
@@ -17,10 +18,12 @@ import static org.assertj.core.api.Assertions.*;
 
 class FullJourneyIntegrationTest {
     private static final Instant NOW = Instant.parse("2026-11-16T10:00:00Z");
+    private final TestDatabase database = new TestDatabase();
+
+    @AfterEach void dropTestDatabase() { database.close(); }
 
     private ApplicationRuntime open(Map<String, String> environment) {
-        var runtime = CompositionRoot.open(new PersistenceConfiguration("jdbc:h2:mem:journey-" + UUID.randomUUID()
-                + ";MODE=MySQL;DATABASE_TO_LOWER=TRUE;DB_CLOSE_DELAY=-1", "sa", ""),
+        var runtime = CompositionRoot.open(database.configuration(),
                 Clock.fixed(NOW, ZoneOffset.UTC), environment);
         new JpaUnitOfWork().execute(() -> EntityManagerContext.withEntityManager(em ->
                 em.createNativeQuery("INSERT INTO category(id,parent_id,name,kind) VALUES(1,NULL,'Tech','CATEGORY')")

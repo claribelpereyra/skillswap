@@ -601,6 +601,48 @@ class BookingServiceImplTest {
     // Consultas
 
     @Test
+    void obtieneUnaContratacionConEtiquetasSinRecorrerLosListados() {
+        stored(persisted(accepted()));
+        var requestedIds = new ArrayList<java.util.Set<Long>>();
+        service = new BookingServiceImpl(bookings, publications, availability, wallets, pricingPolicy,
+                refundStrategy, Supplier::get, Clock.fixed(NOW, ZoneOffset.UTC), ids -> {
+                    requestedIds.add(ids);
+                    return java.util.Map.of(BOOKING_ID,
+                            new com.uade.skillswap.application.ports.out.BookingLabelsQuery.Labels(
+                                    "Mentoría Java", "Ana", "Bruno"));
+                });
+
+        for (UserId actor : List.of(CLIENT, PROVIDER)) {
+            BookingView view = service.get(BOOKING_ID, actor);
+            assertThat(view.id()).isEqualTo(BOOKING_ID);
+            assertThat(view.publicationTitle()).isEqualTo("Mentoría Java");
+            assertThat(view.clientDisplayName()).isEqualTo("Ana");
+            assertThat(view.providerDisplayName()).isEqualTo("Bruno");
+        }
+        assertThat(requestedIds).containsExactly(java.util.Set.of(BOOKING_ID), java.util.Set.of(BOOKING_ID));
+        verify(bookings, never()).findByClient(any(), any());
+        verify(bookings, never()).findByProvider(any(), any());
+    }
+
+    @Test
+    void consultarUnaContratacionAjenaNoDevuelveDatosNiConsultaSusEtiquetas() {
+        stored(persisted(accepted()));
+        var labels = mock(com.uade.skillswap.application.ports.out.BookingLabelsQuery.class);
+        service = new BookingServiceImpl(bookings, publications, availability, wallets, pricingPolicy,
+                refundStrategy, Supplier::get, Clock.fixed(NOW, ZoneOffset.UTC), labels);
+
+        assertThatThrownBy(() -> service.get(BOOKING_ID, OUTSIDER))
+                .isExactlyInstanceOf(AccessDeniedException.class);
+        verifyNoInteractions(labels);
+    }
+
+    @Test
+    void consultarUnaContratacionInexistenteDevuelveNoEncontrada() {
+        assertThatThrownBy(() -> service.get(BOOKING_ID, CLIENT))
+                .isExactlyInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
     void onlyParticipantsCanSeeTheHistory() {
         stored(accepted());
 
@@ -630,7 +672,7 @@ class BookingServiceImplTest {
 
     private BookingServiceImpl newService(UnitOfWork unitOfWork) {
         return new BookingServiceImpl(bookings, publications, availability, wallets, pricingPolicy, refundStrategy,
-                unitOfWork, Clock.fixed(NOW, ZoneOffset.UTC));
+                unitOfWork, Clock.fixed(NOW, ZoneOffset.UTC), ids -> java.util.Map.of());
     }
 
     private static RefundStrategy tieredRefundStrategy() {

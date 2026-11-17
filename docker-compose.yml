@@ -2,6 +2,7 @@
 services:
   mysql:
     image: mysql:8.4
+    command: ['--character-set-server=utf8mb4', '--collation-server=utf8mb4_0900_as_cs']
     container_name: skillswap-mysql
     environment:
       MYSQL_DATABASE: skillswap

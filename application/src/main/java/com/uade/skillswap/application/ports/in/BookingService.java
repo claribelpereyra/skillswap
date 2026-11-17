@@ -31,6 +31,8 @@ public interface BookingService {
 
     BookingView rejectReschedule(Long bookingId, UserId actor);
 
+    BookingView get(Long bookingId, UserId actor);
+
     List<BookingHistoryEntry> history(Long bookingId, UserId actor);
 
     Page<BookingView> listAsClient(UserId actor, PageRequest page);

@@ -15,6 +15,7 @@ import com.uade.skillswap.application.ports.out.PublicationAvailability;
 import com.uade.skillswap.application.ports.out.PublicationCatalog;
 import com.uade.skillswap.application.ports.out.UnitOfWork;
 import com.uade.skillswap.application.ports.out.WalletRepository;
+import com.uade.skillswap.application.ports.out.BookingLabelsQuery;
 import com.uade.skillswap.domain.booking.Booking;
 import com.uade.skillswap.domain.booking.BookingStatus;
 import com.uade.skillswap.domain.booking.observer.BookingObserver;
@@ -41,12 +42,13 @@ public class BookingServiceImpl implements BookingService {
     private final RefundStrategy refundStrategy;
     private final UnitOfWork unitOfWork;
     private final Clock clock;
+    private final BookingLabelsQuery labels;
     private final List<BookingObserver> observers = new ArrayList<>();
 
     public BookingServiceImpl(BookingRepository bookings, PublicationCatalog publications,
                               PublicationAvailability availability, WalletRepository wallets,
                               BookingPricingPolicy pricingPolicy, RefundStrategy refundStrategy,
-                              UnitOfWork unitOfWork, Clock clock) {
+                              UnitOfWork unitOfWork, Clock clock, BookingLabelsQuery labels) {
         this.bookings = Objects.requireNonNull(bookings);
         this.publications = Objects.requireNonNull(publications);
         this.availability = Objects.requireNonNull(availability);
@@ -55,6 +57,7 @@ public class BookingServiceImpl implements BookingService {
         this.refundStrategy = Objects.requireNonNull(refundStrategy);
         this.unitOfWork = Objects.requireNonNull(unitOfWork);
         this.clock = Objects.requireNonNull(clock);
+        this.labels = Objects.requireNonNull(labels);
     }
 
     // Los observers los registra el composition root; se les avisa recién cuando la transacción se confirmó.
@@ -78,7 +81,7 @@ public class BookingServiceImpl implements BookingService {
                     command.message(), command.goal(), finalPrice);
             Changed changed = new Changed(booking, bookings.save(booking));
             unitOfWork.afterCommit(() -> publish(changed));
-            return BookingView.from(changed.saved());
+            return withLabels(changed.saved());
         });
     }
 
@@ -180,6 +183,15 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    public BookingView get(Long bookingId, UserId actor) {
+        Booking booking = findBooking(bookingId);
+        if (!booking.isParticipant(actor)) {
+            throw new AccessDeniedException(actor, "view booking " + bookingId);
+        }
+        return withLabels(booking);
+    }
+
+    @Override
     public List<BookingHistoryEntry> history(Long bookingId, UserId actor) {
         Booking booking = findBooking(bookingId);
         if (!booking.isParticipant(actor)) {
@@ -190,12 +202,30 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     public Page<BookingView> listAsClient(UserId actor, PageRequest page) {
-        return bookings.findByClient(actor, page).map(BookingView::from);
+        return withLabels(bookings.findByClient(actor, page));
     }
 
     @Override
     public Page<BookingView> listAsProvider(UserId actor, PageRequest page) {
-        return bookings.findByProvider(actor, page).map(BookingView::from);
+        return withLabels(bookings.findByProvider(actor, page));
+    }
+
+    private BookingView withLabels(Booking booking) {
+        var names = booking.getId() == null ? java.util.Map.<Long, BookingLabelsQuery.Labels>of()
+                : labels.forBookings(java.util.Set.of(booking.getId()));
+        return withLabels(booking, booking.getId() == null ? null : names.get(booking.getId()));
+    }
+
+    private static BookingView withLabels(Booking booking, BookingLabelsQuery.Labels row) {
+        var view = BookingView.from(booking);
+        return row == null ? view : view.withLabels(row.title(), row.clientName(), row.providerName());
+    }
+
+    private Page<BookingView> withLabels(Page<Booking> page) {
+        var ids = page.items().stream().map(Booking::getId).filter(Objects::nonNull).collect(java.util.stream.Collectors.toSet());
+        var names = labels.forBookings(ids);
+        return page.map(booking -> withLabels(booking,
+                booking.getId() == null ? null : names.get(booking.getId())));
     }
 
     // Busca la reserva, aplica el cambio y la guarda, todo en una misma transacción.
@@ -210,7 +240,7 @@ public class BookingServiceImpl implements BookingService {
     private BookingView saveAndScheduleEvents(Booking booking) {
         Changed changed = new Changed(booking, bookings.save(booking));
         unitOfWork.afterCommit(() -> publish(changed));
-        return BookingView.from(changed.saved());
+        return withLabels(changed.saved());
     }
     // Lo registra el execute() mediante afterCommit; si la transacción revierte, no se dispara.
     private void publish(Changed changed) {

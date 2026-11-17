@@ -8,4 +8,4 @@
 
 La migración de notificaciones es V9 y los paquetes están en los cinco módulos Maven actuales. Los avisos de todos los canales se guardan en la bandeja; persistencia deduplica por evento/destinatario. El envío y el registro de resultado no son atómicos: una caída puede dejar PENDIENTE. Los fallos se registran; no hay reintentos automáticos ni garantía de entrega durable.
 
-NotificationIntegrationTest verifica deduplicación, dos canales y lectura. FullJourneyIntegrationTest verifica además eventos originados por operaciones reales, preferencias, permisos y rollback. Falta conectar estos contratos a las pantallas del Mock UI Kit cuando esté disponible y validar sobre MySQL real.
+NotificationIntegrationTest verifica deduplicación, dos canales y lectura. FullJourneyIntegrationTest verifica además eventos originados por operaciones reales, preferencias, permisos y rollback. Estos contratos están conectados al Mock UI Kit Swing y los recorridos reales se validaron sobre MySQL 8.4.13. Ver validacion-ui-mysql.md.

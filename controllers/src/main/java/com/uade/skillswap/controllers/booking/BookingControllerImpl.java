@@ -82,6 +82,11 @@ public class BookingControllerImpl implements BookingController {
     }
 
     @Override
+    public ControllerResult<BookingView> get(String userId, long bookingId) {
+        return ControllerResult.of(() -> service.get(bookingId, currentUser(userId, "view a booking")));
+    }
+
+    @Override
     public ControllerResult<List<BookingHistoryEntry>> history(String userId, long bookingId) {
         return ControllerResult.of(() -> service.history(bookingId, currentUser(userId, "view a booking history")));
     }

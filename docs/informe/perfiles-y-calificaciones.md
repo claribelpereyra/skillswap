@@ -47,7 +47,7 @@ La migración **`V5__profiles_and_ratings.sql`** (numerada después de `V4__book
    - Ante envíos simultáneos duplicados sobre la misma contratación, `JpaRatingRepository.save` ejecuta `persist` + `flush` y traduce la violación de `uq_rating_booking_author` a `InvalidRatingException` (`ErrorType.BUSINESS_RULE`).
    - Índice **`idx_rating_recipient_rated_at`** sobre `(recipient_id, rated_at)` para paginación eficiente del historial recibido.
 
-Los datos de demostración reproducibles (`infrastructure/src/main/resources/db/seed/R__demo_data.sql`) se ubican como migración repetible separada de `db/migration` para no bloquear migraciones versionadas posteriores (`V*`) ni romper los fixtures limpios de tests, sembrando de forma idempotente categorías, publicaciones, franjas, una contratación `COMPLETED`, perfiles, habilidades/intereses y calificaciones coherentes con todas las claves foráneas.
+La demo local única se carga con `java -jar app/target/app-0.1.0-SNAPSHOT.jar --demo`: `DemoScenario` crea los perfiles Mateo/Sofía, habilidades, ofertas y saldo inicial mediante los controllers reales. Es idempotente y opcional; sin `--demo` la aplicación solo aplica las migraciones de esquema. Se retiró el antiguo SQL de ejemplo no ejecutado para evitar dos conjuntos de datos distintos. Los tests de perfiles/calificaciones conservan sus propios fixtures aislados.
 
 ### Prevención de consultas $N+1$ y desacoplamiento entre módulos
 

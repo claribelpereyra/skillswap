@@ -6,7 +6,7 @@ TP obligatorio de Procesos de Desarrollo de Software (UADE). Backend en Java 17 
 
 - JDK 17
 - Maven 3.9+ (o el que trae IntelliJ)
-- Docker, para levantar MySQL local
+- Docker Compose, para levantar MySQL 8.4 local
 
 ## Cómo correrlo
 
@@ -17,7 +17,18 @@ mvn verify               # compila, corre los tests y genera cobertura
 
 Para ejecutar la app, corré `com.uade.skillswap.app.Main` desde IntelliJ (módulo `app`). Al arrancar aplica las migraciones de Flyway.
 
-`Main` arma los controllers reales mediante `CompositionRoot`. El Mock UI Kit de la cátedra todavía no está en el repositorio: por ahora el arranque comprueba la conexión y composición y termina sin abrir ventanas. Para integrar el kit, conservar el `ApplicationRuntime` abierto durante la vida de la UI y pasarle `runtime.controllers()`; cerrar el runtime al salir. El contrato está en `docs/informe/105-integracion-mock-ui-kit.md`.
+El Mock UI Kit Swing está integrado con los controllers reales. `Main` arma la aplicación con CompositionRoot y abre la ventana; cerrarla libera los recursos. El build genera un JAR con sus dependencias:
+
+```bash
+mvn clean verify
+java -jar app/target/app-0.1.0-SNAPSHOT.jar --demo
+```
+
+`--demo` crea datos locales reproducibles: user-mateo y user-sofia, 500 créditos iniciales por usuario, habilidades y ofertas con franjas. Reiniciar no vuelve a acreditar saldo ni duplica ofertas. El selector de sesión permite probar cliente y proveedor sin cambiar de actor automáticamente. Sin --demo no se cargan datos.
+
+Para levantar MySQL local alcanza con `docker compose up -d` (puerto 3306). Para ejecutar con datos propios se puede pasar `--user=<userId>` al JAR y crear previamente el perfil correspondiente.
+
+Ver `docs/informe/105-integracion-mock-ui-kit.md` para el contrato y los ajustes mínimos del kit.
 
 El recorrido de backend completo se puede ejecutar sin Docker, contra H2:
 
@@ -25,7 +36,7 @@ El recorrido de backend completo se puede ejecutar sin Docker, contra H2:
 mvn -B -pl app -am -Dtest=FullJourneyIntegrationTest -Dsurefire.failIfNoSpecifiedTests=false test
 ```
 
-Ese test publica, solicita, acepta, reprograma, paga, completa y califica usando los controllers y repositorios reales; también prueba cancelación, reintegro configurable, avisos a ambas partes y rollback. Para la entrega final falta validar sobre MySQL real.
+Ese test publica, solicita, acepta, reprograma, paga, completa y califica usando los controllers y repositorios reales; también prueba cancelación, reintegro configurable, avisos a ambas partes y rollback. También se validó contra MySQL 8.4.13 y se agregó un job MySQL 8.4 al CI. Ver `docs/informe/validacion-ui-mysql.md` para reproducirlo con bases desechables.
 
 La conexión se puede cambiar con variables de entorno (los defaults coinciden con el `docker-compose.yml`):
 
@@ -37,6 +48,7 @@ La conexión se puede cambiar con variables de entorno (los defaults coinciden c
 | `SKILLSWAP_CANCELACION_TOTAL_HORAS` | `48` |
 | `SKILLSWAP_CANCELACION_PARCIAL_HORAS` | `24` |
 | `SKILLSWAP_RECOMENDACION` | `AFINIDAD` (`POPULARIDAD` como alternativa) |
+| `SKILLSWAP_UI_ZONE` | `America/Argentina/Buenos_Aires` |
 
 Los umbrales se aplican al reintegro y la estrategia se usa cuando el formulario de recomendación no elige otra. La identidad y los canales siguen siendo simulados; los avisos se procesan después del commit, con registro de fallos y sin reintentos automáticos.
 

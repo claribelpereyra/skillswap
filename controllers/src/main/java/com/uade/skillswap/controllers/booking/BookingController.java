@@ -30,6 +30,8 @@ public interface BookingController {
 
     ControllerResult<BookingView> rejectReschedule(String userId, long bookingId);
 
+    ControllerResult<BookingView> get(String userId, long bookingId);
+
     ControllerResult<List<BookingHistoryEntry>> history(String userId, long bookingId);
 
     ControllerResult<Page<BookingView>> listAsClient(String userId, int page, int size);

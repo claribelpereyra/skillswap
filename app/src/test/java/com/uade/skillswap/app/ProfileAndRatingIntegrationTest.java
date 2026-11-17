@@ -174,7 +174,7 @@ class ProfileAndRatingIntegrationTest {
                         BookingPricingPolicy.basePrice(),
                         new FullRefundStrategy(),
                         unitOfWork,
-                        Clock.systemUTC()),
+                        Clock.systemUTC(), ids -> java.util.Map.of()),
                 identityAdapter
         );
         ratingController = new RatingControllerImpl(

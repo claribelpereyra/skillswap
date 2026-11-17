@@ -14,7 +14,10 @@ class BandejaNotificacionTest {
         var caso = new BandejaNotificacionCasoDeUso(repo, Clock.systemUTC());
         var pagina = new PaginaNotificaciones(List.of(), 0, 10, 0);
         when(repo.listar("ana", 0, 10)).thenReturn(pagina);
-        assertThat(caso.listar("ana", 0, 10)).isEqualTo(pagina);
+        var resultado = caso.listar("ana", 0, 10);
+        assertThat(resultado.items()).isEmpty();
+        assertThat(resultado.request().size()).isEqualTo(10);
+        assertThat(resultado.totalItems()).isZero();
         assertThatThrownBy(() -> caso.listar("ana", -1, 10)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> caso.listar("ana", 0, 101)).isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> caso.listar("ana", Integer.MAX_VALUE, 100)).isInstanceOf(IllegalArgumentException.class);

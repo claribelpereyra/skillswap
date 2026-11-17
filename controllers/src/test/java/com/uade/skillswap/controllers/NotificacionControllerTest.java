@@ -2,7 +2,10 @@ package com.uade.skillswap.controllers;
 
 import com.uade.skillswap.controllers.notification.NotificationControllerImpl;
 
-import com.uade.skillswap.application.notificaciones.*;
+import com.uade.skillswap.application.common.Page;
+import com.uade.skillswap.application.notificaciones.NotificacionNoEncontrada;
+import com.uade.skillswap.application.common.PageRequest;
+import com.uade.skillswap.application.dto.notification.NotificationView;
 import com.uade.skillswap.application.ports.in.BandejaNotificacionEntrada;
 import com.uade.skillswap.domain.common.UserId;
 import org.junit.jupiter.api.Test;
@@ -16,7 +19,7 @@ class NotificacionControllerTest {
         var entrada = mock(BandejaNotificacionEntrada.class);
         var usuario = new AtomicReference<>(new UserId("ana"));
         var controller = new NotificationControllerImpl(entrada, usuario::get);
-        var pagina = new PaginaNotificaciones(List.of(), 0, 10, 0);
+        var pagina = Page.<NotificationView>empty(new PageRequest(0, 10));
         when(entrada.listar("ana", 0, 10)).thenReturn(pagina);
         var result = controller.listar(0, 10).getData();
         assertThat(result.items()).isEmpty();

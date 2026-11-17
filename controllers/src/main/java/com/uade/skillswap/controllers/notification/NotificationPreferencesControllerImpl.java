@@ -20,7 +20,7 @@ public final class NotificationPreferencesControllerImpl implements Notification
 
     @Override
     public ControllerResult<String> getChannel() {
-        return ControllerResult.of(() -> preferences.consultar(actor()).canal().name());
+        return ControllerResult.of(() -> preferences.consultar(actor()).channel().name());
     }
 
     @Override

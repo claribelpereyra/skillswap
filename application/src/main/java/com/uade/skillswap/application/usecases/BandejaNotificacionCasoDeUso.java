@@ -1,5 +1,8 @@
 package com.uade.skillswap.application.usecases;
 
+import com.uade.skillswap.application.common.Page;
+import com.uade.skillswap.application.common.PageRequest;
+import com.uade.skillswap.application.dto.notification.NotificationView;
 import com.uade.skillswap.application.notificaciones.*;
 import com.uade.skillswap.application.ports.in.BandejaNotificacionEntrada;
 import com.uade.skillswap.application.ports.out.RepositorioNotificaciones;
@@ -15,10 +18,12 @@ public final class BandejaNotificacionCasoDeUso implements BandejaNotificacionEn
         this.reloj = Objects.requireNonNull(reloj);
     }
 
-    @Override public PaginaNotificaciones listar(String actorUserId, int pagina, int tamanio) {
+    @Override public Page<NotificationView> listar(String actorUserId, int pagina, int tamanio) {
         validarActor(actorUserId);
         PaginaNotificaciones.validar(pagina, tamanio);
-        return repositorio.listar(actorUserId, pagina, tamanio);
+        var resultado = repositorio.listar(actorUserId, pagina, tamanio);
+        return new Page<>(resultado.elementos().stream().map(NotificationView::from).toList(),
+                new PageRequest(resultado.pagina(), resultado.tamanio()), resultado.total());
     }
 
     @Override public void marcarLeida(String actorUserId, UUID notificacionId) {

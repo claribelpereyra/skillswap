@@ -14,10 +14,10 @@ class PreferenciaNotificacionTest {
         when(repo.buscar("ana")).thenReturn(Optional.empty(),
                 Optional.of(new PreferenciaNotificacion("ana", CanalPreferido.PUSH)));
         var caso = new PreferenciaNotificacionCasoDeUso(repo);
-        assertThat(caso.consultar("ana").canal()).isEqualTo(CanalPreferido.INTERNA);
+        assertThat(caso.consultar("ana").channel()).isEqualTo(CanalPreferido.INTERNA);
         caso.cambiar("ana", CanalPreferido.PUSH);
         verify(repo).guardar(new PreferenciaNotificacion("ana", CanalPreferido.PUSH));
-        assertThat(caso.consultar("ana").canal()).isEqualTo(CanalPreferido.PUSH);
+        assertThat(caso.consultar("ana").channel()).isEqualTo(CanalPreferido.PUSH);
     }
 
     @Test void noGuardaPreferenciasInvalidas() {

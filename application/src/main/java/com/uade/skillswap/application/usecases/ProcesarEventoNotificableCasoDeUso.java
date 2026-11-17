@@ -33,7 +33,7 @@ public final class ProcesarEventoNotificableCasoDeUso implements ProcesarEventoN
     }
 
     private void procesarDestinatario(EventoNotificable evento, String usuario) {
-        var canal = preferencias.consultar(usuario).canal();
+        var canal = preferencias.consultar(usuario).channel();
         var aviso = new Aviso(evento.id(), evento.ocurridoEn(), evento.tipo(), evento.referencia(), usuario, evento.detalle());
         var notificacion = new Notificacion(UUID.randomUUID(), aviso, canal, EstadoEntrega.PENDIENTE, null);
         if (!repositorio.registrarSiAusente(notificacion)) return;
